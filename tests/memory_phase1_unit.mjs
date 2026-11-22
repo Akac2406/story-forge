@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 const here = path.dirname(fileURLToPath(import.meta.url));
 globalThis.window = globalThis;
-eval(readFileSync(path.join(here, "..", "story-forge-pwa", "memory-engine.js"), "utf8"));
+eval(readFileSync(path.join(here, "..", "site", "memory-engine.js"), "utf8"));
 const M = globalThis.SFMemory;
 let pass = 0, fail = 0;
 const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);

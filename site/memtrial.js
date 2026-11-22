@@ -175,14 +175,17 @@ async function run(fresh) {
     status("Finished."); drawSetup();
   } catch (e) { status("Stopped: " + (e && e.message || e) + " Tap Continue to resume."); log("stopped: " + (e && e.message || e)); $("#setup").hidden = false; drawSetup() }
   try { if (wake) await wake.release() } catch (e) {}
+  unloadApp();
 }
+/* Free the test copy of the app once a run or replay ends, so a finished trial page holds almost no memory. */
+function unloadApp() { const f = $("#app"); if (!f || !W) return; try { f.removeAttribute("srcdoc"); f.src = "about:blank" } catch (e) {} W = null; E = null }
 
 async function replay() {
   $("#runbox").hidden = false; $("#setup").hidden = true; status("Loading the finished test story…");
   try { await loadApp(null); const out = await W.metaRepairReplay(E(SE)); prog.replay = { at: new Date().toISOString(), n: out.length, ok: out.filter(x => x.ok).length, items: out.map(x => ({ t: x.t, ok: x.ok, why: x.why, ms: x.ms, tok: x.tok, block: redact(x.block || "").slice(0, 900) })) }; saveProg();
     status("Replay finished: " + prog.replay.ok + " of " + prog.replay.n + " missed replies repaired."); log(JSON.stringify(prog.replay.items.map(x => [x.t, x.ok, x.why || "", x.ms]))) }
   catch (e) { status("Replay stopped: " + (e && e.message || e)) }
-  $("#setup").hidden = false; drawSetup() }
+  unloadApp(); $("#setup").hidden = false; drawSetup() }
 
 /* ---------- report ---------- */
 function summarize() {

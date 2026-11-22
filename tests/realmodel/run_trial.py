@@ -27,7 +27,7 @@ import argparse, json, os, random, re, subprocess, sys, tempfile, time, datetime
 from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-APP = os.path.normpath(os.path.join(HERE, "..", "..", "story-forge-pwa"))
+APP = os.path.normpath(os.path.join(HERE, "..", "..", "site"))
 SCEN = json.load(open(os.path.join(HERE, "scenario.json"), encoding="utf-8"))
 
 ap = argparse.ArgumentParser()

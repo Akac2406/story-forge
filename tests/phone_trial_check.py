@@ -6,7 +6,7 @@ Throughout: the real "story-forge-v2" localStorage and the real "story-forge" In
 """
 import json, os, re, subprocess, sys, time, socket
 from playwright.sync_api import sync_playwright
-HERE = os.path.dirname(os.path.abspath(__file__)); APP = os.path.join(HERE, "..", "story-forge-pwa")
+HERE = os.path.dirname(os.path.abspath(__file__)); APP = os.path.join(HERE, "..", "site")
 SCEN = json.load(open(os.path.join(APP, "trial", "scenario.json")))
 PORT = 8791; BASE = f"http://127.0.0.1:{PORT}/"
 CONN = "https://fake-connector.example"; FAKEKEY = "sk-test-NOTAREALKEY-1234567890abcdef"

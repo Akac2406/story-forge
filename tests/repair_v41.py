@@ -2,7 +2,7 @@
 Run: python tests/repair_v41.py   (prints "ERRORS: []" when everything passes)"""
 import asyncio, json, os, sys, subprocess, time
 from playwright.async_api import async_playwright
-HERE = os.path.dirname(os.path.abspath(__file__)); APP = os.path.normpath(os.path.join(HERE, "..", "story-forge-pwa")); PORT = 8816
+HERE = os.path.dirname(os.path.abspath(__file__)); APP = os.path.normpath(os.path.join(HERE, "..", "site")); PORT = 8816
 srv = subprocess.Popen([sys.executable, "-m", "http.server", str(PORT), "--bind", "127.0.0.1"], cwd=APP, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); time.sleep(1)
 results, errs = [], []
 st = {"n": 0, "repairs": 0, "mode": {}, "delay": 0, "bad": False}

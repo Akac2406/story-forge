@@ -2,7 +2,7 @@
 Run: python tests/recap_deadline_v37.py   (prints "ERRORS: []" when everything passes)"""
 import asyncio, json, os, sys, subprocess, time
 from playwright.async_api import async_playwright
-HERE = os.path.dirname(os.path.abspath(__file__)); APP = os.path.normpath(os.path.join(HERE, "..", "story-forge-pwa")); PORT = 8814
+HERE = os.path.dirname(os.path.abspath(__file__)); APP = os.path.normpath(os.path.join(HERE, "..", "site")); PORT = 8814
 srv = subprocess.Popen([sys.executable, "-m", "http.server", str(PORT), "--bind", "127.0.0.1"], cwd=APP, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); time.sleep(1)
 results, errs = [], []; st = {"n": 0, "delay": 0, "recaps": 0, "recap_done": 0}
 def check(name, cond, info=""): results.append((name, bool(cond))); print(("ok  " if cond else "FAIL"), name, "" if cond else info)

@@ -3,7 +3,7 @@ all-or-nothing (the original reply and its memory survive a regenerate that stop
 Run: python tests/reliability_v35_browser.py   (prints "ERRORS: []" and exits 0 when everything passes)"""
 import json, os, sys, subprocess, time
 from playwright.sync_api import sync_playwright
-HERE = os.path.dirname(os.path.abspath(__file__)); APP = os.path.normpath(os.path.join(HERE, "..", "story-forge-pwa"))
+HERE = os.path.dirname(os.path.abspath(__file__)); APP = os.path.normpath(os.path.join(HERE, "..", "site"))
 PORT = 8812
 srv = subprocess.Popen([sys.executable, "-m", "http.server", str(PORT), "--bind", "127.0.0.1"], cwd=APP, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); time.sleep(1)
 state = {"n": 0}; calls = []; results = []; errs = []

@@ -1,4 +1,4 @@
-import '../story-forge-pwa/memory-engine.js';
+import '../site/memory-engine.js';
 const M=globalThis.SFMemory;let f=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)f++};
 let mem=M.init();
 M.record(mem,M.parseMeta('[[META]]\nSCENE: chapel | Ilse, Aled | morning'),{t:1});

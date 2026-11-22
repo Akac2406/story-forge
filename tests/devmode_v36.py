@@ -1,7 +1,7 @@
 """memDevEnable must work only in development (localhost / ?dev=1) and must never turn memory on globally."""
 import os, sys, subprocess, time
 from playwright.sync_api import sync_playwright
-HERE = os.path.dirname(os.path.abspath(__file__)); APP = os.path.normpath(os.path.join(HERE, "..", "story-forge-pwa")); PORT = 8813
+HERE = os.path.dirname(os.path.abspath(__file__)); APP = os.path.normpath(os.path.join(HERE, "..", "site")); PORT = 8813
 srv = subprocess.Popen([sys.executable, "-m", "http.server", str(PORT), "--bind", "127.0.0.1"], cwd=APP, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); time.sleep(1)
 res = []; errs = []
 SEED = "()=>{localStorage.clear();localStorage.setItem('story-forge-v2',JSON.stringify({key:'k',migrated:true,modes:[{n:'S',id:'a/b'}],mode:0,stories:[{id:'s1',kind:'story',title:'T',setting:'x',entries:[],stats:[],endings:[],starts:[]}],sessions:[{id:'x1',storyId:'s1',char:{name:'A'},turns:[],mems:[],stats:{},len:'300',sugg:[],ended:[],cast:{}}]}))}"
