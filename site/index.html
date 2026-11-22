@@ -307,7 +307,7 @@ const KEY="story-forge-v2",app=document.getElementById("app"),$=s=>document.quer
 function ap(p,...k){for(const c of k.flat(4)){if(c==null||c===false)continue;p.appendChild(c.nodeType?c:document.createTextNode(String(c)))}}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const num=(v,d)=>{const n=parseFloat(v);return isFinite(n)?n:d};
-const VER=44,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
+const VER=45,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
 function fixCh(se){const c=(se.chaps||[]).filter(x=>x&&x.i>=0&&x.i<Math.max(1,se.turns.length)).sort((a,b)=>a.i-b.i),out=[];c.forEach(x=>{if(!out.length||x.i>out[out.length-1].i)out.push(x)});if(!out.length||out[0].i!==0)out.unshift({i:0,t:""});se.chaps=out;return out}
 function autoCh(se){const N=se.chapN==null?1500:se.chapN,out=[{i:0,t:""}];if(N>0){let acc=0;se.turns.forEach((t,i)=>{if(t.role==="user"&&i>0&&(N===1?acc>0:acc>=N)){out.push({i,t:""});acc=0}if(t.role==="ai")acc+=words(t.text)})}return out}
 function chapsOf(se){if(!se.chaps)se.chaps=autoCh(se);return fixCh(se)}
@@ -830,7 +830,7 @@ async function send(text,hide,show){const se=DB.sessions.find(s=>s.id===view.id)
   se.nc=nc;se.rp=rp;se.wn=wn;const msgs=buildMsgs(se,st,hist,text);delete se.nc;delete se.rp;delete se.wn;delete se.imp;const ui=se.turns.length;se.turns.push(u,ai);REGV=null;if(RBK&&RBK.sid===se.id)RBK=null;if(nc&&ui>0)se.chaps.push({i:ui,t:""});se.sugg=[];se.delta={};busy=true;ctrl=new AbortController();if(!hide&&!show)view.draft="";render();
   let raw="";
   try{const r=await ask(msgs,{signal:ctrl.signal,se,think:se.think||0,max:Math.min(16000,Math.round((+se.len||300)*2.2)+900),onText:t=>{raw=t;ai.text=vis(t);paintLast(se,ai.text)}});
-    raw=r.text;ai.text=vis(raw)||raw.trim();{const mi=metaAt(raw);if(mi>=0)ai.mt=raw.slice(mi,mi+1500).trim();else delete ai.mt}delete se.newc;if(r.usage)ai.u={i:r.usage.prompt_tokens||0,o:r.usage.completion_tokens||0,c:typeof r.usage.cost==="number"?r.usage.cost:null};if(isOC())ai.gp=ocPct();applyMeta(se,st,raw);memRecord(se,st,ai,raw);if(DB.metaRepair&&metaAt(raw)<0&&memOn(se)&&st.kind!=="character"&&!RPQ.has(se.id)){const pr=metaRepair(se,st,ai).finally(()=>RPQ.delete(se.id));RPQ.set(se.id,pr)}if(se.newc){ai.newc=se.newc;delete se.newc}ai.st2=Object.assign({},se.stats);if(se.info){ai.info=se.info;delete se.info}if(REG){ai.vs=REG.concat([{t:ai.text,s:ai.st2,sg:(se.sugg||[]).slice(),mx:ai.mx,mt:ai.mt}]).slice(-6);ai.vi=ai.vs.length-1}}
+    raw=r.text;ai.text=vis(raw)||raw.trim();{const mi=metaAt(raw);if(mi>=0)ai.mt=raw.slice(mi,mi+1500).trim();else delete ai.mt}delete se.newc;if(r.usage)ai.u={i:r.usage.prompt_tokens||0,o:r.usage.completion_tokens||0,c:typeof r.usage.cost==="number"?r.usage.cost:null};if(isOC())ai.gp=ocPct();applyMeta(se,st,raw);memRecord(se,st,ai,raw);if((DB.metaRepair||se.metaRepair)&&metaAt(raw)<0&&memOn(se)&&st.kind!=="character"&&!RPQ.has(se.id)){const pr=metaRepair(se,st,ai).finally(()=>RPQ.delete(se.id));RPQ.set(se.id,pr)}if(se.newc){ai.newc=se.newc;delete se.newc}ai.st2=Object.assign({},se.stats);if(se.info){ai.info=se.info;delete se.info}if(REG){ai.vs=REG.concat([{t:ai.text,s:ai.st2,sg:(se.sugg||[]).slice(),mx:ai.mx,mt:ai.mt}]).slice(-6);ai.vi=ai.vs.length-1}}
   catch(e){const ab=e&&e.name==="AbortError";if(ab&&vis(raw))ai.text=vis(raw);else if(REG){const o=REG[REG.length-1];ai.text=o.t;if(o.mt)ai.mt=o.mt;else delete ai.mt;if(o.mx){ai.mx=o.mx;if(se.mem&&window.SFMemory)try{SFMemory.apply(se.mem,o.mx)}catch(x){}}if(o.s)se.stats=Object.assign({},o.s);ai.st2=o.s;if(REG.length>1){ai.vs=REG;ai.vi=REG.length-1}if(!ab)toast(errMsg(e)+" Your earlier version is kept.")}else{const k=se.turns.indexOf(ai);if(k>0)se.turns.splice(k-1,2);if(!hide&&!show&&view.id===se.id)view.draft=text;if(!ab)toast(errMsg(e))}}
   finally{busy=false;ctrl=null;se.updated=Date.now();save();if(view.n==="chat"&&view.id===se.id)rerender()}
   summarize(se);recAfter(se,st)}
@@ -1232,7 +1232,7 @@ function ctlSheet(se){se.ctl=se.ctl||{};const box=h("div");
     fld("Replies per tap",sel(String(se.advN||1),[["1","1 reply"],["2","2 replies in a row"],["3","3 replies in a row"],["5","5 replies in a row"]],v=>{se.advN=+v;save()})),
     fld("Your character during ⏩",sel(se.autoMe||"light",[["light","Small actions only. I make the big choices."],["full","Act and speak for me, in character. Stop before big choices."]],v=>{se.autoMe=v;save()})));
   sheet("Story controls",box)}
-function branchAt(se,i){const n=JSON.parse(JSON.stringify(se)),root=se.root||se.id;n.id=uid();n.turns=n.turns.slice(0,i+1);const cut=n.turns.length;
+function branchAt(se,i,o){o=o||{};const n=JSON.parse(JSON.stringify(se)),root=se.root||se.id;n.id=uid();n.turns=n.turns.slice(0,i+1);const cut=n.turns.length;
   if(n.mem&&window.SFMemory)for(let j=se.turns.length-1;j>=cut;j--){const tt=se.turns[j];if(tt&&tt.mx)try{SFMemory.undo(n.mem,tt.mx)}catch(e){}}
   n.parent=se.id;n.root=root;n.bname="Branch "+DB.sessions.filter(x=>x.root===root).length+1;n.bname="Branch "+(DB.sessions.filter(x=>x.root===root).length+1);
   if(n.chaps){const before=n.chaps.length;n.chaps=n.chaps.filter(c=>c.i<cut);if(n.chaps.length<before){n.facts=[];delete n.saga;delete n.fprev}}
@@ -1240,7 +1240,7 @@ function branchAt(se,i){const n=JSON.parse(JSON.stringify(se)),root=se.root||se.
   const last=n.turns[cut-1];if(last&&last.st2)n.stats=Object.assign({},last.st2);
   if(se.life){const nx=se.turns.slice(cut).find(t=>t.pl);if(nx){n.life=Object.assign({},nx.pl);n.log=(se.log||[]).slice(0,nx.ln||0)}}
   (n.saves||[]);n.sugg=[];n.ending=null;n.updated=Date.now();delete n.pos;delete n.och;n.use={};
-  DB.sessions.push(n);save();go({n:"chat",id:n.id});toast("New branch started. The original playthrough is unchanged.")}
+  if(o.prep)o.prep(n);DB.sessions.push(n);save();go({n:"chat",id:n.id});toast(o.msg||"New branch started. The original playthrough is unchanged.");return n}
 function saveSheet(se,st){const box=h("div"),C=st.kind==="character"?null:chapsOf(se),root=se.root||se.id;
   const pts=se.turns.map((t,i)=>({t,i})).filter(x=>x.t.save);
   const fam=DB.sessions.filter(x=>x.id!==se.id&&((x.root||x.id)===root));
@@ -1304,6 +1304,7 @@ function menuSheet(se,st){closeSheet(true);const ends=ed(se,st),fo=foundOf(st),n
     drow("Save money",()=>saverSheet(se,st),SAVER[DB.saver||0][0]),
     drow("Writing style",()=>styleSheet(se),sty[1]),
     drow("Memories",()=>memSheet(se,"long"),String(se.mems.length)),
+    st.kind!=="character"?drow("Story memory (beta)",()=>memBetaSheet(se,st),se.memv2?"On":"Off"):null,
     se.life?drow("Life timeline",()=>lifeSheet(se),String((se.log||[]).length)):null,
     drow("Generate ideas",()=>ideaSheet(se,st)),
     ends.length?drow("Endings",()=>sheet("Endings",h("div",null,h("p",{class:"sub",text:"Reach an ending and view it to collect its card."}),endChips(st,ends))),ends.filter(e=>fo.includes(e.n)).length+"/"+ends.length):null,
@@ -1702,6 +1703,23 @@ function depthSheet(se){const box=h("div");const draw=()=>{box.textContent="";co
       DB.price?null:h("p",{class:"sub",text:"To see cost estimates here, open Settings and browse the model list once."}))};
   draw();sheet("Length & depth",box)}
 function lifeSheet(se){const l=se.log||[];sheet("Life timeline",h("div",null,l.length?l.map(x=>h("div",{class:"tl"},h("b",{text:"Age "+x.a}),h("span",{text:x.t}))):h("p",{class:"sub",text:"Milestones appear here as your life unfolds."})))}
+/* Story memory (beta): per-story opt-in. Off by default. Recommended path is a copy of the playthrough. */
+function memBetaSheet(se,st){const box=h("div"),m=se.mem,nEv=m?(m.events||[]).filter(e=>e.src==="meta").length:0,nFa=m?(m.facts||[]).length:0;
+  const rp=(se.memDiag||[]).filter(d=>d.rp),rpOk=rp.filter(d=>d.rp.ok).length;
+  ap(box,h("p",{class:"sub",text:"Story memory keeps a record of what happened, who was there and who knows what, so long stories stay consistent. It's in testing: it passed two 30–40 turn trials, but turn it on for one story at a time."}));
+  if(!se.memv2){
+    ap(box,h("p",{class:"sub",text:"Safest: try it on a copy. The copy starts with everything up to your latest message, and the original stays exactly as it is."}),
+      h("div",{class:"row"},h("button",{class:"primary",text:se.turns.length?"Try it on a copy":"Turn on for this story",onclick:()=>{closeSheet(true);
+        if(!se.turns.length){se.memv2=true;se.metaRepair=true;save();rerender();toast("Story memory is on for this story.");return}
+        branchAt(se,se.turns.length-1,{prep:n=>{n.memv2=true;n.metaRepair=true;n.bname="Memory test copy";delete n.mem;delete n.memSnap;n.memDiag=[]},msg:"Memory test copy made. Story memory is on here only; your original is unchanged."})}})),
+      se.turns.length?h("p",{class:"sub",text:"Or turn it on for this playthrough directly. A full backup of it is saved on this device first, before anything changes."}):null,
+      se.turns.length?h("div",{class:"row"},h("button",{text:"Turn on here",onclick:()=>{se.memv2=true;se.metaRepair=true;save();closeSheet(true);rerender();toast("Story memory is on. A backup is saved before your next message.")}})):null)}
+  else{
+    ap(box,h("p",{text:"On for this playthrough."+(m?" Remembered so far: "+nEv+" events, "+nFa+" facts.":" It starts with your next message.")}),
+      chk("Fill in memory when a reply leaves it out (a small extra request, about 3 seconds, in the background)",se.metaRepair!==false,v=>{se.metaRepair=v;save()}),
+      rp.length?h("p",{class:"sub",text:"Filled in "+rpOk+" of "+rp.length+" replies that left it out."}):null,
+      h("div",{class:"row"},h("button",{text:"Turn story memory off",onclick:()=>{se.memv2=false;save();closeSheet(true);rerender();toast("Story memory is off. What it remembered is kept if you turn it back on.")}})))}
+  sheet("Story memory (beta)",box)}
 function memSheet(se,tab){tab=tab||"long";let open=-1;const box=h("div");se.cast=se.cast||{};
   const full=()=>{if(se.mems.length>=100){toast("The limit is 100 long-term memories.");return true}return false};
   const draw=()=>{box.textContent="";const sh=(se.temp||"").split("\n").map(x=>x.replace(/^[-•*\s]+/,"").trim()).filter(Boolean),pk=Object.keys(se.cast);
@@ -2072,7 +2090,7 @@ async function ask(messages,o){o=o||{};if(!hasKey()){const e=new Error("no key")
   if(!oc&&!DB.key){const e=new Error("Add your OpenRouter key in Settings to use the "+((tm&&tm.n)||"OpenRouter")+" mode.");e.code="or_key";throw e}if(!model)throw new Error("This mode has no model yet. Pick one in Settings.");
   const q=quirk(model),max=o.max||1500,tk=o.think>0?o.think:0,th=THINK[tk],body={model,stream:!!o.onText,max_tokens:max,messages};
   if(!q.t)body.temperature=o.temp==null?num(cm&&cm.t,0.9):o.temp;
-  if(oc){body.max_tokens=max+2000;if(body.stream)body.stream_options={include_usage:true};if(o.lite&&DB.ocLite==="effort")body.reasoning_effort="none";else if(o.lite&&DB.ocLite==="thinking")body.thinking={type:"disabled"}}
+  if(oc){body.max_tokens=max+2000;if(body.stream)body.stream_options={include_usage:true};const lm=o.lite?(DB.ocLite===undefined?"effort":DB.ocLite):null;if(lm==="effort")body.reasoning_effort="none";else if(lm==="thinking")body.thinking={type:"disabled"}}
   else if(tk&&!q.e){body.reasoning={effort:th[1]};body.max_tokens=Math.min(48000,Math.max(Math.ceil(max/(1-th[2])),max+1200))}
   else if(!tk&&!q.r)body.reasoning={effort:"none"};
   else body.max_tokens=max+3000;
