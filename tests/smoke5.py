@@ -89,7 +89,7 @@ with sync_playwright() as p:
     print("prompt:",{k:(k in sysm) for k in ["Writing style for this session: Use short, hard","current goal: Reach the north peak","starts with OOC:","- Minji: Minji hates heights.","The Gate: The first gate","No time skips without asking","Player character: Angelice","about 500 words","GOAL: the player"]})
     print("request: reasoning",L.get("reasoning"),"| max_tokens",L["max_tokens"],"| temperature" , "temperature" in L)
     # mode sheet + settings models
-    pg.click("button.pill");pg.wait_for_selector(".modebtn");print("mode sheet:",[t.replace("\n"," | ") for t in pg.locator(".modebtn").all_inner_texts()]);pg.click(".sheethead >> text=Done")
+    pg.click("button.pill:has-text('▾')");pg.wait_for_selector(".modebtn");print("mode sheet:",[t.replace("\n"," | ") for t in pg.locator(".modebtn").all_inner_texts()]);pg.click(".sheethead >> text=Done")
     pg.click("button.back");pg.click("text=Settings");pg.wait_for_selector("h2:text-is('Modes')");pg.screenshot(path=SP+"/o-settings.png",full_page=True)
     pg.click("text=Add a mode");pg.wait_for_function("document.querySelectorAll(\"input[placeholder='provider/model-id']\").length===3")
     pg.locator("button:text-is('Browse')").nth(2).click();pg.wait_for_selector(".mrow");print("catalog rp rows:",pg.locator(".mrow").count())
@@ -106,7 +106,7 @@ with sync_playwright() as p:
     pg.click("text=Skip a year");pg.wait_for_function("document.querySelectorAll('.turn.user').length>=1 && document.querySelector('.sg')");pg.screenshot(path=SP+"/q-life.png")
     pg.click("button[aria-label='Menu']");print("life drawer has timeline:",pg.locator(".drow:has-text('Life timeline')").count());pg.click(".drow:has-text('Life timeline')");pg.wait_for_selector(".tl");pg.click(".sheethead >> text=Done")
     # save money
-    pg.click("button.pill");pg.click(".modebtn:has-text('Grand')")
+    pg.click("button.pill:has-text('▾')");pg.click(".modebtn:has-text('Grand')")
     pg.click("button[aria-label='Menu']");pg.click(".drow:has-text('Save money')");pg.wait_for_selector(".sheet .modebtn")
     print("saver options:",[t.replace("\n"," | ") for t in pg.locator(".sheet .modebtn").all_inner_texts()])
     print("tips:",pg.locator(".sheet .memline").all_inner_texts());pg.screenshot(path=SP+"/r-saver.png")
