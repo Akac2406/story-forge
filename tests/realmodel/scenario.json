@@ -1,0 +1,459 @@
+{
+ "title": "The Glass Orchard (memory trial)",
+ "about": "Original test story with no private data. Five characters, one central secret, six locations, a death, a promise and a betrayal. Each turn lists what a correct memory should contain afterwards.",
+ "story": {
+  "setting": "Brannock Manor sits above a dying orchard of glass-bark trees on a river delta. Lady Orla Brannock is gravely ill. Her steward, Corwin Hale, runs the estate. The player is Ilse Varn, newly hired as the steward's apprentice. Places: the manor hall, the orchard, the chapel, the river docks, the wine cellar, and Lady Orla's bedchamber.",
+  "style": "grounded mystery, quiet tension",
+  "lore": "Corwin secretly sold the estate's water rights to the smuggler Vey Calder; the orchard is dying because of it. At the start only Corwin and Vey know this. Tamsin Reed is the healer. Brother Aled keeps the chapel and its records.",
+  "entries": [
+   {
+    "k": "Corwin Hale, Corwin, steward",
+    "t": "Steward of Brannock Manor, fifties, precise and courteous; hides that he sold the water rights to Vey.",
+    "a": true
+   },
+   {
+    "k": "Tamsin Reed, Tamsin, healer",
+    "t": "Healer tending Lady Orla; blunt, observant, distrusts Corwin.",
+    "a": true
+   },
+   {
+    "k": "Brother Aled, Aled, chapel",
+    "t": "Elderly chapel keeper who keeps the estate's sealed records; gentle, fearful.",
+    "a": true
+   },
+   {
+    "k": "Vey Calder, Vey, smuggler",
+    "t": "River smuggler who bought the water rights from Corwin; charming and dangerous.",
+    "a": true
+   },
+   {
+    "k": "Lady Orla Brannock, Orla",
+    "t": "Owner of the manor, bedridden and failing.",
+    "a": true
+   }
+  ]
+ },
+ "player": {
+  "name": "Ilse Varn",
+  "desc": "The steward's new apprentice, sharp-eyed and careful."
+ },
+ "secret": "water rights",
+ "turns": [
+  {
+   "a": "I arrive in the manor hall and introduce myself to Corwin Hale.",
+   "loc": [
+    "hall"
+   ],
+   "present": [
+    "Corwin"
+   ]
+  },
+  {
+   "a": "I ask Corwin to walk me through the orchard and explain why the trees are dying.",
+   "loc": [
+    "orchard"
+   ],
+   "present": [
+    "Corwin"
+   ]
+  },
+  {
+   "a": "I kneel and check the soil by the dry irrigation channels.",
+   "loc": [
+    "orchard"
+   ],
+   "event": [
+    "channel",
+    "soil",
+    "dry"
+   ]
+  },
+  {
+   "a": "I go to Lady Orla's bedchamber, where Tamsin is tending her.",
+   "loc": [
+    "bedchamber",
+    "chamber",
+    "orla"
+   ],
+   "present": [
+    "Tamsin"
+   ]
+  },
+  {
+   "a": "I quietly ask Tamsin what she thinks of Corwin.",
+   "loc": [
+    "bedchamber",
+    "chamber"
+   ],
+   "present": [
+    "Tamsin"
+   ]
+  },
+  {
+   "a": "I promise Tamsin I will find out why the orchard is dying.",
+   "event": [
+    "promise"
+   ]
+  },
+  {
+   "a": "I walk down to the chapel to meet Brother Aled.",
+   "loc": [
+    "chapel"
+   ],
+   "present": [
+    "Aled"
+   ]
+  },
+  {
+   "a": "I ask Aled to show me the estate's sealed records.",
+   "loc": [
+    "chapel"
+   ]
+  },
+  {
+   "a": "I read the records closely, looking for anything about the river or the water.",
+   "loc": [
+    "chapel"
+   ],
+   "event": [
+    "record",
+    "water"
+   ]
+  },
+  {
+   "a": "I find a deed of sale signed by Corwin that sells the water rights to Vey Calder. I keep my face calm.",
+   "learn": [
+    {
+     "who": "Ilse",
+     "kw": "water",
+     "alt": [
+      "water",
+      "rights",
+      "sold the",
+      "sale of"
+     ]
+    }
+   ],
+   "event": [
+    "deed",
+    "water"
+   ],
+   "mustNotKnow": [
+    {
+     "who": "Tamsin",
+     "kw": "water rights"
+    },
+    {
+     "who": "Aled",
+     "kw": "water rights"
+    }
+   ]
+  },
+  {
+   "a": "I copy the deed by hand and slip the copy into my coat without Aled seeing.",
+   "event": [
+    "copy",
+    "deed"
+   ],
+   "mustNotKnow": [
+    {
+     "who": "Aled",
+     "kw": "water rights"
+    }
+   ]
+  },
+  {
+   "a": "I go back to the manor hall for supper with Corwin and say nothing about the deed.",
+   "loc": [
+    "hall"
+   ],
+   "present": [
+    "Corwin"
+   ],
+   "mustNotKnow": [
+    {
+     "who": "Tamsin",
+     "kw": "water rights"
+    }
+   ]
+  },
+  {
+   "a": "After supper I go down to the wine cellar alone.",
+   "loc": [
+    "cellar"
+   ]
+  },
+  {
+   "a": "In the cellar I find crates stamped with Vey Calder's mark.",
+   "loc": [
+    "cellar"
+   ],
+   "event": [
+    "crate",
+    "vey"
+   ]
+  },
+  {
+   "a": "Tamsin finds me in the cellar. I show her the copied deed and tell her Corwin sold the water rights to Vey.",
+   "loc": [
+    "cellar"
+   ],
+   "present": [
+    "Tamsin"
+   ],
+   "learn": [
+    {
+     "who": "Tamsin",
+     "kw": "water",
+     "alt": [
+      "water",
+      "rights",
+      "sold the",
+      "sale of"
+     ]
+    }
+   ],
+   "op": "regen"
+  },
+  {
+   "a": "We agree to keep this between us for now.",
+   "mustNotKnow": [
+    {
+     "who": "Aled",
+     "kw": "water rights"
+    }
+   ],
+   "event": [
+    "agree",
+    "secret"
+   ]
+  },
+  {
+   "a": "At dawn I ride to the river docks to find Vey Calder.",
+   "loc": [
+    "dock",
+    "river"
+   ]
+  },
+  {
+   "a": "I find Vey on his barge and ask him about the water rights without saying how I know.",
+   "loc": [
+    "dock",
+    "barge",
+    "river"
+   ],
+   "present": [
+    "Vey"
+   ]
+  },
+  {
+   "a": "Vey laughs and warns me to stay out of Corwin's business.",
+   "present": [
+    "Vey"
+   ],
+   "event": [
+    "warn",
+    "threat"
+   ]
+  },
+  {
+   "a": "I head back to the manor hall.",
+   "loc": [
+    "hall"
+   ]
+  },
+  {
+   "a": "I check on Lady Orla in her bedchamber.",
+   "loc": [
+    "bedchamber",
+    "chamber"
+   ],
+   "op": "branch"
+  },
+  {
+   "a": "Tamsin tells me Orla took a turn for the worse in the night.",
+   "present": [
+    "Tamsin"
+   ]
+  },
+  {
+   "a": "I sit with Orla through the evening.",
+   "loc": [
+    "bedchamber",
+    "chamber"
+   ]
+  },
+  {
+   "a": "Lady Orla dies in her sleep before dawn.",
+   "event": [
+    "die",
+    "death",
+    "dies",
+    "died"
+   ]
+  },
+  {
+   "a": "Corwin gathers the household in the manor hall to announce Orla's death.",
+   "loc": [
+    "hall"
+   ],
+   "present": [
+    "Corwin"
+   ]
+  },
+  {
+   "a": "Corwin announces that he will manage the estate until an heir is found.",
+   "event": [
+    "estate",
+    "heir"
+   ]
+  },
+  {
+   "a": "Brother Aled holds a vigil for Orla in the chapel.",
+   "loc": [
+    "chapel"
+   ],
+   "present": [
+    "Aled"
+   ],
+   "op": "cancel"
+  },
+  {
+   "a": "After the vigil I take Aled aside and tell him about the deed and the water rights.",
+   "loc": [
+    "chapel"
+   ],
+   "learn": [
+    {
+     "who": "Aled",
+     "kw": "water",
+     "alt": [
+      "water",
+      "rights",
+      "sold the",
+      "sale of"
+     ]
+    }
+   ]
+  },
+  {
+   "a": "Aled is frightened but promises to keep the original deed hidden.",
+   "event": [
+    "promise",
+    "hide",
+    "hidden"
+   ]
+  },
+  {
+   "a": "I return to the orchard at night to think.",
+   "loc": [
+    "orchard"
+   ]
+  },
+  {
+   "a": "Corwin finds me in the orchard and asks where I went at dawn.",
+   "loc": [
+    "orchard"
+   ],
+   "present": [
+    "Corwin"
+   ]
+  },
+  {
+   "a": "I lie and tell Corwin I went to buy medicine for Orla.",
+   "mustNotKnow": [
+    {
+     "who": "Corwin",
+     "kw": "copy"
+    }
+   ]
+  },
+  {
+   "a": "Corwin doesn't believe me. He orders me to stay inside the manor.",
+   "event": [
+    "order",
+    "confine",
+    "stay"
+   ]
+  },
+  {
+   "a": "I slip out to the docks anyway to confront Vey.",
+   "loc": [
+    "dock",
+    "river"
+   ],
+   "present": [
+    "Vey"
+   ]
+  },
+  {
+   "a": "I show Vey the copied deed and threaten to take it to the magistrate.",
+   "present": [
+    "Vey"
+   ],
+   "learn": [
+    {
+     "who": "Vey",
+     "kw": "deed",
+     "alt": [
+      "deed",
+      "copy"
+     ]
+    }
+   ]
+  },
+  {
+   "a": "Vey offers to betray Corwin in exchange for keeping his barge.",
+   "event": [
+    "betray",
+    "deal",
+    "offer"
+   ]
+  },
+  {
+   "a": "I accept Vey's deal and we shake on it.",
+   "event": [
+    "deal",
+    "accept"
+   ]
+  },
+  {
+   "a": "I return to the manor hall where Corwin is waiting.",
+   "loc": [
+    "hall"
+   ],
+   "present": [
+    "Corwin"
+   ]
+  },
+  {
+   "a": "Tamsin and Aled join me as I confront Corwin with the deed.",
+   "loc": [
+    "hall"
+   ],
+   "present": [
+    "Tamsin",
+    "Aled",
+    "Corwin"
+   ]
+  },
+  {
+   "a": "Corwin confesses that he sold the water rights to pay his debts.",
+   "learn": [
+    {
+     "who": "Tamsin",
+     "kw": "water",
+     "alt": [
+      "water",
+      "rights",
+      "sold the",
+      "sale of"
+     ]
+    }
+   ],
+   "event": [
+    "confess"
+   ]
+  }
+ ]
+}

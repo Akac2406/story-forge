@@ -1,0 +1,54 @@
+--- /home/claude/p2/out/story-forge-v35-reliability/story-forge-pwa/memory-engine.js	2026-11-21 14:15:35.643255988 -0700
++++ v36/story-forge-pwa/memory-engine.js	2026-11-21 14:23:56.399713610 -0700
+@@ -35,23 +35,42 @@
+  */
+ const KINDS=['action','reveal','promise','betrayal','injury','death','item','travel','bond','secret','decision','threat','mystery'];
+ const OPEN_KINDS={promise:1,secret:1,threat:1,mystery:1};
++const IMPW={trivial:1,minor:1,low:2,small:2,medium:3,moderate:3,normal:3,high:4,major:4,important:4,critical:5,huge:5,pivotal:5,'very high':5};
++const impOf=x=>{const n=parseInt(x,10);if(n>=1)return Math.min(5,n);const w=String(x||'').toLowerCase().replace(/[^a-z ]/g,'').trim();return IMPW[w]||0};
+ const NONE=/^\s*(none|n\/a|-+|nothing)\.?\s*$/i;
+ const clean=x=>String(x==null?'':x).replace(/^[\s*_"“]+|[\s*_"”]+$/g,'').trim();
+ const names=x=>String(x||'').split(/\s*,\s*|\s+and\s+/).map(clean).filter(n=>n&&!NONE.test(n)&&n.length<=48);
+ const norm=t=>String(t||'').toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(w=>w.length>2||/^\d+$/.test(w));
+ function overlap(a,b){const A=new Set(norm(a)),B=new Set(norm(b));if(!A.size||!B.size)return 0;let n=0;A.forEach(w=>{if(B.has(w))n++});return n/Math.min(A.size,B.size)}
+-function metaLine(raw,key){const i=String(raw||'').indexOf('[[META');if(i<0)return'';const m=String(raw).slice(i).match(new RegExp('^[\\s*_]*'+key+'[*_]*\\s*:\\s*(.*)$','mi'));return m?m[1].replace(/[*_]+$/,'').trim():''}
++const KEYLINE=/^[\s*_>#-]*[A-Z][A-Z ]{2,}[*_]*\s*:/;
++function metaBlock(raw){const s=String(raw||''),i=s.indexOf('[[META');return i<0?'':s.slice(i).replace(/```[a-z]*\n?/gi,'')}
++/* Value of KEY: the rest of its line plus any following lines up to the next KEY: line.
++   Bullets and numbering on continuation lines are removed and the lines are joined with ";". */
++function metaLine(raw,key,info){const lines=metaBlock(raw).split('\n'),re=new RegExp('^[\\s*_>#-]*'+key+'[*_]*\\s*:\\s*(.*)$','i');let k=-1,first='';
++  for(let j=0;j<lines.length;j++){const m=lines[j].match(re);if(m){k=j;first=m[1];break}}if(k<0)return'';
++  const parts=[first.replace(/^[\s*_]+/,'').replace(/[*_]+$/,'').trim()];for(let j=k+1;j<lines.length;j++){const l=lines[j];if(KEYLINE.test(l)||/^\s*\[\[/.test(l))break;const t=l.replace(/^\s*(?:[-•*]|\d+[.)])\s*/,'').replace(/[*_]+$/,'').trim();if(t){parts.push(t);if(info)info.multi=true}}
++  return parts.filter(Boolean).join('; ')}
+ function parseMeta(raw){
+   const out={events:[],learned:[],scene:null};
+   const ev=metaLine(raw,'EVENTS');
+   if(ev&&!NONE.test(ev))ev.split(';').forEach(part=>{const f=part.split('|').map(x=>x.trim());if(f.length<5)return;
+-    const imp=Math.max(1,Math.min(5,parseInt(f[0],10)||3)),kind=clean(f[1]).toLowerCase(),text=clean(f[4]).slice(0,300);if(!text)return;
++    const imp=impOf(f[0])||3,kind=clean(f[1]).toLowerCase(),text=clean(f[4]).slice(0,300);if(!text)return;
+     out.events.push({imp,kind:KINDS.includes(kind)?kind:'action',who:names(f[2]),where:NONE.test(f[3]||'')?'':clean(f[3]).slice(0,80),text,wit:names(f[5]||'')})});
+   const ln=metaLine(raw,'LEARNED');
+   if(ln&&!NONE.test(ln))ln.split(';').forEach(part=>{const k=part.indexOf(':');if(k<1)return;const who=clean(part.slice(0,k)),full=clean(part.slice(k+1)),m=full.match(/^(.*?)\s*\(([^()]*)\)\s*$/),text=(m?m[1]:full).trim().slice(0,300),how=m?m[2].trim().slice(0,120):'';if(who&&text&&who.length<=48)out.learned.push({who,text,how})});
+   const sc=metaLine(raw,'SCENE');
+   if(sc&&!NONE.test(sc)){const f=sc.split('|').map(x=>x.trim());out.scene={where:NONE.test(f[0]||'')?'':clean(f[0]).slice(0,80),who:names(f[1]||''),when:NONE.test(f[2]||'')?'':clean(f[2]).slice(0,60)}}
+   return out}
++/* Diagnostics only: reports what was missing or malformed without changing what is stored. */
++function validateMeta(raw){const d={block:!!metaBlock(raw),keys:{},events:{total:0,valid:0},learned:{total:0,valid:0},scene:{valid:false},issues:[],multi:false};
++  ['EVENTS','LEARNED','SCENE'].forEach(k=>{const info={};const v=metaLine(raw,k,info);d.keys[k]=!!v;if(info.multi)d.multi=true;if(!v&&d.block)d.issues.push(k+' missing')});
++  if(!d.block){d.issues.push('no [[META]] block');return d}
++  const ev=metaLine(raw,'EVENTS');if(ev&&!NONE.test(ev))ev.split(';').forEach((p,n)=>{if(!p.trim())return;d.events.total++;const f=p.split('|').map(x=>x.trim());
++    const bad=[];if(f.length<5)bad.push('has '+f.length+' of 6 fields');else{if(!/^[1-5]$/.test(f[0])){if(impOf(f[0]))d.recovered=(d.recovered||0)+1;else bad.push('importance "'+f[0].slice(0,12)+'"')}if(!KINDS.includes(clean(f[1]).toLowerCase()))bad.push('kind "'+clean(f[1]).slice(0,16)+'"');if(!clean(f[4]))bad.push('empty description');if(!names(f[2]).length)bad.push('no participants')}
++    if(bad.length)d.issues.push('EVENTS #'+(n+1)+': '+bad.join(', '));else d.events.valid++});
++  const ln=metaLine(raw,'LEARNED');if(ln&&!NONE.test(ln))ln.split(';').forEach((p,n)=>{if(!p.trim())return;d.learned.total++;const k=p.indexOf(':');if(k<1||!clean(p.slice(k+1)))d.issues.push('LEARNED #'+(n+1)+': not "Name: what"');else d.learned.valid++});
++  const sc=metaLine(raw,'SCENE');if(sc&&!NONE.test(sc)){const f=sc.split('|');d.scene.valid=f.length>=3&&!!clean(f[0]);if(!d.scene.valid)d.issues.push('SCENE: has '+f.length+' of 3 fields')}
++  return d}
+ function blankChar(){return {kernel:{core:'',voice:'',values:'',lines:[]},state:{mood:'',where:'',status:'alive',goal:''},knows:[],beliefs:[],mem:[]}}
+ function getP(o,p){for(const k of p){if(o==null)return undefined;o=o[k]}return o}
+ function setP(o,p,v){for(let i=0;i<p.length-1;i++){if(o[p[i]]==null||typeof o[p[i]]!=='object')o[p[i]]={};o=o[p[i]]}if(v===undefined)delete o[p[p.length-1]];else o[p[p.length-1]]=v}
+@@ -96,5 +115,5 @@
+ function record(mem,p,ctx){const mx=buildDelta(mem,p,ctx);apply(mem,mx);return mx}
+ function shiftTurns(mem,after,d){if(!mem)return mem;(mem.events||[]).forEach(e=>{if(e.t>after)e.t+=d});(mem.facts||[]).forEach(f=>{if(f.since>after)f.since+=d});return mem}
+ function empty(mx){return !mx||!((mx.ev||[]).length||(mx.fa||[]).length||(mx.nc||[]).length||(mx.kn||[]).length||(mx.set||[]).length)}
+-root.SFMemory=Object.freeze({init,migrate,relHistory,timeline,charView,checks,stats,integrity,parseMeta,buildDelta,apply,undo,record,shiftTurns,empty});
++root.SFMemory=Object.freeze({init,migrate,relHistory,timeline,charView,checks,stats,integrity,parseMeta,validateMeta,buildDelta,apply,undo,record,shiftTurns,empty});
+ })(typeof window!=='undefined'?window:globalThis);

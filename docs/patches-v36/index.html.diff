@@ -1,0 +1,29 @@
+--- /home/claude/p2/out/story-forge-v35-reliability/story-forge-pwa/index.html	2026-11-21 14:15:35.643265512 -0700
++++ v36/story-forge-pwa/index.html	2026-11-21 14:19:05.179916672 -0700
+@@ -307,7 +307,7 @@
+ function ap(p,...k){for(const c of k.flat(4)){if(c==null||c===false)continue;p.appendChild(c.nodeType?c:document.createTextNode(String(c)))}}
+ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+ const num=(v,d)=>{const n=parseFloat(v);return isFinite(n)?n:d};
+-const VER=35,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
++const VER=36,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
+ function fixCh(se){const c=(se.chaps||[]).filter(x=>x&&x.i>=0&&x.i<Math.max(1,se.turns.length)).sort((a,b)=>a.i-b.i),out=[];c.forEach(x=>{if(!out.length||x.i>out[out.length-1].i)out.push(x)});if(!out.length||out[0].i!==0)out.unshift({i:0,t:""});se.chaps=out;return out}
+ function autoCh(se){const N=se.chapN==null?1500:se.chapN,out=[{i:0,t:""}];if(N>0){let acc=0;se.turns.forEach((t,i)=>{if(t.role==="user"&&i>0&&(N===1?acc>0:acc>=N)){out.push({i,t:""});acc=0}if(t.role==="ai")acc+=words(t.text)})}return out}
+ function chapsOf(se){if(!se.chaps)se.chaps=autoCh(se);return fixCh(se)}
+@@ -1156,8 +1156,15 @@
+   if(i>=0)DB.sessions[i]=se;else DB.sessions.push(se);save();return true}
+ function memMeta(){const lean=(DB.saver||0)>=2;return"\nEVENTS: up to 3 "+(lean?"major (importance 3 or higher) ":"important ")+"things that happened in this reply, each written as importance 1-5 | kind (action, reveal, promise, betrayal, injury, death, item, travel, bond, secret, decision, threat or mystery) | who took part, separated by commas | where | one-sentence description | who else witnessed it, separated by commas or none. Separate events with ;. Write none if nothing important happened."
+   +(lean?"":"\nLEARNED: who found out something important in this reply, written as Name: what they learned (how), separated by ;, or none\nSCENE: where the scene is | who is present, separated by commas | the time of day or story time")}
+-function memRecord(se,st,ai,raw){if(!memOn(se)||!st||st.kind==="character")return;try{if(!memEnsure(se,st))return;const k=se.turns.indexOf(ai);if(!ai.tid)ai.tid=uid();
+-  ai.mx=SFMemory.record(se.mem,SFMemory.parseMeta(raw),{t:k<0?se.turns.length-1:k,ch:Math.max(0,chapsOf(se).length-1),tid:ai.tid})}catch(e){console.warn("memory record failed",e)}}
++/* Diagnostics: what the model's META looked like each turn (only while memory is on for this story). */
++function memDiag(se,ai,raw,err){try{const d=SFMemory.validateMeta(raw),i=String(raw||"").indexOf("[[META");se.memDiag=se.memDiag||[];
++  se.memDiag.push({t:se.turns.indexOf(ai),at:Date.now(),md:ai.md||"",block:d.block,keys:d.keys,ev:d.events,ln:d.learned,sc:d.scene.valid,multi:d.multi,issues:d.issues.slice(0,8),err:err?String(err.message||err).slice(0,200):undefined,meta:i<0?"":String(raw).slice(i,i+1500)});
++  if(se.memDiag.length>300)se.memDiag.splice(0,se.memDiag.length-300)}catch(e){}}
++/* Development only: turn memory on for ONE playthrough. Works only on localhost or with ?dev=1 in the address. DB.memv2 is never touched. */
++function memDevEnable(id){const dev=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)||/[?&]dev=1\b/.test(location.search);if(!dev){console.warn("memDevEnable is only available in development");return false}
++  const se=DB.sessions.find(x=>x.id===id);if(!se)return false;se.memv2=true;se.memDev=true;save();return true}
++function memRecord(se,st,ai,raw){if(!memOn(se)||!st||st.kind==="character")return;try{if(!memEnsure(se,st))return;memDiag(se,ai,raw);const k=se.turns.indexOf(ai);if(!ai.tid)ai.tid=uid();
++  ai.mx=SFMemory.record(se.mem,SFMemory.parseMeta(raw),{t:k<0?se.turns.length-1:k,ch:Math.max(0,chapsOf(se).length-1),tid:ai.tid})}catch(e){console.warn("memory record failed",e);memDiag(se,ai,raw,e)}}
+ function memDrop(se,idxs){if(!se.mem||!window.SFMemory)return;const gone=new Set(idxs);idxs.slice().sort((a,b)=>b-a).forEach(j=>{const t=se.turns[j];if(!t||!t.mx)return;
+   const later=[];for(let q=j+1;q<se.turns.length;q++){const u=se.turns[q];if(!u||gone.has(q))continue;if(u.mx)later.push(u.mx);(u.vs||[]).forEach(v=>{if(v.mx&&v.mx!==u.mx)later.push(v.mx)})}
+   try{SFMemory.undo(se.mem,t.mx,later)}catch(e){}})}

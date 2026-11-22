@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Memory trial</title>
+<style>
+:root{--bg:#0f0d17;--card:#1a1724;--text:#ece7f2;--muted:#a49db0;--border:#2f2a38;--accent:#9b7bff;--ok:#5ed1a0;--bad:#ff8a7a;color-scheme:dark}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,sans-serif;padding:max(14px,env(safe-area-inset-top)) 16px max(28px,env(safe-area-inset-bottom))}
+main{max-width:680px;margin:0 auto}h1{font-size:22px;margin:4px 0 2px}h2{font-size:17px;margin:20px 0 8px}
+.sub{color:var(--muted);font-size:14px;margin:4px 0 10px}.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;margin:10px 0}
+label{display:block;font-size:14px;color:var(--muted);margin:10px 0 4px}input,select{width:100%;font:inherit;color:var(--text);background:#121018;border:1px solid var(--border);border-radius:10px;padding:10px}
+input[type=checkbox]{width:auto;margin-right:8px}.chk{display:flex;align-items:center;color:var(--text)}
+button{font:inherit;color:var(--text);background:#262236;border:1px solid var(--border);border-radius:12px;padding:11px 14px;margin:6px 6px 0 0}
+button.primary{background:var(--accent);border-color:var(--accent);color:#120d20;font-weight:600}button:disabled{opacity:.5}
+.ok{color:var(--ok)}.bad{color:var(--bad)}#log{font:13px/1.45 ui-monospace,Menlo,monospace;white-space:pre-wrap;max-height:300px;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}td{padding:5px 4px;border-top:1px solid var(--border)}td:last-child{text-align:right}
+iframe{width:100%;height:340px;border:1px solid var(--border);border-radius:12px;background:#000;margin-top:8px}
+.warn{border-color:#a3792c}
+</style>
+</head>
+<body>
+<main>
+<h1>Memory trial</h1>
+<p class="sub">Development tool for the Story Forge memory engine. Plays a scripted 40-turn test story (“The Glass Orchard”) with memory switched on for that test only, then reports how well DeepSeek’s EVENTS, LEARNED and SCENE lines worked.</p>
+<div class="card" id="setup"><p class="sub">Loading…</p></div>
+<div class="card" id="runbox" hidden><h2 style="margin-top:0">Progress</h2><div id="status" class="sub"></div><div id="log"></div>
+  <details><summary class="sub">Show the test story while it plays</summary><iframe id="app" title="Test copy of Story Forge"></iframe></details></div>
+<div class="card" id="reportbox" hidden><h2 style="margin-top:0">Report</h2><div id="report"></div>
+  <button class="primary" id="share">Share report</button><button id="copy">Copy report</button><button id="dl">Download report</button></div>
+</main>
+<script src="memtrial.js"></script>
+</body>
+</html>

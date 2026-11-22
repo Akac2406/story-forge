@@ -1,0 +1,8 @@
+--- /home/claude/p2/out/story-forge-v35-reliability/story-forge-pwa/sw.js	2026-11-21 14:15:35.643348242 -0700
++++ v36/story-forge-pwa/sw.js	2026-11-21 14:19:05.184004036 -0700
+@@ -1,4 +1,4 @@
+-const C="sf-v35";
++const C="sf-v36";
+ self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(["./","index.html","icon-192.png"])));self.skipWaiting()});
+ self.addEventListener("activate",e=>e.waitUntil(self.clients.claim()));
+ self.addEventListener("fetch",e=>{const u=new URL(e.request.url);if(e.request.method!=="GET"||u.origin!==location.origin||u.search)return;

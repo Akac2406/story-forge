@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Story Forge reading</title>
+<style>
+:root{--bg:#fbf8f3;--text:#1f1b16;--muted:#6f675c;--rule:#e2dacd;--accent:#7a4cc2;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#141118;--text:#ece7f2;--muted:#a49db0;--rule:#2f2a38;--accent:#b49cff;color-scheme:dark}}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:19px/1.7 Georgia,"Times New Roman",serif;padding:max(16px,env(safe-area-inset-top)) 16px max(32px,env(safe-area-inset-bottom))}
+main{max-width:680px;margin:0 auto}
+.tip{font:14px/1.5 system-ui,-apple-system,sans-serif;color:var(--muted);border:1px solid var(--rule);border-radius:12px;padding:10px 12px;margin:8px 0 24px}
+.tip b{color:var(--text)}
+h1{font-size:1.6em;line-height:1.25;margin:0 0 4px}
+.meta{font:14px system-ui,-apple-system,sans-serif;color:var(--muted);margin:0 0 28px}
+h2{font-size:1.2em;margin:2.2em 0 .8em;color:var(--accent)}
+p{margin:0 0 1em}
+p.you{font-style:italic;color:var(--muted)}
+.err{font:16px system-ui,-apple-system,sans-serif;color:var(--muted);margin-top:40px}
+</style>
+</head>
+<body>
+<main>
+<div class="tip" id="tip">To listen with the screen locked, tap the page menu at the left of Safari’s address bar (the <b>Aa</b> or page icon), then <b>Listen to Page</b>. Playback controls appear on your lock screen.</div>
+<article id="story"></article>
+<p class="err" id="err" hidden></p>
+</main>
+<script>
+(async function(){
+  var art=document.getElementById("story"),err=document.getElementById("err");
+  function fail(m){err.textContent=m;err.hidden=false;document.getElementById("tip").hidden=true}
+  function el(tag,cls,text){var e=document.createElement(tag);if(cls)e.className=cls;e.textContent=text;return e}
+  var h=location.hash.slice(1),q={};h.split("&").forEach(function(kv){var i=kv.indexOf("=");if(i>0)q[kv.slice(0,i)]=kv.slice(i+1)});
+  var raw="";
+  try{
+    if(q.z){
+      if(!window.DecompressionStream)return fail("This browser is too old to open this reading link. Update iOS, or use Copy text in the app instead.");
+      var b=atob(q.z.replace(/-/g,"+").replace(/_/g,"/")),u8=new Uint8Array(b.length);for(var i=0;i<b.length;i++)u8[i]=b.charCodeAt(i);
+      raw=new TextDecoder().decode(await new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer());
+    }else if(q.t)raw=decodeURIComponent(q.t);
+    else return fail("Nothing to read here. Open this page from the Listen in Safari button in Story Forge.");
+  }catch(e){return fail("This reading link looks damaged. Make a new one from Story Forge.")}
+  var d;try{d=JSON.parse(raw)}catch(e){return fail("This reading link looks damaged. Make a new one from Story Forge.")}
+  document.title=d.t||"Story Forge reading";
+  art.appendChild(el("h1","",d.t||"Story"));
+  if(d.m)art.appendChild(el("p","meta",d.m));
+  (d.c||[]).forEach(function(c){
+    var sec=document.createElement("section");sec.appendChild(el("h2","",c.h||""));
+    (c.p||[]).forEach(function(p){sec.appendChild(el("p",p[0]==="u"?"you":"",p.slice(1)))});
+    art.appendChild(sec);
+  });
+  history.replaceState(null,"",location.pathname+location.search+location.hash);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,3 @@
+tests/realmodel/reports/
+__pycache__/
+*.pyc

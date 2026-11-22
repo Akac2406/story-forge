@@ -1,0 +1,4 @@
+# Netlify publishes only the app folder. No build step: the app is plain files.
+[build]
+  publish = "site"
+  command = ""
