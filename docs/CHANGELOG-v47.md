@@ -26,3 +26,8 @@ memory-engine.js (identical on both sides).
 
 ## Not done
 - No live model run on v47. Not deployed: branch visual-merge only.
+
+## Layout sweep (tests/layouts_v47.py)
+All 15 UI layouts, each with cinematic reading off and on, at phone and desktop size (60 combinations):
+layout applied, no sideways scrolling on home or in a story, story text, Send, Regenerate, Menu and Visuals visible, no page errors.
+Observation: most layouts are subtle restyles (borders, button shapes, glow), and cinematic reading frames each reply in a card. None adds art by itself.
