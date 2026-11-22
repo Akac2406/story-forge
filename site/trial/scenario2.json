@@ -6,45 +6,487 @@
   "style": "grounded modern drama, quiet tension, realistic shop detail",
   "lore": "Lead mechanic Dale Ortega signed off a required engine inspection on the charter plane N42RL without actually doing it, because the owner, Marcus Webb, pressured him to keep the plane flying. At the start only Dale and Marcus know this. Priya Nair is the inspector who reviews the logbooks. June Halloran runs the parts cage and notices everything that is ordered.",
   "entries": [
-   {"k": "Dale Ortega, Dale, lead mechanic", "t": "Lead mechanic on nights, forties, easygoing and well liked; hides that he signed off an inspection on N42RL he never did.", "a": true},
-   {"k": "Marcus Webb, Marcus, owner", "t": "Owner of Ridgeline Air, charming and short on money; pushed Dale to keep N42RL flying.", "a": true},
-   {"k": "Priya Nair, Priya, inspector", "t": "Inspector who reviews every logbook entry; exact, fair, hard to fool.", "a": true},
-   {"k": "June Halloran, June, parts clerk", "t": "Runs the parts cage; dry humour, keeps careful records of every part ordered or not.", "a": true},
-   {"k": "Sam Reyes, Sam, apprentice", "t": "Second-year apprentice, Rae's friend on nights; loyal but nervous.", "a": true}
+   {
+    "k": "Dale Ortega, Dale, lead mechanic",
+    "t": "Lead mechanic on nights, forties, easygoing and well liked; hides that he signed off an inspection on N42RL he never did.",
+    "a": true
+   },
+   {
+    "k": "Marcus Webb, Marcus, owner",
+    "t": "Owner of Ridgeline Air, charming and short on money; pushed Dale to keep N42RL flying.",
+    "a": true
+   },
+   {
+    "k": "Priya Nair, Priya, inspector",
+    "t": "Inspector who reviews every logbook entry; exact, fair, hard to fool.",
+    "a": true
+   },
+   {
+    "k": "June Halloran, June, parts clerk",
+    "t": "Runs the parts cage; dry humour, keeps careful records of every part ordered or not.",
+    "a": true
+   },
+   {
+    "k": "Sam Reyes, Sam, apprentice",
+    "t": "Second-year apprentice, Rae's friend on nights; loyal but nervous.",
+    "a": true
+   }
   ]
  },
- "player": {"name": "Rae Holloway", "desc": "A new apprentice mechanic, observant and by-the-book."},
+ "player": {
+  "name": "Rae Holloway",
+  "desc": "A new apprentice mechanic, observant and by-the-book."
+ },
  "secret": "inspection",
  "turns": [
-  {"a": "I clock in for my first night shift and introduce myself to Dale Ortega on the hangar floor.", "loc": ["hangar"], "present": ["Dale"]},
-  {"a": "I ask Dale to show me around and explain what's due on N42RL tonight.", "loc": ["hangar"], "present": ["Dale"]},
-  {"a": "I open the cowling on N42RL and look closely at the engine.", "loc": ["hangar"], "event": ["cowling", "engine", "safety wire", "wire"]},
-  {"a": "I notice the safety wire on the fuel nozzle fittings is old and dusty, not new like a fresh inspection would leave it. I keep it to myself for now.", "loc": ["hangar"], "event": ["safety wire", "wire", "old", "dust"], "learn": [{"who": "Rae", "kw": "inspection", "alt": ["inspection", "safety wire", "not done", "never done"]}], "mustNotKnow": [{"who": "Sam", "kw": "inspection"}, {"who": "Priya", "kw": "inspection"}]},
-  {"a": "I go to the parts cage and ask June whether the inspection kit for N42RL was ever ordered.", "loc": ["parts cage", "cage"], "present": ["June"], "mustNotKnow": [{"who": "Priya", "kw": "inspection"}]},
-  {"a": "June checks her records and tells me the kit was never ordered. I ask her to keep that quiet.", "loc": ["parts cage", "cage"], "present": ["June"], "event": ["kit", "never ordered", "record"], "learn": [{"who": "June", "kw": "inspection", "alt": ["inspection", "kit", "never ordered", "n42rl"]}]},
-  {"a": "I take my break in the break room with Sam and talk about anything but work.", "loc": ["break room", "break"], "present": ["Sam"], "mustNotKnow": [{"who": "Sam", "kw": "inspection"}]},
-  {"a": "Marcus Webb walks in and asks Dale whether N42RL will be ready for the six a.m. charter.", "loc": ["break room", "break", "hangar"], "present": ["Marcus", "Dale"], "event": ["charter", "ready", "six"]},
-  {"a": "I go back to the hangar floor and quietly photograph the logbook entry Dale signed.", "loc": ["hangar"], "event": ["photo", "logbook", "signed", "entry"]},
-  {"a": "Dale catches me with the logbook and asks what I'm doing.", "loc": ["hangar"], "present": ["Dale"], "event": ["catches", "logbook", "asks"]},
-  {"a": "I tell Sam in the break room that I think the inspection on N42RL was never done.", "loc": ["break room", "break"], "present": ["Sam"], "learn": [{"who": "Sam", "kw": "inspection", "alt": ["inspection", "never done", "not done", "n42rl"]}], "op": "regen"},
-  {"a": "Sam makes me promise not to go to Priya until we're sure.", "loc": ["break room", "break"], "present": ["Sam"], "event": ["promise", "priya", "sure"]},
-  {"a": "Out on the ramp in the cold, I watch Marcus and Dale argue next to N42RL.", "loc": ["ramp"], "present": ["Marcus", "Dale"], "mustNotKnow": [{"who": "Priya", "kw": "inspection"}]},
-  {"a": "Dale slips on the icy ramp and cuts his hand badly on the propeller's edge.", "loc": ["ramp"], "present": ["Dale"], "event": ["slip", "cut", "hand", "injur"]},
-  {"a": "I wrap Dale's hand with the first-aid kit while Marcus calls for help.", "loc": ["ramp"], "event": ["wrap", "first-aid", "first aid", "bandage", "hand"]},
-  {"a": "Priya arrives early for her morning shift and asks what happened to Dale.", "loc": ["ramp", "hangar"], "present": ["Priya"], "op": "branch"},
-  {"a": "I go to Marcus's office to tell him the plane shouldn't fly at six.", "loc": ["office"], "present": ["Marcus"]},
-  {"a": "Marcus offers me a full-time job if I forget what I saw in the logbook.", "loc": ["office"], "present": ["Marcus"], "event": ["offer", "job", "forget", "bribe"]},
-  {"a": "I refuse Marcus's offer and walk out of the office.", "loc": ["office"], "event": ["refuse", "walk out", "leave"]},
-  {"a": "Sam tells me he already warned Marcus that I'd found the problem.", "loc": ["hangar", "break room", "office"], "present": ["Sam"], "event": ["warned", "told", "betray"]},
-  {"a": "I go to the terminal lobby and find Priya getting coffee.", "loc": ["lobby", "terminal"], "present": ["Priya"], "op": "cancel"},
-  {"a": "I show Priya the photo of the logbook entry and tell her about the old safety wire and the kit June never ordered.", "loc": ["lobby", "terminal"], "present": ["Priya"], "learn": [{"who": "Priya", "kw": "inspection", "alt": ["inspection", "safety wire", "logbook", "kit", "never"]}]},
-  {"a": "Priya grounds N42RL and tags it unairworthy.", "loc": ["lobby", "terminal", "hangar", "ramp"], "event": ["ground", "unairworthy", "tag"]},
-  {"a": "Back on the hangar floor, Dale, his hand bandaged, admits he signed it off because Marcus pushed him.", "loc": ["hangar"], "present": ["Dale"], "event": ["admit", "confess", "signed", "pushed"]},
-  {"a": "Marcus comes in, sees the red tag on N42RL, and tells Priya she's making a mistake.", "loc": ["hangar"], "present": ["Marcus", "Priya"]},
-  {"a": "June brings her parts records to Priya to back me up.", "loc": ["hangar"], "present": ["June", "Priya"], "event": ["records", "back", "parts"]},
-  {"a": "Priya says she has to report the falsified entry to the FAA.", "loc": ["hangar"], "present": ["Priya"], "event": ["report", "faa", "falsified"]},
-  {"a": "Sam apologises to me for telling Marcus.", "loc": ["hangar", "break room"], "present": ["Sam"], "event": ["apolog", "sorry"]},
-  {"a": "Dale asks me to help him do the inspection properly before the FAA arrives.", "loc": ["hangar"], "present": ["Dale"], "event": ["inspection", "properly", "help"]},
-  {"a": "Dale and I do the full engine inspection together, and I safety-wire the fuel nozzles fresh.", "loc": ["hangar"], "present": ["Dale"], "event": ["inspection", "safety", "wire", "fresh"]}
+  {
+   "a": "I clock in for my first night shift and introduce myself to Dale Ortega on the hangar floor.",
+   "loc": [
+    "hangar"
+   ],
+   "present": [
+    "Dale"
+   ]
+  },
+  {
+   "a": "I ask Dale to show me around and explain what's due on N42RL tonight.",
+   "loc": [
+    "hangar"
+   ],
+   "present": [
+    "Dale"
+   ]
+  },
+  {
+   "a": "I open the cowling on N42RL and look closely at the engine.",
+   "loc": [
+    "hangar"
+   ],
+   "event": [
+    "cowling",
+    "engine",
+    "safety wire",
+    "wire"
+   ]
+  },
+  {
+   "a": "I notice the safety wire on the fuel nozzle fittings is old and dusty, not new like a fresh inspection would leave it. I keep it to myself for now.",
+   "loc": [
+    "hangar"
+   ],
+   "event": [
+    "safety wire",
+    "wire",
+    "old",
+    "dust"
+   ],
+   "learn": [
+    {
+     "who": "Rae",
+     "kw": "inspection",
+     "alt": [
+      "inspection",
+      "safety wire",
+      "not done",
+      "never done"
+     ]
+    }
+   ],
+   "mustNotKnow": [
+    {
+     "who": "Sam",
+     "kw": "inspection"
+    },
+    {
+     "who": "Priya",
+     "kw": "inspection"
+    }
+   ]
+  },
+  {
+   "a": "I go to the parts cage and ask June whether the inspection kit for N42RL was ever ordered.",
+   "loc": [
+    "parts cage",
+    "cage"
+   ],
+   "present": [
+    "June"
+   ],
+   "mustNotKnow": [
+    {
+     "who": "Priya",
+     "kw": "inspection"
+    }
+   ]
+  },
+  {
+   "a": "June checks her records and tells me the kit was never ordered. I ask her to keep that quiet.",
+   "loc": [
+    "parts cage",
+    "cage"
+   ],
+   "present": [
+    "June"
+   ],
+   "event": [
+    "kit",
+    "never ordered",
+    "record"
+   ],
+   "learn": [
+    {
+     "who": "June",
+     "kw": "inspection",
+     "alt": [
+      "inspection",
+      "kit",
+      "never ordered",
+      "n42rl"
+     ]
+    }
+   ]
+  },
+  {
+   "a": "I take my break in the break room with Sam and talk about anything but work.",
+   "loc": [
+    "break room",
+    "break"
+   ],
+   "present": [
+    "Sam"
+   ]
+  },
+  {
+   "a": "Marcus Webb walks in and asks Dale whether N42RL will be ready for the six a.m. charter.",
+   "loc": [
+    "break room",
+    "break",
+    "hangar"
+   ],
+   "present": [
+    "Marcus",
+    "Dale"
+   ],
+   "event": [
+    "charter",
+    "ready",
+    "six"
+   ]
+  },
+  {
+   "a": "I go back to the hangar floor and quietly photograph the logbook entry Dale signed.",
+   "loc": [
+    "hangar"
+   ],
+   "event": [
+    "photo",
+    "logbook",
+    "signed",
+    "entry"
+   ]
+  },
+  {
+   "a": "Dale catches me with the logbook and asks what I'm doing.",
+   "loc": [
+    "hangar"
+   ],
+   "present": [
+    "Dale"
+   ],
+   "event": [
+    "catches",
+    "logbook",
+    "asks"
+   ]
+  },
+  {
+   "a": "I tell Sam in the break room that I think the inspection on N42RL was never done.",
+   "loc": [
+    "break room",
+    "break"
+   ],
+   "present": [
+    "Sam"
+   ],
+   "learn": [
+    {
+     "who": "Sam",
+     "kw": "inspection",
+     "alt": [
+      "inspection",
+      "never done",
+      "not done",
+      "n42rl"
+     ]
+    }
+   ],
+   "op": "regen"
+  },
+  {
+   "a": "Sam makes me promise not to go to Priya until we're sure.",
+   "loc": [
+    "break room",
+    "break"
+   ],
+   "present": [
+    "Sam"
+   ],
+   "event": [
+    "promise",
+    "priya",
+    "sure"
+   ]
+  },
+  {
+   "a": "Out on the ramp in the cold, I watch Marcus and Dale argue next to N42RL.",
+   "loc": [
+    "ramp"
+   ],
+   "present": [
+    "Marcus",
+    "Dale"
+   ],
+   "mustNotKnow": [
+    {
+     "who": "Priya",
+     "kw": "inspection"
+    }
+   ]
+  },
+  {
+   "a": "Dale slips on the icy ramp and cuts his hand badly on the propeller's edge.",
+   "loc": [
+    "ramp"
+   ],
+   "present": [
+    "Dale"
+   ],
+   "event": [
+    "slip",
+    "cut",
+    "hand",
+    "injur"
+   ]
+  },
+  {
+   "a": "I wrap Dale's hand with the first-aid kit while Marcus calls for help.",
+   "loc": [
+    "ramp"
+   ],
+   "event": [
+    "wrap",
+    "first-aid",
+    "first aid",
+    "bandage",
+    "hand"
+   ]
+  },
+  {
+   "a": "Priya arrives early for her morning shift and asks what happened to Dale.",
+   "loc": [
+    "ramp",
+    "hangar"
+   ],
+   "present": [
+    "Priya"
+   ],
+   "op": "branch"
+  },
+  {
+   "a": "I go to Marcus's office to tell him the plane shouldn't fly at six.",
+   "loc": [
+    "office"
+   ],
+   "present": [
+    "Marcus"
+   ]
+  },
+  {
+   "a": "Marcus offers me a full-time job if I forget what I saw in the logbook.",
+   "loc": [
+    "office"
+   ],
+   "present": [
+    "Marcus"
+   ],
+   "event": [
+    "offer",
+    "job",
+    "forget",
+    "bribe"
+   ]
+  },
+  {
+   "a": "I refuse Marcus's offer and walk out of the office.",
+   "loc": [
+    "office"
+   ],
+   "event": [
+    "refuse",
+    "walk out",
+    "leave"
+   ]
+  },
+  {
+   "a": "Sam tells me he already warned Marcus that I'd found the problem.",
+   "loc": [
+    "hangar",
+    "break room",
+    "office"
+   ],
+   "present": [
+    "Sam"
+   ],
+   "event": [
+    "warned",
+    "told",
+    "betray"
+   ]
+  },
+  {
+   "a": "I go to the terminal lobby and find Priya getting coffee.",
+   "loc": [
+    "lobby",
+    "terminal"
+   ],
+   "present": [
+    "Priya"
+   ],
+   "op": "cancel"
+  },
+  {
+   "a": "I show Priya the photo of the logbook entry and tell her about the old safety wire and the kit June never ordered.",
+   "loc": [
+    "lobby",
+    "terminal"
+   ],
+   "present": [
+    "Priya"
+   ],
+   "learn": [
+    {
+     "who": "Priya",
+     "kw": "inspection",
+     "alt": [
+      "inspection",
+      "safety wire",
+      "logbook",
+      "kit",
+      "never"
+     ]
+    }
+   ]
+  },
+  {
+   "a": "Priya grounds N42RL and tags it unairworthy.",
+   "loc": [
+    "lobby",
+    "terminal",
+    "hangar",
+    "ramp"
+   ],
+   "event": [
+    "ground",
+    "unairworthy",
+    "tag"
+   ]
+  },
+  {
+   "a": "Back on the hangar floor, Dale, his hand bandaged, admits he signed it off because Marcus pushed him.",
+   "loc": [
+    "hangar"
+   ],
+   "present": [
+    "Dale"
+   ],
+   "event": [
+    "admit",
+    "confess",
+    "signed",
+    "pushed"
+   ]
+  },
+  {
+   "a": "Marcus comes in, sees the red tag on N42RL, and tells Priya she's making a mistake.",
+   "loc": [
+    "hangar"
+   ],
+   "present": [
+    "Marcus",
+    "Priya"
+   ]
+  },
+  {
+   "a": "June brings her parts records to Priya to back me up.",
+   "loc": [
+    "hangar"
+   ],
+   "present": [
+    "June",
+    "Priya"
+   ],
+   "event": [
+    "records",
+    "back",
+    "parts"
+   ]
+  },
+  {
+   "a": "Priya says she has to report the falsified entry to the FAA.",
+   "loc": [
+    "hangar"
+   ],
+   "present": [
+    "Priya"
+   ],
+   "event": [
+    "report",
+    "faa",
+    "falsified"
+   ]
+  },
+  {
+   "a": "Sam apologises to me for telling Marcus.",
+   "loc": [
+    "hangar",
+    "break room"
+   ],
+   "present": [
+    "Sam"
+   ],
+   "event": [
+    "apolog",
+    "sorry"
+   ]
+  },
+  {
+   "a": "Dale asks me to help him do the inspection properly before the FAA arrives.",
+   "loc": [
+    "hangar"
+   ],
+   "present": [
+    "Dale"
+   ],
+   "event": [
+    "inspection",
+    "properly",
+    "help"
+   ]
+  },
+  {
+   "a": "Dale and I do the full engine inspection together, and I safety-wire the fuel nozzles fresh.",
+   "loc": [
+    "hangar"
+   ],
+   "present": [
+    "Dale"
+   ],
+   "event": [
+    "inspection",
+    "safety",
+    "wire",
+    "fresh"
+   ]
+  }
  ]
 }
