@@ -13,8 +13,11 @@ const h = (tag, attrs, ...kids) => { const e = document.createElement(tag); Obje
 const realBefore = localStorage.getItem(REAL);
 let real = {}; try { real = JSON.parse(realBefore) || {} } catch (e) {}
 const OC = { key: String(real.ocKey || ""), proxy: String(real.ocProxy || ""), mon: real.ocMon, day: real.ocDay, scale: real.ocScale };
-let scen; try { scen = await (await fetch("trial/scenario.json", { cache: "no-store" })).json() } catch (e) { $("#setup").textContent = "Couldn’t load trial/scenario.json. Upload the whole app folder, including the trial folder."; return }
+const SCENS = [["trial/scenario.json", "The Glass Orchard — period mystery, 40 turns"], ["trial/scenario2.json", "Night Shift at Cedar Ridge — modern airport hangar, 30 turns"]];
 let prog = null; try { prog = JSON.parse(localStorage.getItem(PROG)) } catch (e) {}
+let scen, curSc = (prog && prog.opts && prog.opts.sc) || SCENS[0][0];
+async function loadScen(f) { scen = await (await fetch(f, { cache: "no-store" })).json(); curSc = f }
+try { await loadScen(curSc) } catch (e) { $("#setup").textContent = "Couldn’t load " + curSc + ". Upload the whole app folder, including the trial folder."; return }
 let W = null, E = null, stop = false, wake = null;
 const log = t => { const l = $("#log"); l.textContent += t + "\n"; l.scrollTop = l.scrollHeight };
 const status = t => { $("#status").textContent = t };
@@ -28,6 +31,7 @@ function drawSetup() {
   box.append(
     h("p", { class: have ? "ok" : "bad", text: have ? "✓ OpenCode key and connector found in your app’s Settings." : "✗ No OpenCode key or connector found. Set up OpenCode in the app’s Settings first. You can still do a free dry run." }),
     h("p", { class: "sub", text: "Uses DeepSeek V4.1 Flash through your OpenCode Go connector only. Nothing is sent to OpenRouter." }),
+    h("label", { text: "Test story" }), h("select", { id: "sc", onchange: async e => { try { await loadScen(e.target.value); drawSetup() } catch (x) { alertBox("Couldn’t load that story.") } } }, SCENS.map(([f, n]) => h("option", { value: f, text: n, selected: f === curSc }))),
     h("label", { text: "Turns to play" }), h("input", { type: "number", min: "5", max: String(scen.turns.length), value: opt.turns, oninput: e => opt.turns = e.target.value }),
     h("label", { text: "Reply length (words)" }), h("select", { onchange: e => opt.len = e.target.value }, ["150", "250", "300"].map(v => h("option", { value: v, text: v, selected: v === opt.len }))),
     h("label", { text: "Stop if this trial’s estimated share of your 5-hour Go limit reaches (%)" }), h("input", { type: "number", min: "1", max: "50", value: opt.cap, oninput: e => opt.cap = e.target.value }),
@@ -40,7 +44,7 @@ function drawSetup() {
     opt.dry = $("#dry").checked;
     if (!opt.dry) { if (!have) { alertBox("Set up OpenCode in the app first."); return } if ($("#confirm").value.trim().toLowerCase() !== "opencode") { alertBox("Type opencode to confirm."); return } }
     window.__trialReport = null; localStorage.removeItem(PROG); start.disabled = true;
-    await resetTrial(); prog = { v: 1, k: -1, rows: [], ops: {}, hosts: {}, opts: { turns: Math.max(5, Math.min(scen.turns.length, +opt.turns || 40)), len: opt.len, cap: Math.max(1, +opt.cap || 10), dry: opt.dry, rp: $("#rp").checked }, started: new Date().toISOString() }; saveProg(); run(true) } });
+    await resetTrial(); prog = { v: 1, k: -1, rows: [], ops: {}, hosts: {}, opts: { turns: Math.max(5, Math.min(scen.turns.length, +opt.turns || 40)), len: opt.len, cap: Math.max(1, +opt.cap || 10), dry: opt.dry, rp: $("#rp").checked, sc: curSc }, started: new Date().toISOString() }; saveProg(); run(true) } });
   box.append(start);
   if (prog && !prog.done) box.append(h("button", { text: "Continue the unfinished trial (turn " + (Math.max(0, prog.k) + 1) + ")", onclick: () => run(false) }));
   if (prog && prog.done && !opt.dry) box.append(h("button", { text: "Replay repair on missed replies (paid, needs the opencode box)", onclick: () => { if ($("#confirm").value.trim().toLowerCase() !== "opencode") { alertBox("Type opencode to confirm."); return } replay() } }));
@@ -83,13 +87,14 @@ function seedDB() {
 }
 
 /* ---------- dry-run stand-in model ---------- */
-const SIM = { k: -1, v: 0, last: ["hall"] };
+const SIM = { k: -1, v: 0, last: null };
 function kindOf(kws, a) { const t = (kws.join(" ") + " " + a).toLowerCase(); for (const [k, w] of [["death", "die"], ["promise", "promise"], ["betrayal", "betray"], ["threat", "warn"], ["reveal", "confess"], ["secret", "secret"], ["item", "copy"], ["travel", "ride"]]) if (t.includes(w)) return k; return "action" }
 function simReply() {
-  const k = SIM.k, v = SIM.v, T = k >= 0 ? scen.turns[k] : { a: "The story opens.", loc: ["hall"], present: ["Corwin"] };
-  const loc = (T.loc || SIM.last)[0]; SIM.last = [loc]; const pres = T.present || ["Corwin"];
-  let ev = "none"; if (T.event || k % 3 === 0) { const kws = T.event || ["moment"]; ev = [T.event ? 4 : 2, kindOf(kws, T.a), ["Ilse"].concat(pres.slice(0, 1)).join(", "), loc, "Ilse " + T.a.slice(2).replace(/\.$/, "").toLowerCase() + " (" + kws[0] + (v ? " v" + v : "") + ")", pres.slice(1).join(", ") || "none"].join(" | ") }
-  const learned = (T.learn || []).map(l => l.who + ": the deed shows Corwin sold the " + l.kw + " rights to Vey (shown the copy)").join("; ") || "none";
+  const k = SIM.k, v = SIM.v, T = k >= 0 ? scen.turns[k] : { a: "The story opens.", loc: scen.turns[0].loc, present: scen.turns[0].present };
+  const P = scen.player.name.split(" ")[0], C0 = scen.story.entries[0].k.split(",")[0].split(" ")[0];
+  const loc = (T.loc || SIM.last || scen.turns[0].loc)[0]; SIM.last = [loc]; const pres = T.present || [C0];
+  let ev = "none"; if (T.event || k % 3 === 0) { const kws = T.event || ["moment"]; ev = [T.event ? 4 : 2, kindOf(kws, T.a), [P].concat(pres.slice(0, 1)).join(", "), loc, P + " " + T.a.slice(2).replace(/\.$/, "").toLowerCase() + " (" + kws[0] + (v ? " v" + v : "") + ")", pres.slice(1).join(", ") || "none"].join(" | ") }
+  const learned = (T.learn || []).map(l => l.who + ": evidence about the " + l.kw + " (" + scen.secret + ") was shown to them (shown directly)").join("; ") || "none";
   return "Turn " + k + " reply" + (v ? " v" + v : "") + ". " + T.a + " The scene moves on.\n\n[[META]]\nCAST: none\nEVENTS: " + ev + "\nLEARNED: " + learned + "\nSCENE: " + loc + " | " + pres.join(", ") + " | " + (k % 2 ? "night" : "day") + " " + (k + 2) + "\nNEXT: I wait. | I look around. | I speak up.";
 }
 async function dryFetch(o) {
@@ -199,7 +204,7 @@ function summarize() {
 }
 function reportMd() {
   const live = !prog.opts.dry, S2 = summarize(), pct = ([a, b]) => b ? `${a}/${b} (${Math.round(100 * a / b)}%)` : "—";
-  const L = ["# Memory trial — " + (live ? "LIVE" : "DRY RUN"), "",
+  const L = ["# Memory trial — " + (live ? "LIVE" : "DRY RUN"), "", "Test story: " + scen.title, "",
     live ? "**LIVE RUN — real calls through OpenCode Go** (DeepSeek V4.1 Flash via your connector), run on a phone. Estimated Go limit used by this trial: " + JSON.stringify(prog.go) + "."
          : "**DRY RUN — no requests were sent.** Replies came from a built-in stand-in. This only checks that the trial page works.",
     "", "Started " + prog.started + " · finished " + prog.finished + " · turns played: " + prog.rows.length + " of " + prog.opts.turns + (prog.stopped ? " · stopped early: " + prog.stopped : ""),
