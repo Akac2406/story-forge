@@ -20,3 +20,13 @@
 [data-sf-layout=immersivecinema] #log{max-width:960px;margin:auto}[data-sf-layout=immersivecinema] .turn.ai .body{font:clamp(17px,2vw,21px)/1.9 Georgia,serif}
 @media(max-width:500px){.sf50-backdrop{padding:0;align-items:flex-end}.sf50-panel{border-radius:24px 24px 0 0;max-height:92dvh;padding:18px}.sf50-grid{grid-template-columns:1fr 1fr;gap:9px}.sf50-tile{padding:11px}.sf50-person{gap:7px}.sf50-avatar{width:30px;height:30px;font-size:12px}}
 @media(prefers-reduced-motion:reduce){.sf50-backdrop{backdrop-filter:none}}
+
+@media (max-width: 600px) {
+  #app > header {
+    flex-wrap: wrap;
+  }
+
+  #app > header h1 {
+    min-width: 6rem;
+  }
+}
