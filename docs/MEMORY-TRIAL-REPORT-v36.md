@@ -190,6 +190,27 @@ The stand-in model has two profiles:
   1. A run on a different story, with repaired blocks still kept out of history.
   2. Then an A/B test of a separate trial flag that uses one repaired opening block as a temporary history example until the model writes its own.
 
+### Second story, "Night Shift at Cedar Ridge" (LIVE, 30 turns, 2026-11-22, about 00:40 Mountain time)
+- **Settings:** the same as the v44 run (repair on, `ocLite: "effort"`, repaired blocks kept out of history). This was the first run deployed automatically from GitHub.
+- **Run:** 30 of 30 turns, 0 failed replies, 53 requests all to the connector, about 0.9% of the 5-hour window, 10 minutes, no crash.
+- **Safety:** real data unchanged, memory off globally, integrity OK.
+- **Operations:** regenerate, branch and cancel all passed.
+- **Payload audit:** of 33 story requests, 0 metadata examples came from superseded or cancelled replies.
+- **Metadata across 31 replies:**
+  - The model wrote it itself in 25. The opening reply had metadata this time.
+  - Repairs: 5 of 5 applied.
+  - **Combined coverage: 30 of 31.**
+- **Removed by the name check:** June and Sam from repair 27 (neither appears in that reply).
+- **Accuracy:**
+  - location 28/30;
+  - characters present 23/24;
+  - events 15/19;
+  - knowledge 3/4 exact and 4/4 paraphrase.
+- **The one "leak" (4/5) isn't a memory error.** At turn 7, Sam knew about the inspection. The model itself recorded that, and the story text supports it: DeepSeek wrote Sam into the parts-cage scene when June read out that no inspection kit had been signed out. The test script's expectation was wrong.
+- **Possible duplicate:** 1, two adjacent events about Priya telling Rae to write her statement. Minor.
+- **Review of all 5 applied repairs against the story text:** 0 unsupported entries. Repair 41 correctly left the location as unknown.
+- **Decision (ChatGPT and Claude):** move to an opt-in pilot on a copy of one of Anna's stories, with memory and repair still off by default. The opening-block A/B test is deferred.
+
 ## 4. Recommended fixes
 **Done in v37:** read metadata even when the marker is missing (see CHANGELOG-v37.md).
 
