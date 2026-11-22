@@ -1970,12 +1970,20 @@ function testBtn(mo){const b=h("button",{text:"Test",onclick:async()=>{if(b.disa
 function vSettings(){ap(app,h("header",null,back(()=>go({n:"home",tab:"discover"})),h("h1",{text:"Settings"})));const m=h("main",{class:"page"});ap(app,m);
   let merge=false;
   const file=h("input",{type:"file",accept:"application/json,.json",style:"display:none",onchange:e=>{const fl=e.target.files[0];e.target.value="";if(!fl)return;const rd=new FileReader();
-    rd.onload=()=>{try{const d=JSON.parse(rd.result);if(!d||!Array.isArray(d.sessions)||!Array.isArray(d.stories))throw 0;
+    rd.onload=()=>{try{const parsed=JSON.parse(rd.result);if(!parsed||!Array.isArray(parsed.sessions)||!Array.isArray(parsed.stories))throw 0;
+      const {scenePresets,...d}=parsed;
+      const restoreScenes=sessions=>window.SFScenesV54?.importPresets(scenePresets,sessions)===false
+        ?" Scene artwork could not be saved. Browser storage may be full.":"";
       if(merge){const n=norm(d),add=(a,b)=>{let c=0;(b||[]).forEach(x=>{if(x&&x.id&&!a.some(y=>y.id===x.id)){a.push(x);c++}});return c};
+        const incomingSessions=new Set(n.sessions.filter(s=>s&&s.id).map(s=>s.id));
         const c1=add(DB.stories,n.stories),c2=add(DB.sessions,n.sessions);add(DB.chars,n.chars);DB.found=DB.found||{};Object.keys(n.found||{}).forEach(k=>{DB.found[k]=Array.from(new Set((DB.found[k]||[]).concat(n.found[k]||[])))});
-        save();render();toast("Added "+c2+" playthrough"+(c2===1?"":"s")+" and "+c1+" world"+(c1===1?"":"s")+".")}
-      else{DB=norm(Object.assign({},d,{key:DB.key,ocKey:DB.ocKey,ocProxy:DB.ocProxy,prov:DB.prov,refs:DB.refs||[],migrated:true}));save();applyFs();render();toast("Backup restored.")}}catch(x){toast("That file is not a Story Forge backup.")}};rd.readAsText(fl)}});
-  const backup=async()=>{const d=Object.assign({},DB);delete d.key;delete d.ocKey;delete d.price;delete d.quirk;delete d.refs;const blob=new Blob([JSON.stringify(d)],{type:"application/json"}),name="story-forge-backup.json";
+        save();const sceneNotice=restoreScenes(DB.sessions.filter(s=>incomingSessions.has(s.id)));
+        render();toast("Added "+c2+" playthrough"+(c2===1?"":"s")+" and "+c1+" world"+(c1===1?"":"s")+"."+sceneNotice)}
+      else{DB=norm(Object.assign({},d,{key:DB.key,ocKey:DB.ocKey,ocProxy:DB.ocProxy,prov:DB.prov,refs:DB.refs||[],migrated:true}));save();const sceneNotice=restoreScenes(DB.sessions);applyFs();render();toast("Backup restored."+sceneNotice)}}catch(x){toast("That file is not a Story Forge backup.")}};rd.readAsText(fl)}});
+  const backup=async()=>{const d=Object.assign({},DB);delete d.key;delete d.ocKey;delete d.price;delete d.quirk;delete d.refs;
+    const presets=window.SFScenesV54?.exportPresets(DB.sessions);
+    if(presets&&Object.keys(presets).length)d.scenePresets=presets;
+    const blob=new Blob([JSON.stringify(d)],{type:"application/json"}),name="story-forge-backup.json";
     try{const f=new File([blob],name,{type:"application/json"});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:"Story Forge backup"});return}}catch(x){if(x&&x.name==="AbortError")return}
     const a=h("a",{href:URL.createObjectURL(blob),download:name});ap(document.body,a);a.click();a.remove()};
   ap(m,h("h2",{text:"AI service"}),fld("Send stories to",sel(DB.prov||"openrouter",[["openrouter","OpenRouter (pay per use)"],["opencode","OpenCode Go (monthly subscription)"]],v=>{DB.prov=v;save();soft()})),
@@ -2042,7 +2050,7 @@ function vSettings(){ap(app,h("header",null,back(()=>go({n:"home",tab:"discover"
         h("p",{class:"sub",text:"Uses the voices installed on this device. Reading may stop if the screen locks, and it stops when you leave the story."})]})():h("p",{class:"sub",text:"This browser can’t read aloud."}),
     h("h2",{text:"About"}),h("p",{class:"sub",text:"Story Forge version "+VER}),h("div",{class:"row"},h("button",{text:"Check for update",onclick:()=>checkUpdate(true)})),
     h("h2",{text:"Spending"}),h("p",{class:"sub",text:"All stories so far, as reported by OpenRouter: "+costText(DB.use)}),
-    h("h2",{text:"Backup"}),h("p",{class:"sub",text:"Your stories live only in this browser, on this device. To move them, save a backup here, send the file to your other device, and add it there. The backup leaves out your API key and any reference texts you imported."}),file,
+    h("h2",{text:"Backup"}),h("p",{class:"sub",text:"Your stories live only in this browser, on this device. To move them, save a backup here, send the file to your other device, and add it there. Backups include scene backgrounds, captions, and portrait selections. Restoring a backup keeps any scene already on this device. The backup leaves out your API key and any reference texts you imported."}),file,
     h("div",{class:"row"},h("button",{class:"primary",text:"Save or send a backup",onclick:backup}),h("button",{text:"Add stories from a backup",onclick:()=>{merge=true;file.click()}}),confirmBtn("Replace everything with a backup",()=>{merge=false;file.click()},"")))}
 
 /* ---------- Finding the source work ---------- */

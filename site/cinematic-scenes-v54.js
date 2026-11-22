@@ -24,5 +24,35 @@ function resize(file){return new Promise((resolve,reject)=>{const reader=new Fil
 function decorate(){if(view.n!=='chat')return;const header=document.querySelector('#app>header');if(!header)return;const controls=E('div','sf54-controls'),btn=E('button','','Scene & Portraits');btn.type='button';btn.onclick=open;controls.append(btn,E('span','sf54-hint','Local artwork · no AI charges'));header.after(controls);stage()}
 const prev=render;render=function(...args){const result=prev.apply(this,args);decorate();return result};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',decorate);else decorate();
-window.SFScenesV54={open,close};
+function exportPresets(sessions) {
+  return Object.fromEntries(sessions.map(({id}) => [id, Object.hasOwn(db, id) ? db[id] : null])
+    .filter(([, preset]) => preset?.background || preset?.portrait || preset?.caption));
+}
+
+function importPresets(presets, sessions) {
+  if (!presets || typeof presets !== 'object' || Array.isArray(presets)) return true;
+  const additions = [];
+  for (const {id} of sessions) {
+    if (Object.hasOwn(db, id) || !Object.hasOwn(presets, id)) continue;
+    const preset = presets[id];
+    if (!preset || typeof preset !== 'object' || Array.isArray(preset)) continue;
+    const {background, portrait, caption} = preset;
+    if (typeof background !== 'string' || background.length > max ||
+        (background && !/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/.test(background)) ||
+        typeof portrait !== 'string' || typeof caption !== 'string' || caption.length > 120) continue;
+    const config = {background, portrait, caption};
+    if (JSON.stringify(config).length <= max) additions.push([id, config]);
+  }
+  if (!additions.length) return true;
+  const next = {...db, ...Object.fromEntries(additions)};
+  try {
+    localStorage.setItem(KEY, JSON.stringify(next));
+    db = next;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+window.SFScenesV54={open,close,exportPresets,importPresets};
 })();
