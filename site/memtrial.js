@@ -94,7 +94,7 @@ function simReply() {
   const P = scen.player.name.split(" ")[0], C0 = scen.story.entries[0].k.split(",")[0].split(" ")[0];
   const loc = (T.loc || SIM.last || scen.turns[0].loc)[0]; SIM.last = [loc]; const pres = T.present || [C0];
   let ev = "none"; if (T.event || k % 3 === 0) { const kws = T.event || ["moment"]; ev = [T.event ? 4 : 2, kindOf(kws, T.a), [P].concat(pres.slice(0, 1)).join(", "), loc, P + " " + T.a.slice(2).replace(/\.$/, "").toLowerCase() + " (" + kws[0] + (v ? " v" + v : "") + ")", pres.slice(1).join(", ") || "none"].join(" | ") }
-  const learned = (T.learn || []).map(l => l.who + ": evidence about the " + l.kw + " (" + scen.secret + ") was shown to them (shown directly)").join("; ") || "none";
+  const learned = (T.learn || []).map(l => l.who + ": the " + l.kw + " — " + T.a.replace(/^I /, P + " ").replace(/\.$/, "") + " (shown directly)").join("; ") || "none";
   return "Turn " + k + " reply" + (v ? " v" + v : "") + ". " + T.a + " The scene moves on.\n\n[[META]]\nCAST: none\nEVENTS: " + ev + "\nLEARNED: " + learned + "\nSCENE: " + loc + " | " + pres.join(", ") + " | " + (k % 2 ? "night" : "day") + " " + (k + 2) + "\nNEXT: I wait. | I look around. | I speak up.";
 }
 async function dryFetch(o) {
@@ -109,7 +109,7 @@ const SE = 'DB.sessions.find(s=>s.id==="trial")';
 const S = () => JSON.parse(E("JSON.stringify(" + SE + ")"));
 const low = x => String(x || "").toLowerCase(), first = n => low(n).split(/\s+/)[0] || "";
 const hasKw = (t, kws) => kws.some(k => low(t).includes(low(k)));
-const NEG = /\b(not|never|doesn['’]t|does not|unaware|no idea)\b/i;
+const NEG = /\b(doesn['’]t know|does not know|did not know|didn['’]t know|not aware|unaware|no idea|has not learned|hasn['’]t learned)\b/i;
 function knowsAlt(mem, who, L) { const ch = Object.entries(mem.chars || {}).find(([n]) => first(n) === first(who)); if (!ch) return false; const pool = {}; (mem.facts || []).concat(mem.secrets || []).forEach(f => pool[f.id] = f.text); return (ch[1].knows || []).some(i => { const t = low(pool[i]); return !NEG.test(t) && [L.kw].concat(L.alt || []).some(k => t.includes(low(k))) }) }
 function knows(mem, who, kw) { const ch = Object.entries(mem.chars || {}).find(([n]) => first(n) === first(who)); if (!ch) return false; const pool = {}; (mem.facts || []).concat(mem.secrets || []).forEach(f => pool[f.id] = f.text); return (ch[1].knows || []).some(i => low(pool[i]).includes(low(kw))) }
 function overlap(a, b) { const t = x => new Set(low(x).replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter(w => w.length > 2)); const A = t(a), B = t(b); if (!A.size || !B.size) return 0; let n = 0; A.forEach(w => { if (B.has(w)) n++ }); return n / Math.min(A.size, B.size) }
