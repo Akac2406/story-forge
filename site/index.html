@@ -311,7 +311,7 @@ body[data-ui-layout="academy"] .tabs button.on,body[data-ui-layout="anime"] .tab
 @media(min-width:640px){.sf-studio-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(prefers-reduced-motion:reduce){.sf-studio-tile,.sf-studio-entry{transition:none!important}}
 </style><style id="sf-visual-suite-v46">
 .sf-v46-shell{display:grid;gap:12px}.sf-v46-tabs{display:flex;gap:7px;overflow-x:auto;padding:4px 0}.sf-v46-tabs button{flex-shrink:0;border-radius:999px}.sf-v46-tabs .active{background:var(--accent,#9b7bff);color:#fff}.sf-v46-hero{padding:20px;border-radius:18px;background:linear-gradient(120deg,#38205c,#101d36);color:#fff;border:1px solid #ffffff35}.sf-v46-hero h3{font-size:1.45em;margin:5px 0}.sf-v46-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}.sf-v46-card{padding:13px;border-radius:15px;background:rgba(128,128,128,.10);border:1px solid rgba(128,128,128,.26);min-width:0}.sf-v46-card img{max-width:100%;height:150px;object-fit:cover;border-radius:12px}.sf-v46-card small{display:block;opacity:.75;margin-top:5px}.sf-v46-track{height:8px;background:#80808040;border-radius:9px;overflow:hidden;margin:6px 0}.sf-v46-track i{height:100%;display:block;background:var(--accent,#9b7bff)}.sf-v46-step{padding:12px 12px 12px 18px;border-left:3px solid var(--accent,#9b7bff);margin:8px 0;background:#80808014;border-radius:8px}.sf-v46-palette{display:flex;gap:6px;flex-wrap:wrap}.sf-v46-palette button{min-width:110px}.sf-v46-note{opacity:.75;font-size:.86em}.sf-v46-preview{padding:20px;background:linear-gradient(160deg,#101529,#342244);border:1px solid #b79aff66;border-radius:18px;color:#fff;line-height:1.7}.sf-v46-preview .speaker{font-size:.8em;color:#e2c5ff;letter-spacing:.1em}.sf-v46-preview blockquote{margin:8px 0 0;font-size:1.05em}
-</style><link rel="stylesheet" href="visual-customization-v48.css"></head><body>
+</style><link rel="stylesheet" href="visual-customization-v48.css"><link rel="stylesheet" href="illustrated-reader.css"></head><body>
 <div id="app"></div><div id="toast" role="status"></div>
 <script src="memory-engine.js"></script>
 <script>
@@ -320,7 +320,7 @@ const KEY="story-forge-v2",app=document.getElementById("app"),$=s=>document.quer
 function ap(p,...k){for(const c of k.flat(4)){if(c==null||c===false)continue;p.appendChild(c.nodeType?c:document.createTextNode(String(c)))}}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const num=(v,d)=>{const n=parseFloat(v);return isFinite(n)?n:d};
-const VER=55,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
+const VER=56,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
 function fixCh(se){const c=(se.chaps||[]).filter(x=>x&&x.i>=0&&x.i<Math.max(1,se.turns.length)).sort((a,b)=>a.i-b.i),out=[];c.forEach(x=>{if(!out.length||x.i>out[out.length-1].i)out.push(x)});if(!out.length||out[0].i!==0)out.unshift({i:0,t:""});se.chaps=out;return out}
 function autoCh(se){const N=se.chapN==null?1500:se.chapN,out=[{i:0,t:""}];if(N>0){let acc=0;se.turns.forEach((t,i)=>{if(t.role==="user"&&i>0&&(N===1?acc>0:acc>=N)){out.push({i,t:""});acc=0}if(t.role==="ai")acc+=words(t.text)})}return out}
 function chapsOf(se){if(!se.chaps)se.chaps=autoCh(se);return fixCh(se)}
@@ -426,12 +426,13 @@ function save(){DB.ts=Date.now();if(DB.syncAuto&&typeof syncSoon==="function")sy
   else if(!ok)toast("Could not save. Device storage may be full.")}
 function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(tT);tT=setTimeout(()=>t.classList.remove("on"),3800)}
 const THEMES=[["midnight","Midnight (Classic)","#0f0d17","#9b7bff"],["paper","Paper (Classic)","#f6efe2","#9b4d22"],["ink","Ink (Classic)","#000000","#5ad1c5"],["moon","Moonlit (Classic)","#121822","#8fb8ff"],["ember","Ember (Classic)","#1a0f0d","#ff7a45"],["sakura","Sakura (Classic)","#fff5f8","#d14d84"],["crimson","Crimson Eclipse","#190d16","#f05b70"],["azure","Azure Legion","#08162f","#4b95ff"],["void","Void Nexus","#140c28","#b55bff"],["spirit","Moonlit Spirit","#17182e","#a5abff"],["verdant","Verdant Wilds","#091f18","#4acb87"],["starlight","Starlight Horizon","#07172d","#48d6f2"],["bloom","Sakura Bloom","#2a1427","#f38ab7"],["thunder","Thunder Crest","#1f160e","#f6b43d"],["arcane","Arcane Veil","#1b102d","#b67bff"],["frost","Frostbound","#0a1c31","#7fc5ff"]],LIGHT={paper:1,sakura:1};
-const UI_LAYOUTS=[["classic","Classic Story Forge"],["premium","Premium Cinematic"],["modern","Modern Anime"],["adventure","Adventure Hub"],["character","Character RPG"],["world","World Map"],["guild","Guild Console"],["chronicle","Chronicle"],["academy","Academy"],["fantasy","Fantasy RPG"],["anime","Modern Anime RPG"],["jrpg","Classic JRPG"],["action","Action RPG"],["visual","Visual Novel RPG"],["kingdom","Strategy / Kingdom RPG"]];
+const UI_LAYOUTS=[["classic","Classic Story Forge"],["premium","Premium Cinematic"],["modern","Modern Anime"],["adventure","Adventure Hub"],["character","Character RPG"],["world","World Map"],["guild","Guild Console"],["chronicle","Chronicle"],["academy","Academy"],["fantasy","Fantasy RPG"],["anime","Modern Anime RPG"],["jrpg","Classic JRPG"],["action","Action RPG"],["visual","Visual Novel RPG"],["kingdom","Strategy / Kingdom RPG"],["illustrated","Illustrated Reader"]];
 const FONTS=[["serif","Classic serif"],["book","Book"],["sans","Clean sans"],["easy","Easy-read"]],FONTCSS={serif:'Georgia,"Times New Roman",serif',book:'"Iowan Old Style",Palatino,"Book Antiqua",Georgia,serif',sans:'system-ui,-apple-system,"Segoe UI",sans-serif',easy:'Verdana,Tahoma,sans-serif'};
 function applyLook(){const r=document.documentElement,th=THEMES.find(x=>x[0]===DB.theme)||THEMES[0];r.setAttribute("data-theme",th[0]);r.style.setProperty("--fs",(DB.fs||17)+"px");
   r.style.setProperty("--bodyfont",FONTCSS[DB.font||"serif"]||('"'+String(DB.font).replace(/["<>;]/g,"")+'",Georgia,serif'));r.style.setProperty("--lh",String(num(DB.lh,1.75)));r.style.setProperty("--mx",num(DB.mx,16)+"px");
   document.body.classList.toggle("novel",DB.layout==="novel");document.body.dataset.uiLayout=UI_LAYOUTS.some(x=>x[0]===DB.uiLayout)?DB.uiLayout:"classic";const mc=document.querySelector('meta[name="theme-color"]');if(mc)mc.setAttribute("content",th[2])}
 const applyFs=applyLook;
+const illustratedReader=()=>DB.uiLayout==="illustrated";
 
 function h(tag,attrs,...kids){const e=document.createElement(tag);let val;
   if(attrs)for(const k in attrs){const v=attrs[k];if(v==null||v===false)continue;
@@ -467,7 +468,7 @@ const foundOf=st=>(DB.found&&DB.found[st.id])||[];
 function endChips(st,list){const f=foundOf(st);return h("div",{class:"chips"},(list||st.endings||[]).map(e=>f.includes(e.n)?h("span",{class:"chip r-"+e.r,text:e.r+" · "+e.n}):h("span",{class:"chip lock",text:e.r+" · ???"})))}
 
 function go(v){if(TTS.on)ttsStop(true);if(v&&v.n!=="edit"&&v.n!=="build"&&view&&view.imp)delete view.imp;if(v&&v.n==="chat")v.restore=true;view=v;render()}
-function render(){const b=$("#sheetbg");if(b)b.remove();app.textContent="";app.className=(view.n==="chat"&&DB.visualNovelMode?"sf-visual-chat":"");({home:vHome,story:vStory,edit:vEdit,chat:vChat,settings:vSettings,build:vBuild,book:vBook,shot:vShot}[view.n]||vHome)()}
+function render(){const b=$("#sheetbg");if(b)b.remove();app.textContent="";app.className=view.n==="chat"?(illustratedReader()?"reader-playing":DB.visualNovelMode?"sf-visual-chat":""):"";({home:vHome,story:vStory,edit:vEdit,chat:vChat,settings:vSettings,build:vBuild,book:vBook,shot:vShot}[view.n]||vHome)()}
 function sheet(title,body){closeSheet(true);const bg=h("div",{class:"sheetbg",id:"sheetbg",onclick:e=>{if(e.target===bg)closeSheet()}},h("div",{class:"sheet"},h("div",{class:"sheethead"},h("h2",{text:title}),h("button",{class:"ghost",text:"Done",onclick:()=>closeSheet()})),body));ap(document.body,bg)}
 function closeSheet(quiet){const b=$("#sheetbg");if(!b)return;b.remove();if(!quiet&&view.n==="chat"&&!busy)rerender()}
 function rerender(){const lg=$("#log");view.scroll=lg?lg.scrollTop:null;render()}
@@ -478,12 +479,44 @@ const chk=(label,val,on)=>h("label",{class:"chk"},h("input",{type:"checkbox",che
 function card(st){const name=st.kind==="character"?(st.charName||st.title):st.title;
   const init=String(name||"?").split(/\s+/).map(w=>w[0]).join("").slice(0,3).toUpperCase();
   return h("button",{class:"card",onclick:()=>go({n:"story",id:st.id})},h("div",{class:"cover"+(st.coverT?" img":""),style:st.coverT?"background:url("+st.coverT+")":grad(stHue(st))},h("span",{text:init}),h("em",{text:st.kind==="character"?"Character":st.life?"Life sim":"Story"})),h("b",{text:name||"Untitled"}),h("small",{text:st.tag||st.style||(st.canon?"Based on "+st.canon:"Original")}))}
+function readerCover(st){
+  const title=st.title||st.charName||"Untitled";
+  if(st.cover)return idbImg(st.cover,"reader-cover",title+" cover");
+  if(st.coverT)return h("img",{class:"reader-cover",src:st.coverT,alt:title+" cover"});
+  return h("div",{class:"reader-cover reader-cover-placeholder",style:grad(stHue(st)),text:title});
+}
+function readerDiscovery(main, worlds){
+  const recent=[];
+  const seen=new Set();
+  for(const session of DB.sessions.slice().sort((a,b)=>(b.updated||0)-(a.updated||0))){
+    const story=getStory(session.storyId);
+    if(!story||seen.has(story.id))continue;
+    seen.add(story.id);
+    recent.push({story,session});
+  }
+  const featured=DB.stories.find(st=>st.kind!=="character"&&(st.cover||st.coverT))
+    ||recent[0]?.story||worlds[0];
+  if(featured)ap(main,h("button",{class:"reader-feature",onclick:()=>go({n:"story",id:featured.id})},
+    readerCover(featured),h("strong",{text:featured.title||featured.charName})));
+  const shelf=(label,entries)=>{if(!entries.length)return;
+    ap(main,h("h2",{text:label}),h("div",{class:"reader-shelf"},entries.map(({story,session})=>
+      h("button",{class:"reader-tile",onclick:()=>go(session?{n:"chat",id:session.id}:{n:"story",id:story.id})},
+        readerCover(story),h("b",{text:story.title||story.charName||"Untitled"})))))};
+  shelf("Continue playing",recent);
+  shelf("My stories",DB.stories.map(story=>({story})));
+  shelf("Explore worlds",worlds.map(story=>({story})));
+  ap(main,h("div",{class:"row reader-tools"},
+    h("button",{class:"cta",text:"Build a world",onclick:()=>go({n:"build"})}),
+    h("button",{text:"World Simulator",onclick:()=>go({n:"story",id:"lib:sim"})})));
+}
 function vHome(){const tab=view.tab||"discover";
   ap(app,h("header",null,h("h1",{text:"Story Forge"}),h("button",{text:"Settings",onclick:()=>go({n:"settings"})})),
     h("nav",{class:"tabs"},[["discover","Discover"],["continue","Continue"],["studio","Studio"],["library","Library"],["create","Create"]].map(t=>h("button",{class:tab===t[0]?"on":"",text:t[1],onclick:()=>go({n:"home",tab:t[0]})}))));
-  const m=h("main",{class:"page"});ap(app,m);
+  const m=h("main",{class:"page"+(illustratedReader()&&tab==="discover"?" reader-discover":"")});ap(app,m);
   if(!hasKey())ap(m,h("div",{class:"notice"},"Add your OpenRouter key before you play. ",h("div",{class:"row"},h("button",{class:"primary",text:"Open Settings",onclick:()=>go({n:"settings"})}))));
   if(tab==="studio"){vVisualStudio(m);
+  }else if(tab==="discover"&&illustratedReader()){
+    readerDiscovery(m,Object.keys(LIB).filter(k=>!LIB[k].sim).map(libStory));
   }else if(tab==="discover"){const ks=Object.keys(LIB);
     const ls=DB.sessions.slice().sort((a,b)=>(b.updated||0)-(a.updated||0))[0],lst=ls&&getStory(ls.storyId);
     if(lst&&ls.turns.length){let sub2=ls.char.name||"",fr=1;if(lst.kind!=="character"){const C=chapsOf(ls);let k=C.length-1;if(ls.pos)C.forEach((c,j)=>{if(c.i<=ls.pos.i)k=j});sub2=chName(C[k],k)+(ls.life?" · Age "+ls.life.age:"");fr=(k+1)/C.length}
@@ -553,8 +586,11 @@ function vStory(){const st=getStory(view.id);if(!st){view={n:"home",tab:"discove
   const d=view.d||(view.d={start:(st.starts&&st.starts[0])||"",follow:st.follow||"strict",name:c0?c0.name:"",desc:c0?c0.desc:"",trait:c0?c0.trait:"",len:"300",play:st.life?"life":"story",age:"0",agec:""});
   const life=!isC&&d.play==="life",ends=life?lifeEnds(st):(st.endings||[]),sts=life?lifeStats(st):(st.stats||[]),ne=(st.entries||[]).length,fo=foundOf(st);
   ap(app,h("header",null,back(()=>go({n:"home",tab:"discover"})),h("h1",{text:st.title||st.charName||"Untitled"})));
-  const m=h("main",{class:"page"});ap(app,m);
-  if(st.cover)ap(m,idbImg(st.cover,"ocover",st.title+" cover"),h("h2",{text:st.title,style:"margin:4px 0"}),st.author?h("p",{class:"sub",text:"by "+st.author+" · imported for personal use"}):null);
+  const reader=illustratedReader();
+  const m=h("main",{class:"page"+(reader?" reader-details":"")});ap(app,m);
+  if(reader)ap(m,h("div",{class:"reader-feature"},readerCover(st),h("h2",{text:st.title||st.charName||"Untitled"}),
+    st.author?h("p",{class:"sub",text:"by "+st.author}):null));
+  else if(st.cover)ap(m,idbImg(st.cover,"ocover",st.title+" cover"),h("h2",{text:st.title,style:"margin:4px 0"}),st.author?h("p",{class:"sub",text:"by "+st.author+" · imported for personal use"}):null);
   else ap(m,h("div",{class:"hero",style:grad(stHue(st))},h("em",{text:isC?"Character":life?"Life sim":"Story"}),h("b",{text:isC?(st.charName||st.title):st.title}),h("small",{text:st.tag||st.style||""})));
   if(st.tags&&st.tags.length)ap(m,h("div",{class:"tags"},st.tags.map(t=>h("span",{text:t}))));
   if(st.desc)ap(m,h("h2",{text:"Description"}),h("div",{class:"body"},String(st.desc).split(/\n+/).map(p=>h("p",{text:p}))));
@@ -568,6 +604,14 @@ function vStory(){const st=getStory(view.id);if(!st){view={n:"home",tab:"discove
   if(ne)ap(m,h("p",{class:"sub",text:ne+" canon notes loaded for the narrator."}));
   ap(m,h("div",{class:"row"},h("button",{text:"Reference texts ("+refsFor(st.id).length+")",onclick:()=>refSheet(st.id)})));
   if(!isC&&st.canon)ap(m,wikiBox({get:()=>wikiOf(null,st),set:v=>{if(st.builtin){DB.libWiki=DB.libWiki||{};DB.libWiki[st.id]=v}else st.wiki=v;save()},title:()=>st.canon,model:()=>(DB.modes[DB.mode]||DB.modes[0]).id,sid:()=>st.id,onDl:()=>soft()}));
+  if(reader){
+    const latest=DB.sessions.filter(s=>s.storyId===st.id).sort((a,b)=>(b.updated||0)-(a.updated||0))[0];
+    const setup=h("h2",{text:"Session setup",tabindex:"-1"});
+    ap(app,h("footer",{class:"reader-session-actions"},
+      latest?h("button",{text:"Continue session",onclick:()=>go({n:"chat",id:latest.id})}):null,
+      h("button",{class:"primary",text:"New session",onclick:()=>{setup.focus({preventScroll:true});setup.scrollIntoView({block:"start"})}})));
+    ap(m,setup);
+  }
   if(!isC)ap(m,fld("How to play",sel(d.play,PLAYS,v=>{d.play=v;soft()})));
   if(sts.length)ap(m,h("p",{class:"sub",text:"Stats: "+sts.map(s=>s.n).join(", ")}));
   if(ends.length)ap(m,h("h2",{text:"Endings "+ends.filter(e=>fo.includes(e.n)).length+"/"+ends.length}),endChips(st,ends));
@@ -693,17 +737,39 @@ function metaAt(t){t=String(t||"");let i=t.indexOf("[[META");if(i>=0)return i;
 function vis(t){let i=metaAt(t);if(i<0){const j=t.lastIndexOf("[");if(j>=0&&t.length-j<8){const k=(j>0&&t[j-1]==="[")?j-1:j;if("[[META]]".indexOf(t.slice(k))===0)i=k}}return(i<0?t:t.slice(0,i)).trim()}
 const SKIPS=[["Next day","A day passes.","Time skip: move on to the next day."],["Skip a month","A month passes.","Time skip: one month passes."],["Skip a year","A year passes.","Time skip: one year passes."],["Next turning point","Time moves on.","Time skip: jump ahead to the next major turning point in my life."]];
 function ins(ta,a,b){const s=ta.selectionStart,e=ta.selectionEnd,v=ta.value;ta.value=v.slice(0,s)+a+v.slice(s,e)+b+v.slice(e);const p=e>s?e+a.length+b.length:s+a.length;ta.focus();ta.setSelectionRange(p,p);view.draft=ta.value}
+// Mobile browsers can shrink the visual viewport while leaving the layout viewport unchanged.
+let readerViewportFrame=0;
+function syncReaderViewport(){
+  cancelAnimationFrame(readerViewportFrame);
+  readerViewportFrame=requestAnimationFrame(()=>{
+    const viewport=window.visualViewport;
+    const editing=app.classList.contains("reader-playing")&&document.activeElement?.id==="input";
+    const keyboard=editing&&viewport&&viewport.scale===1&&window.innerHeight-viewport.height>100;
+    if(keyboard){
+      app.style.setProperty("--reader-visible-height",Math.floor(viewport.height)+"px");
+      app.style.setProperty("--reader-visible-top",Math.round(viewport.offsetTop)+"px");
+    }else{
+      app.style.removeProperty("--reader-visible-height");
+      app.style.removeProperty("--reader-visible-top");
+    }
+    app.classList.toggle("reader-keyboard",!!keyboard);
+  });
+}
+window.visualViewport?.addEventListener("resize",syncReaderViewport);
+window.visualViewport?.addEventListener("scroll",syncReaderViewport);
+app.addEventListener("focusin",syncReaderViewport);
+app.addEventListener("focusout",syncReaderViewport);
 function vChat(){const se=DB.sessions.find(s=>s.id===view.id),st=se&&getStory(se.storyId);
   if(!st){view={n:"home",tab:"continue"};if(se)toast("That story was deleted.");return render()}
   const isC=st.kind==="character",mode=DB.modes[DB.mode]||DB.modes[0],stats=sd(se,st),ends=ed(se,st),C=isC?null:chapsOf(se);
   if(C&&!view.och)view.och=Object.assign({},se.och||{});setFX(se,st);const F=FX.f;
-  ap(app,h("header",null,back(()=>go({n:"home",tab:"continue"})),h("h1",{text:se.sim?(se.sim.canon||se.world||st.title).split(" by ")[0]:st.title||st.charName,role:C?"button":null,"aria-label":C?"Open the chapter list":null,onclick:C?()=>chapSheet(se):null}),h("button",{class:"pill",text:"Visuals",onclick:()=>sfVisualSuite(se)}) ,h("button",{class:"pill",text:(mode.n||"Mode")+" ▾",onclick:()=>modeSheet(se)}),h("button",{"aria-label":"Menu",onclick:()=>menuSheet(se,st)},ic("menu"))));
+  ap(app,h("header",null,back(()=>go({n:"home",tab:"continue"})),h("h1",{text:se.sim?(se.sim.canon||se.world||st.title).split(" by ")[0]:st.title||st.charName,role:C?"button":null,"aria-label":C?"Open the chapter list":null,onclick:C?()=>chapSheet(se):null}),illustratedReader()?null:h("button",{class:"pill",text:"Visuals",onclick:()=>sfVisualSuite(se)}),h("button",{class:"pill",text:(mode.n||"Mode")+" ▾",onclick:()=>modeSheet(se)}),h("button",{"aria-label":"Menu",onclick:()=>menuSheet(se,st)},ic("menu"))));
   if((stats.length||se.life)&&DB.statsTap&&!view.stats){const dl=Object.keys(se.delta||{}).map(k=>k+" "+(se.delta[k]>0?"+":"")+se.delta[k]).join(" · ");ap(app,h("button",{class:"statsmini",onclick:()=>{view.stats=1;rerender()}},h("b",{text:"Stats ▾"}),se.life?"Age "+se.life.age+(dl?" · ":""):"",dl))}
   else if(stats.length||se.life){const bar=h("div",{class:"stats",onclick:DB.statsTap?()=>{view.stats=0;rerender()}:null});if(se.life)ap(bar,h("div",{class:"age"},h("b",{text:"Age "+se.life.age}),se.life.time||"Your life"));
     stats.forEach(s=>{const v=num(se.stats[s.n],num(s.v,0)),lo=num(s.min,0),hi=num(s.max,100),dl=se.delta&&se.delta[s.n];
       ap(bar,h("div",{class:"stat"},h("span",{text:s.n}),h("b",{text:v}),dl?h("s",{text:(dl>0?"+":"")+dl}):null,h("i",null,h("u",{style:"width:"+Math.max(0,Math.min(100,hi>lo?(v-lo)/(hi-lo)*100:0))+"%"}))))});ap(app,bar)}
   if(!isC&&se.statusOn&&se.status&&Object.keys(se.status).length&&!se.sim||(se.sim&&se.sim.ph!=="setup"&&se.statusOn&&se.status&&Object.keys(se.status).length)){const ks=Object.keys(se.status);ap(app,h("button",{class:"statsmini",onclick:()=>statusSheet(se,st)},h("b",{text:"Status ▾ "}),ks.slice(0,3).map(k=>k+" "+se.status[k]).join(" · ").slice(0,90)))}
-  const prog=h("div",{id:"prog"},h("u")),log=h("main",{id:"log"});ap(app,prog,log);
+  const prog=h("div",{id:"prog"},h("u")),log=h("main",{id:"log",class:illustratedReader()?"reader-log":null});ap(app,prog,log);
   const ta=h("textarea",{id:"input",rows:1,value:view.draft||"",placeholder:isC?"Say something…":se.sim&&se.sim.ph==="setup"?"Describe your world, role and starting point…":"What do you do?",oninput:e=>{view.draft=e.target.value},onkeydown:e=>{if(e.key==="Enter"&&(e.metaKey||e.ctrlKey)){e.preventDefault();send(ta.value)}}});
   const use=x=>{ta.value=x;view.draft=x;ta.focus()};
   let lastAi=-1;se.turns.forEach((t,i)=>{if(t.role==="ai")lastAi=i});
@@ -713,7 +779,7 @@ function vChat(){const se=DB.sessions.find(s=>s.id===view.id),st=se&&getStory(se
     if(t.img)ap(log,genImg(t.img));if(t.imgBusy)ap(log,h("p",{class:"sub",text:"Painting this scene…"}));
     const last=i===lastAi&&!busy;
     ap(log,h("div",{class:"turn ai","data-i":i},isC?h("div",{class:"who"},h("span",{text:st.charName})):null,body));
-    if(last&&!isC&&!se.ending)ap(log,h("div",{class:"askline",text:"What do you do?"}));
+    if(last&&!isC&&!se.ending&&!illustratedReader())ap(log,h("div",{class:"askline",text:"What do you do?"}));
     ap(log,h("div",{class:"acts"+(last?"":" old")},last?[h("button",{"aria-label":"Regenerate",onclick:regen},ic("regen")),h("button",{"aria-label":"Continue the scene",onclick:()=>send(CONT,true)},ic("next")),h("button",{"aria-label":"Move the story on without my input",onclick:()=>advance(se)},ic("ff")),t.vs&&t.vs.length>1?verSw(se,t):null]:null,
       h("button",{"aria-label":"Read this reply aloud",onclick:()=>ttsStart([t.text],"this reply")},ic("speak")),h("button",{"aria-label":"Message options",onclick:()=>turnMenu(se,i)},ic("dots")),DB.cost!==false&&t.u?h("span",{class:"spend",text:spendText(t)}):null));
     if(t.info&&!isC)ap(log,h("div",{class:"infobox"},h("b",{text:"INFO"}),String(t.info).split(/\s+\/\s+|\n/).filter(Boolean).map(x=>h("p",{text:x}))));
@@ -732,8 +798,12 @@ function vChat(){const se=DB.sessions.find(s=>s.id===view.id),st=se&&getStory(se
   if(!se.turns.length&&!busy&&!setup)ap(log,h("div",{class:"hint"},"Ready when you are.",h("div",{class:"row",style:"justify-content:center"},h("button",{class:"primary",text:isC?"Start chat":se.life?"Begin life":"Start the story",onclick:()=>begin(se,st)}))));
   if(se.ending&&!busy){const e=ends.find(x=>x.n===se.ending);if(e)ap(log,h("div",{class:"ending r-"+e.r},h("small",{text:"Ending reached"}),h("b",{text:e.r+" · "+e.n}),h("div",{class:"row"},h("button",{class:"primary",text:"View ending",onclick:()=>viewEnding(se,st,e)}),h("button",{text:"Keep playing",onclick:()=>{se.ended.push(e.n);se.ending=null;save();rerender()}}))))}
   if(!busy&&DB.sugg!==false&&!se.ending&&se.sugg&&se.sugg.length)ap(log,h("div",{class:"sgs"},se.sugg.map(x=>{const b=h("div",{class:"body"});fill(b,x);
-    return h("div",{class:"sg"},h("button",{class:"sgside","aria-label":"Edit this reply",onclick:()=>use(x)},ic("edit")),h("div",{class:"sgtext",role:"button",tabindex:"0",onclick:()=>use(x)},b),h("button",{class:"sgside","aria-label":"Send this reply",onclick:()=>send(x)},ic("up")))})));
-  const f=h("footer");
+    if(illustratedReader())return h("div",{class:"reader-suggestion"},b,
+      h("div",{class:"reader-suggestion-actions"},
+        h("button",{text:"Edit","aria-label":"Edit this reply",onclick:()=>use(x)}),
+        h("button",{class:"primary",text:"Send","aria-label":"Send this reply",onclick:()=>send(x)})));
+    return h("div",{class:"sg"},h("button",{class:"sgside","aria-label":"Edit this reply",onclick:()=>use(x)},ic("edit")),h("div",{class:"sgtext",role:"button",tabindex:"0",onclick:()=>use(x),onkeydown:e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();use(x)}}},b),h("button",{class:"sgside","aria-label":"Send this reply",onclick:()=>send(x)},ic("up")))})));
+  const f=h("footer",{class:illustratedReader()?"reader-composer":null});
   if(TTS.on)ap(f,playerEl());
   if(!busy&&se.life&&se.turns.length)ap(f,h("div",{class:"skips"},SKIPS.map(k=>h("button",{text:k[0],onclick:()=>send(k[2]+" Sum up what changes for me and the people around me, then stop at a moment that needs my decision.",false,k[1])}))));
   ap(f,h("div",{class:"bar"},ta,
@@ -742,6 +812,7 @@ function vChat(){const se=DB.sessions.find(s=>s.id===view.id),st=se&&getStory(se
     h("button",{class:DB.sugg!==false?"on":"","aria-label":"Suggested replies on or off",onclick:()=>{DB.sugg=DB.sugg===false;save();rerender()}},ic("spark")),
     busy||ADV.on?h("button",{class:"txt",text:"Stop","aria-label":"Stop",onclick:()=>{ADV.stop=true;if(ctrl)ctrl.abort();else if(busy)PRE.cancel=true;if(!busy){ADV.on=false;rerender()}}}):h("button",{class:"primary","aria-label":"Send",onclick:()=>send(ta.value)},ic("send"))));
   ap(app,f,h("div",{id:"bleft"}));if(DB.book)app.classList.add("bookmode");
+  if(illustratedReader())syncReaderViewport();
   const je=view.jump!=null?document.getElementById("ch"+view.jump):null;view.jump=null;const rs=view.restore;view.restore=false;
   const pe=rs&&se.pos?log.querySelector('[data-i="'+se.pos.i+'"]'):null;
   if(je){log.scrollTop=je.offsetTop-log.offsetTop;view.scroll=null}else if(pe){log.scrollTop=pe.offsetTop-log.offsetTop+(se.pos.o||0);view.scroll=null}else if(view.scroll!=null){log.scrollTop=view.scroll;view.scroll=null}else log.scrollTop=log.scrollHeight;
@@ -1336,6 +1407,17 @@ function menuSheet(se,st){closeSheet(true);const ends=ed(se,st),fo=foundOf(st),n
   const bg=h("div",{class:"drawerbg",id:"sheetbg",onclick:e=>{if(e.target===bg)closeSheet()}},h("div",{class:"drawer"},
     h("div",{class:"spent",text:"Spent on this story: "+costText(se.use)}),isOC()?h("div",{class:"spent",text:goText(ocPct())+" (estimated)"}):null,
     h("button",{class:"dhead","aria-label":"Open the story page",onclick:()=>go(st.builtin?{n:"story",id:st.id}:{n:"edit",id:st.id})},h("i",{style:grad(stHue(st)),text:String(name).split(/\s+/).map(w=>w[0]).join("").slice(0,3).toUpperCase()}),h("b",{text:name}),ic("edit")),
+    illustratedReader()?[
+      h("div",{class:"dsec",text:"Reading and artwork"}),
+      drow("Visual Suite",()=>sfVisualSuite(se)),
+      drow("Appearance",()=>{closeSheet(true);window.SFVisualV48?.open()}),
+      drow("Dashboard",()=>{closeSheet(true);window.SFCharacterV50?.open()}),
+      drow("Character Studio",()=>{closeSheet(true);window.SFCharacterStudioV51?.open("Profiles")}),
+      drow("Character profiles",()=>{closeSheet(true);window.SFCinematicV53?.open()}),
+      drow("Map & Art",()=>{closeSheet(true);window.SFRelationshipV52?.open()}),
+      drow("Scene & Portraits",()=>{closeSheet(true);window.SFScenesV54?.open()}),
+      drow("Toggle cinematic dialogue",()=>{closeSheet(true);$(".sf53-tools button")?.click()})
+    ]:null,
     h("div",{class:"dsec",text:"Session settings"}),
     st.kind!=="character"?drow("World Status",()=>worldSheet(se,st),se.sim&&se.sim.ph==="setup"?"Setting up":""):null,
     drow("Commands",()=>cmdSheet(se,st)),
