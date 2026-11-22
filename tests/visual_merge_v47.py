@@ -46,6 +46,7 @@ with sync_playwright() as p:
         pg.click("nav.tabs button:has-text('Studio')"); pg.wait_for_timeout(300)
         ok(pg.evaluate("document.documentElement.scrollWidth") <= vp["width"], f"{name}: Studio tab fits the screen width")
         pg.evaluate("go({n:'chat',id:'t1'})"); pg.wait_for_selector("#log")
+        ok(pg.evaluate("document.documentElement.scrollWidth <= innerWidth"), f"{name}: story fits the screen width")
         before = strip(db(pg)["sessions"][0])
         pg.click("button.pill:has-text('Visuals')"); pg.wait_for_timeout(300)
         for t in ["Character RPG", "Relationships", "World Atlas", "Timeline", "Visual Novel", "Themes", "Art Studio"]:
@@ -80,15 +81,43 @@ with sync_playwright() as p:
         ok(not db(pg).get("memv2"), f"{name}: memory not switched on globally")
         # offline
         if name == "desktop":
-            pg.goto(f"http://127.0.0.1:{PORT}/index.html"); pg.wait_for_selector(".cta")
-            pg.evaluate("navigator.serviceWorker.ready"); pg.wait_for_timeout(1500); pg.reload(); pg.wait_for_selector(".cta")
-            ctx.set_offline(True); pg.reload()
-            try: pg.wait_for_selector(".cta", timeout=8000); off = True
-            except Exception: off = False
-            ok(off, "app opens offline after one visit")
-            if off:
-                pg.click("nav.tabs button:has-text('Studio')"); pg.wait_for_timeout(300)
-                ok(pg.locator("text=Visual Suite").count() > 0, "Studio works offline")
+            url = f"http://127.0.0.1:{PORT}/index.html"
+            pg.goto(url)
+            pg.wait_for_selector(".cta")
+            pg.wait_for_function("navigator.serviceWorker.controller !== null")
+            missing = pg.evaluate("""async () => {
+                const urls = [...document.querySelectorAll('script[src], link[rel="stylesheet"]')]
+                    .map(el => new URL(el.src || el.href))
+                    .filter(url => url.origin === location.origin);
+                const misses = await Promise.all(urls.map(async url =>
+                    (await caches.match(url.href)) ? null : url.pathname + url.search));
+                return misses.filter(Boolean);
+            }""")
+            ok(not missing, "offline cache contains loaded scripts and styles: " + str(missing))
+            ctx.set_offline(True)
+            pg.reload()
+            pg.wait_for_selector(".cta")
+            ok(True, "home opens on an offline reload")
+            pg.close()
+            pg = ctx.new_page()
+            pg.on("pageerror", lambda error: errs.append(str(error)))
+            failed_local = []
+            pg.on("requestfailed", lambda request: failed_local.append(request.url)
+                  if request.url.startswith(f"http://127.0.0.1:{PORT}/") else None)
+            pg.goto(url)
+            pg.wait_for_selector(".cta")
+            pg.click("nav.tabs button:has-text('Studio')")
+            pg.get_by_text("Visual Suite", exact=True).first.wait_for()
+            pg.evaluate("go({n:'chat',id:'t1'})")
+            pg.wait_for_selector("#log")
+            pg.click("button.pill:has-text('Visuals')")
+            pg.click(".sf-v46-tabs button:has-text('Visual Novel')")
+            pg.get_by_text("Visual Novel preview", exact=False).wait_for()
+            pg.evaluate("closeSheet(true)")
+            pg.click("button[aria-label='Menu']")
+            pg.click("button.drow:has-text('Story memory (beta)')")
+            pg.get_by_role("heading", name="Story memory (beta)", exact=True).wait_for()
+            ok(not failed_local, "cold offline story, Visual Novel, and memory controls load: " + str(failed_local))
         br.close()
 srv.terminate()
 ok(not errs, "no page errors " + str(errs[:3]))
