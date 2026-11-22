@@ -1,5 +1,50 @@
-const C="sf-v47";
-self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(["./","index.html","icon-192.png"])));self.skipWaiting()});
-self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>/^sf-v/.test(k)&&k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
-self.addEventListener("fetch",e=>{const u=new URL(e.request.url);if(e.request.method!=="GET"||u.origin!==location.origin||u.search)return;
-e.respondWith(fetch(e.request).then(r=>{const cp=r.clone();caches.open(C).then(c=>c.put(e.request,cp));return r}).catch(()=>caches.match(e.request)))});
+const CACHE = "sf-v55";
+const APP_FILES = [
+  "./",
+  "index.html",
+  "memory-engine.js",
+  "icon-192.png",
+  "visual-customization-v48.js",
+  "visual-customization-v48.css",
+  "cinematic-ui-v49.js",
+  "cinematic-ui-v49.css",
+  "character-ui-v50.js",
+  "character-ui-v50.css",
+  "character-studio-v51.js",
+  "character-studio-v51.css",
+  "relationship-map-v52.js",
+  "relationship-map-v52.css",
+  "cinematic-profiles-v53.js",
+  "cinematic-profiles-v53.css",
+  "cinematic-scenes-v54.js",
+  "cinematic-scenes-v54.css",
+];
+
+self.addEventListener("install", event => {
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(APP_FILES))
+    .then(() => self.skipWaiting()));
+});
+
+self.addEventListener("activate", event => {
+  event.waitUntil(caches.keys().then(keys => Promise.all(
+    keys.filter(key => /^sf-v/.test(key) && key !== CACHE).map(key => caches.delete(key))
+  )).then(() => self.clients.claim()));
+});
+
+self.addEventListener("fetch", event => {
+  const url = new URL(event.request.url);
+  if (event.request.method !== "GET" || url.origin !== location.origin || url.search) return;
+
+  const network = fetch(event.request);
+  event.waitUntil(network.then(response => {
+    if (!response.ok) return;
+    const copy = response.clone();
+    return caches.open(CACHE).then(cache => cache.put(event.request, copy));
+  }).catch(() => {}));
+  event.respondWith(network.catch(async error => {
+    const cache = await caches.open(CACHE);
+    const saved = await cache.match(event.request);
+    if (saved) return saved;
+    throw error;
+  }));
+});

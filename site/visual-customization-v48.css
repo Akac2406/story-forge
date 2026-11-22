@@ -1,0 +1,24 @@
+/* v48 scoped customization interface */
+.sf48-launch{font-size:12px;padding:7px 10px;border-color:var(--accent);color:var(--accent);white-space:nowrap}
+#sf48-modal{position:fixed;inset:0;z-index:9999;background:#000b;display:flex;align-items:center;justify-content:center;padding:12px}
+.sf48-panel{background:var(--bg);color:var(--text);border:1px solid var(--accent);border-radius:18px;width:min(560px,100%);max-height:92dvh;overflow-y:auto;padding:18px;box-shadow:0 25px 90px #000a}
+.sf48-head{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:18px}
+.sf48-muted{font-size:12px;color:var(--muted);line-height:1.5}
+.sf48-panel label{display:block;margin:10px 0;font-size:13px;color:var(--muted)}
+.sf48-panel label span{display:block;margin-bottom:5px}
+.sf48-panel select,.sf48-panel input{max-width:100%;width:100%}
+.sf48-controls{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.sf48-custom{border-top:1px solid var(--border);margin-top:12px;padding-top:8px}
+.sf48-colors{display:flex;gap:8px}.sf48-colors input{height:46px;padding:4px;min-width:0}
+.sf48-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.sf48-actions input{max-width:260px;font-size:12px}
+html[data-sf-layout="novelreader"] .msg,html[data-sf-layout="novelreader"] .ai{line-height:1.9;letter-spacing:.01em}
+html[data-sf-layout="immersivecinema"] .page{padding-left:10px;padding-right:10px}
+html[data-sf-layout="gamelauncher"] .cover{height:130px}
+html[data-sf-layout="gamelauncher"] .card{box-shadow:0 8px 28px #0005}
+html[data-sf-layout="characterrpg"] .card,html[data-sf-layout="partymanager"] .card{border:1px solid var(--accent)}
+html[data-sf-layout="choicecards"] .choice{padding:14px;border-radius:16px}
+html[data-sf-motion="cinematic"] .card{transition:transform .22s,box-shadow .22s}
+html[data-sf-motion="cinematic"] .card:hover{transform:translateY(-3px);box-shadow:0 14px 36px #0007}
+html[data-sf-motion="subtle"] button{transition:background-color .15s,border-color .15s}
+@media(max-width:460px){.sf48-controls{grid-template-columns:1fr}.sf48-launch{font-size:11px;padding:6px}.sf48-panel{padding:14px}}
+@media(prefers-reduced-motion:reduce){html[data-sf-motion] *,html[data-sf-motion] *:before,html[data-sf-motion] *:after{transition:none!important;animation:none!important}}
