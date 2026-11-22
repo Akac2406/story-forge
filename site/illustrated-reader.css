@@ -1,0 +1,133 @@
+body[data-ui-layout="illustrated"] {
+  --bg: #151820;
+  --hdr: #171b24;
+  --card: #212633;
+  --card2: #292f3d;
+  --border: #393f4e;
+  --text: #f8f1e6;
+  --muted: #bcb6bb;
+  --accent: #e9b47c;
+  --accent2: #e5c3a5;
+  --dlg: #f8f1e6;
+  --grad: none;
+  --ub: #212633;
+  --ubb: #393f4e;
+  --ubt: #f8f1e6;
+}
+body[data-ui-layout="illustrated"] #app { max-width: 860px; }
+body[data-ui-layout="illustrated"] #app > header h1 {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body[data-ui-layout="illustrated"] #app > nav.tabs {
+  background: var(--hdr);
+  border-bottom: 1px solid var(--border);
+}
+.reader-feature {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 8px 0 14px;
+  padding: 16px 14px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px 28px;
+  background: radial-gradient(ellipse at top, #3b3341, var(--bg) 80%);
+  text-align: center;
+}
+.reader-feature strong, .reader-feature h2 {
+  margin: 0;
+  font: 700 clamp(1.5rem, 6vw, 2.35rem)/1.2 Georgia, serif;
+}
+.reader-feature .reader-cover { width: clamp(132px, 48vw, 244px); }
+.reader-cover {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 6px 14px;
+  background: var(--card);
+}
+.reader-cover-placeholder {
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  color: #fff;
+  text-align: center;
+  font: 700 1.1rem/1.2 Georgia, serif;
+  overflow-wrap: anywhere;
+}
+.reader-shelf {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: clamp(110px, 30vw, 152px);
+  gap: 10px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  padding: 4px 2px 14px;
+}
+.reader-tile {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  scroll-snap-align: start;
+}
+.reader-tile b { display: block; margin-top: 6px; overflow-wrap: anywhere; }
+.reader-tools { margin-top: 16px; }
+.reader-session-actions { display: flex; flex-direction: row; gap: 10px; }
+.reader-session-actions button { flex: 1; min-height: 44px; }
+.reader-details .body, .reader-log .turn.ai .body {
+  font-family: var(--bodyfont, Georgia, serif);
+  font-size: calc(var(--fs) + 2px);
+  line-height: var(--lh, 1.75);
+}
+body[data-ui-layout="illustrated"] #log.reader-log {
+  padding-inline: clamp(14px, 4vw, 32px);
+  overflow-wrap: anywhere;
+  gap: 10px;
+}
+.reader-log > .genimg {
+  width: 100%;
+  margin: 10px 0;
+  border-radius: 6px 18px;
+}
+.reader-suggestion {
+  padding: 10px 12px 8px;
+  border-start-start-radius: 12px;
+  border-end-start-radius: 12px;
+  border-inline-start: 2px solid var(--accent);
+  background: var(--card);
+}
+.reader-suggestion .body {
+  font: max(1rem, var(--fs))/1.5 var(--bodyfont, Georgia, serif);
+}
+.reader-suggestion .body p { margin-bottom: 4px; }
+.reader-suggestion-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+.reader-suggestion-actions button { min-height: 44px; min-width: 60px; }
+.reader-composer .bar { border-radius: 8px 20px; }
+.reader-composer .bar button { min-width: 36px; }
+.reader-composer #input { min-width: 0; }
+body[data-ui-layout="illustrated"] :is(.reader-feature, .reader-tile, .reader-suggestion-actions button):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.reader-discover > .sf49-hero,
+#app.reader-playing > :is(.sf49-viewbar, .sf53-tools, .sf54-controls),
+#app.reader-playing > header :is(.sf48-launch, .sf50-open, .sf51-launch, .sf52-launch) {
+  display: none;
+}
+#app.reader-playing.reader-keyboard {
+  position: fixed;
+  inset-inline: 0;
+  top: var(--reader-visible-top);
+  height: var(--reader-visible-height);
+}

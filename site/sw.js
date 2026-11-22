@@ -1,7 +1,8 @@
-const CACHE = "sf-v55";
+const CACHE = "sf-v56";
 const APP_FILES = [
   "./",
   "index.html",
+  "illustrated-reader.css",
   "memory-engine.js",
   "icon-192.png",
   "visual-customization-v48.js",
