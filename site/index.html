@@ -320,7 +320,7 @@ const KEY="story-forge-v2",app=document.getElementById("app"),$=s=>document.quer
 function ap(p,...k){for(const c of k.flat(4)){if(c==null||c===false)continue;p.appendChild(c.nodeType?c:document.createTextNode(String(c)))}}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const num=(v,d)=>{const n=parseFloat(v);return isFinite(n)?n:d};
-const VER=56,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
+const VER=57,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
 function fixCh(se){const c=(se.chaps||[]).filter(x=>x&&x.i>=0&&x.i<Math.max(1,se.turns.length)).sort((a,b)=>a.i-b.i),out=[];c.forEach(x=>{if(!out.length||x.i>out[out.length-1].i)out.push(x)});if(!out.length||out[0].i!==0)out.unshift({i:0,t:""});se.chaps=out;return out}
 function autoCh(se){const N=se.chapN==null?1500:se.chapN,out=[{i:0,t:""}];if(N>0){let acc=0;se.turns.forEach((t,i)=>{if(t.role==="user"&&i>0&&(N===1?acc>0:acc>=N)){out.push({i,t:""});acc=0}if(t.role==="ai")acc+=words(t.text)})}return out}
 function chapsOf(se){if(!se.chaps)se.chaps=autoCh(se);return fixCh(se)}
@@ -1171,7 +1171,7 @@ async function z8(u8,de){const st=new Blob([u8]).stream().pipeThrough(de?new Dec
 async function syncPack(k,obj){let d=new TextEncoder().encode(JSON.stringify(obj)),v="1";if(window.CompressionStream){d=await z8(d,false);v="2"}const iv=crypto.getRandomValues(new Uint8Array(12)),ct=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},k.key,d));return v+"."+b64u(iv)+"."+b64u(ct)}
 async function syncOpen(k,txt){const p=txt.split(".");let d=new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv:ub64(p[1])},k.key,ub64(p[2])));if(p[0]==="2")d=await z8(d,true);return JSON.parse(new TextDecoder().decode(d))}
 function bury(id){DB.del=DB.del||{};DB.del[id]=Date.now()}
-function syncMerge(r){DB.del=DB.del||{};Object.keys(r.del||{}).forEach(k=>{DB.del[k]=Math.max(DB.del[k]||0,r.del[k])});
+function syncMergeKeys(r){const x=r&&r.keys;if(!x||typeof x!=="object"||!(+x.at>(DB.keysAt||0)))return false;DB.keysAt=+x.at;DB.syncKeys=!!x.on;     if(x.on&&typeof x.ocKey==="string"&&x.ocKey&&x.ocKey!==DB.ocKey){DB.ocKey=x.ocKey;if(!DB.prov)DB.prov="opencode";return true}return false} function syncMerge(r){DB.del=DB.del||{};SYNC.gotKey=syncMergeKeys(r);Object.keys(r.del||{}).forEach(k=>{DB.del[k]=Math.max(DB.del[k]||0,r.del[k])});
   const mg=(loc,rem,tf)=>{const m=new Map();(loc||[]).forEach(x=>m.set(x.id,x));(rem||[]).forEach(x=>{if(!x||!x.id)return;const l=m.get(x.id);if(!l||tf(x)>tf(l))m.set(x.id,x)});return[...m.values()].filter(x=>!DB.del[x.id])};
   DB.sessions=mg(DB.sessions,r.sessions,x=>x.updated||0);DB.stories=mg(DB.stories,r.stories,x=>x.updated||0);DB.chars=mg(DB.chars,r.chars,()=>0);
   DB.found=DB.found||{};Object.keys(r.found||{}).forEach(k=>{DB.found[k]=Array.from(new Set((DB.found[k]||[]).concat(r.found[k]||[])))});DB.libWiki=Object.assign({},r.libWiki||{},DB.libWiki||{})}
@@ -1180,9 +1180,9 @@ async function syncNow(manual){if(SYNC.busy)return;if(!DB.syncPass||!ocBase()){i
     if(r.status===501)throw new Error("Your connector has no storage yet. Add a KV namespace named SF to the Worker (steps in Settings).");
     let changed=false;if(r.ok){const txt=await r.text();if(txt){let rem;try{rem=await syncOpen(k,txt)}catch(e){throw new Error("That passphrase doesn’t match the one your other device uses.")}const before=JSON.stringify([DB.sessions.length,DB.stories.length,DB.sessions.map(x=>x.updated)]);syncMerge(rem);changed=before!==JSON.stringify([DB.sessions.length,DB.stories.length,DB.sessions.map(x=>x.updated)])}}
     else if(r.status!==404)throw new Error("The connector answered with an error ("+r.status+"). Update the connector code.");
-    const body=await syncPack(k,{v:1,at:Date.now(),sessions:DB.sessions,stories:DB.stories,chars:DB.chars,found:DB.found||{},libWiki:DB.libWiki||{},del:DB.del||{}});
+    const kp={on:!!DB.syncKeys,at:DB.keysAt||0};if(DB.syncKeys&&DB.ocKey)kp.ocKey=DB.ocKey;     const body=await syncPack(k,{v:1,at:Date.now(),keys:kp,sessions:DB.sessions,stories:DB.stories,chars:DB.chars,found:DB.found||{},libWiki:DB.libWiki||{},del:DB.del||{}});
     const w=await fetch(url,{method:"PUT",headers:Object.assign({"content-type":"text/plain"},hd),body});if(!w.ok)throw new Error(w.status===413?"Your data is too large to sync.":w.status===404||w.status===405?"Your connector is out of date. Paste the latest connector code from Settings into your Worker and deploy it.":"Couldn’t save to the connector ("+w.status+").");
-    DB.syncAt=Date.now();SYNC.busy=false;save();if(changed&&!busy&&!$("#sheetbg")&&view.n!=="chat"&&view.n!=="edit")render();if(manual)toast(changed?"Synced. Stories from your other devices are here now.":"Synced.")}
+    DB.syncAt=Date.now();SYNC.busy=false;save();if(changed&&!busy&&!$("#sheetbg")&&view.n!=="chat"&&view.n!=="edit")render();if(SYNC.gotKey){SYNC.gotKey=false;toast("Synced. Your OpenCode key arrived from your other device.");if(!busy&&view.n!=="chat")render()}else if(manual)toast(changed?"Synced. Stories from your other devices are here now.":"Synced.")}
   catch(e){if(manual)toast(errMsg(e));else DB.syncErr=String(e.message||e)}finally{SYNC.busy=false}}
 function syncSoon(){if(!DB.syncAuto||SYNC.busy||!DB.syncPass)return;clearTimeout(SYNC.t);SYNC.t=setTimeout(()=>syncNow(false),20000)}
 /* ---------- Generated pictures ---------- */
@@ -2061,8 +2061,8 @@ function vSettings(){ap(app,h("header",null,back(()=>go({n:"home",tab:"discover"
         const c1=add(DB.stories,n.stories),c2=add(DB.sessions,n.sessions);add(DB.chars,n.chars);DB.found=DB.found||{};Object.keys(n.found||{}).forEach(k=>{DB.found[k]=Array.from(new Set((DB.found[k]||[]).concat(n.found[k]||[])))});
         save();const sceneNotice=restoreScenes(DB.sessions.filter(s=>incomingSessions.has(s.id)));
         render();toast("Added "+c2+" playthrough"+(c2===1?"":"s")+" and "+c1+" world"+(c1===1?"":"s")+"."+sceneNotice)}
-      else{DB=norm(Object.assign({},d,{key:DB.key,ocKey:DB.ocKey,ocProxy:DB.ocProxy,prov:DB.prov,refs:DB.refs||[],migrated:true}));save();const sceneNotice=restoreScenes(DB.sessions);applyFs();render();toast("Backup restored."+sceneNotice)}}catch(x){toast("That file is not a Story Forge backup.")}};rd.readAsText(fl)}});
-  const backup=async()=>{const d=Object.assign({},DB);delete d.key;delete d.ocKey;delete d.price;delete d.quirk;delete d.refs;
+      else{DB=norm(Object.assign({},d,{key:DB.key,ocKey:DB.ocKey,ocProxy:DB.ocProxy,prov:DB.prov,syncPass:DB.syncPass,syncKeys:DB.syncKeys,keysAt:DB.keysAt,refs:DB.refs||[],migrated:true}));save();const sceneNotice=restoreScenes(DB.sessions);applyFs();render();toast("Backup restored."+sceneNotice)}}catch(x){toast("That file is not a Story Forge backup.")}};rd.readAsText(fl)}});
+  const backup=async()=>{const d=Object.assign({},DB);delete d.key;delete d.ocKey;delete d.syncPass;delete d.ocProxy;delete d.price;delete d.quirk;delete d.refs;
     const presets=window.SFScenesV54?.exportPresets(DB.sessions);
     if(presets&&Object.keys(presets).length)d.scenePresets=presets;
     const blob=new Blob([JSON.stringify(d)],{type:"application/json"}),name="story-forge-backup.json";
@@ -2070,7 +2070,7 @@ function vSettings(){ap(app,h("header",null,back(()=>go({n:"home",tab:"discover"
     const a=h("a",{href:URL.createObjectURL(blob),download:name});ap(document.body,a);a.click();a.remove()};
   ap(m,h("h2",{text:"AI service"}),fld("Send stories to",sel(DB.prov||"openrouter",[["openrouter","OpenRouter (pay per use)"],["opencode","OpenCode Go (monthly subscription)"]],v=>{DB.prov=v;save();soft()})),
     isOC()?[h("p",{class:"sub",text:"Every mode uses DeepSeek V4.1 Flash. OpenCode doesn’t let web apps call it directly, so the app talks to it through a small connector you set up once on Cloudflare."}),
-      fld("OpenCode API key (stored only on this device)",inp(DB.ocKey,v=>{DB.ocKey=v.trim();save()},"Your OpenCode key","password")),
+      fld(DB.syncKeys?"OpenCode API key (on this device, and in your encrypted sync)":"OpenCode API key (stored only on this device)",inp(DB.ocKey,v=>{DB.ocKey=v.trim();if(DB.syncKeys)DB.keysAt=Date.now();save();syncSoon()},"Your OpenCode key","password")),
       fld("Connector address",inp(DB.ocProxy,v=>{DB.ocProxy=v.trim();save()},"https://story-forge.yourname.workers.dev")),
       h("div",{class:"row"},testBtn({n:"OpenCode",id:OC_MODEL}),h("button",{text:"Connector code",onclick:workerSheet})),
       h("p",{class:"sub",text:"OpenCode says Go is designed for coding agents and watches for traffic that looks unusual. Story use may not fit that, so your account could be limited."}),
@@ -2103,7 +2103,7 @@ function vSettings(){ap(app,h("header",null,back(()=>go({n:"home",tab:"discover"
     h("h2",{text:"Sync between devices"}),h("p",{class:"sub",text:"Keeps your stories, playthroughs and avatars the same on every device, through your own Cloudflare connector. Everything is encrypted with your passphrase before it leaves the device. Books, reference texts and pictures stay on each device."}),
     isOC()?null:fld("Connector address",inp(DB.ocProxy,v=>{DB.ocProxy=v.trim();save()},"https://story-forge.yourname.workers.dev")),
     fld("Sync passphrase (use the same one on each device)",inp(DB.syncPass,v=>{DB.syncPass=v;save()},"A long phrase only you know","password")),
-    chk("Sync automatically",!!DB.syncAuto,v=>{DB.syncAuto=v;save()}),
+    chk("Sync automatically",!!DB.syncAuto,v=>{DB.syncAuto=v;save()}),     chk("Also sync my OpenCode key",!!DB.syncKeys,v=>{DB.syncKeys=v;DB.keysAt=Date.now();save();syncSoon()}),     h("p",{class:"sub",text:"When on, your OpenCode key is locked with your sync passphrase like everything else, so a new device only needs the connector address and the passphrase. Turning it off on any device removes the key from your connector at the next sync; keys already on a device stay there. Your OpenRouter key never syncs."}),
     h("div",{class:"row"},h("button",{class:"primary",text:"Sync now",onclick:()=>syncNow(true)}),h("button",{text:"Connector code",onclick:workerSheet})),
     h("p",{class:"sub",text:(DB.syncAt?"Last synced "+new Date(DB.syncAt).toLocaleString()+". ":"")+"One-time setup in Cloudflare: Storage & Databases → KV → Create a namespace (any name). Then open your Worker → Settings → Bindings → Add binding → KV namespace, variable name SF, and pick the namespace. Finally paste the latest connector code and deploy."}),
     h("p",{class:"sub",text:"Used once per picture you add to a story. It needs an OpenRouter key and a model that can see images. The default costs a fraction of a cent per picture."}),
@@ -2132,7 +2132,7 @@ function vSettings(){ap(app,h("header",null,back(()=>go({n:"home",tab:"discover"
         h("p",{class:"sub",text:"Uses the voices installed on this device. Reading may stop if the screen locks, and it stops when you leave the story."})]})():h("p",{class:"sub",text:"This browser can’t read aloud."}),
     h("h2",{text:"About"}),h("p",{class:"sub",text:"Story Forge version "+VER}),h("div",{class:"row"},h("button",{text:"Check for update",onclick:()=>checkUpdate(true)})),
     h("h2",{text:"Spending"}),h("p",{class:"sub",text:"All stories so far, as reported by OpenRouter: "+costText(DB.use)}),
-    h("h2",{text:"Backup"}),h("p",{class:"sub",text:"Your stories live only in this browser, on this device. To move them, save a backup here, send the file to your other device, and add it there. Backups include scene backgrounds, captions, and portrait selections. Restoring a backup keeps any scene already on this device. The backup leaves out your API key and any reference texts you imported."}),file,
+    h("h2",{text:"Backup"}),h("p",{class:"sub",text:"Your stories live only in this browser, on this device. To move them, save a backup here, send the file to your other device, and add it there. Backups include scene backgrounds, captions, and portrait selections. Restoring a backup keeps any scene already on this device. The backup leaves out your API keys, sync passphrase, connector address and any reference texts you imported."}),file,
     h("div",{class:"row"},h("button",{class:"primary",text:"Save or send a backup",onclick:backup}),h("button",{text:"Add stories from a backup",onclick:()=>{merge=true;file.click()}}),confirmBtn("Replace everything with a backup",()=>{merge=false;file.click()},"")))}
 
 /* ---------- Finding the source work ---------- */
