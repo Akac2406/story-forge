@@ -1,4 +1,4 @@
-const CACHE = "sf-v63";
+const CACHE = "sf-v64";
 const APP_FILES = [
   "./",
   "index.html",

@@ -324,7 +324,7 @@ const KEY="story-forge-v2",app=document.getElementById("app"),$=s=>document.quer
 function ap(p,...k){for(const c of k.flat(4)){if(c==null||c===false)continue;p.appendChild(c.nodeType?c:document.createTextNode(String(c)))}}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const num=(v,d)=>{const n=parseFloat(v);return isFinite(n)?n:d};
-const VER=63,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
+const VER=64,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
 function fixCh(se){const c=(se.chaps||[]).filter(x=>x&&x.i>=0&&x.i<Math.max(1,se.turns.length)).sort((a,b)=>a.i-b.i),out=[];c.forEach(x=>{if(!out.length||x.i>out[out.length-1].i)out.push(x)});if(!out.length||out[0].i!==0)out.unshift({i:0,t:""});se.chaps=out;return out}
 function autoCh(se){const N=se.chapN==null?1500:se.chapN,out=[{i:0,t:""}];if(N>0){let acc=0;se.turns.forEach((t,i)=>{if(t.role==="user"&&i>0&&(N===1?acc>0:acc>=N)){out.push({i,t:""});acc=0}if(t.role==="ai")acc+=words(t.text)})}return out}
 function chapsOf(se){if(!se.chaps)se.chaps=autoCh(se);return fixCh(se)}
@@ -2748,4 +2748,11 @@ addEventListener("pagehide",()=>{if(idb){clearTimeout(saveT);idbSet(KEY,JSON.str
   applyFs();save();render();if(DB.syncAuto&&DB.syncPass)setTimeout(()=>syncNow(false),1500)})();
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&DB.syncAuto&&DB.syncPass&&!busy)syncNow(false)});
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+/* Test copies (Netlify previews and pinned deploy links) keep their own stories and keys. Say so, and link home. */
+(()=>{const HOME="celebrated-brigadeiros-580c41.netlify.app",hn=location.hostname;if(hn===HOME||!/(^|--)celebrated-brigadeiros-580c41\.netlify\.app$/.test(hn))return;
+  const b=document.createElement("div");b.id="testcopy";b.setAttribute("role","note");
+  b.style.cssText="position:sticky;top:0;z-index:9999;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 12px;background:#7a2e12;color:#fff;font:14px/1.35 system-ui,-apple-system,sans-serif";
+  const t=document.createElement("span");t.textContent="This is a separate test copy of Story Forge. It may not get updates, and its stories and keys aren’t shared with your app.";
+  const a=document.createElement("a");a.href="https://"+HOME+"/";a.textContent="Open my Story Forge";a.style.cssText="color:#fff;font-weight:600;text-decoration:underline";
+  b.append(t,a);document.body.prepend(b)})();
 </script><script src="visual-customization-v48.js"></script><script src="cinematic-ui-v49.js"></script><script src="character-ui-v50.js"></script><script src="character-studio-v51.js"></script><script src="relationship-map-v52.js"></script><script src="cinematic-profiles-v53.js"></script><script src="cinematic-scenes-v54.js"></script></body></html>
