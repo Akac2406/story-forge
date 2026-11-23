@@ -179,8 +179,12 @@ input[type=range]{padding:0;border:0;background:transparent;accent-color:var(--a
 .golim{font-size:12px;color:var(--muted);text-align:right;margin-top:-6px}
 .golim.warn{color:#ffb35c}.golim.full{color:#ff6b7a}
 .chsay{flex:0 0 auto;width:36px;height:36px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--muted)}
-#player{display:flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--accent);border-radius:999px;padding:5px 6px 5px 14px}
+#player{display:grid;gap:2px;background:var(--card2);border:1px solid var(--accent);border-radius:16px;padding:5px 8px}
+.player-controls,.player-timeline{display:flex;align-items:center;gap:4px;min-width:0}
+#player #pseek{flex:1;min-width:0;width:auto;height:24px;margin:0;accent-color:var(--accent);padding:0}
+.player-timeline time,.player-timeline .player-total{flex:none;font-size:12px;font-variant-numeric:tabular-nums;color:var(--muted)}
 #player span{flex:1;min-width:0;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#player .player-total{flex:none}
 #player button{flex:0 0 auto;height:34px;min-width:34px;padding:0 9px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:13px}
 header h1[role=button]{cursor:pointer}
 :root[data-theme=paper]{--bg:#f6efe2;--card:#fffaf0;--card2:#efe4cf;--text:#2b2419;--muted:#7c6f5c;--accent:#9b4d22;--accent2:#c7782b;--border:#e0d4bf;--dlg:#2f5d8a;--grad:none;--hdr:rgba(246,239,226,.92);--ub:#ead9bd;--ubb:#dcc7a3;--ubt:#7c5a2e;--em:#5d5040;--onacc:#fff;color-scheme:light}
@@ -320,7 +324,7 @@ const KEY="story-forge-v2",app=document.getElementById("app"),$=s=>document.quer
 function ap(p,...k){for(const c of k.flat(4)){if(c==null||c===false)continue;p.appendChild(c.nodeType?c:document.createTextNode(String(c)))}}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const num=(v,d)=>{const n=parseFloat(v);return isFinite(n)?n:d};
-const VER=57,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
+const VER=63,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
 function fixCh(se){const c=(se.chaps||[]).filter(x=>x&&x.i>=0&&x.i<Math.max(1,se.turns.length)).sort((a,b)=>a.i-b.i),out=[];c.forEach(x=>{if(!out.length||x.i>out[out.length-1].i)out.push(x)});if(!out.length||out[0].i!==0)out.unshift({i:0,t:""});se.chaps=out;return out}
 function autoCh(se){const N=se.chapN==null?1500:se.chapN,out=[{i:0,t:""}];if(N>0){let acc=0;se.turns.forEach((t,i)=>{if(t.role==="user"&&i>0&&(N===1?acc>0:acc>=N)){out.push({i,t:""});acc=0}if(t.role==="ai")acc+=words(t.text)})}return out}
 function chapsOf(se){if(!se.chaps)se.chaps=autoCh(se);return fixCh(se)}
@@ -428,7 +432,39 @@ function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");clea
 const THEMES=[["midnight","Midnight (Classic)","#0f0d17","#9b7bff"],["paper","Paper (Classic)","#f6efe2","#9b4d22"],["ink","Ink (Classic)","#000000","#5ad1c5"],["moon","Moonlit (Classic)","#121822","#8fb8ff"],["ember","Ember (Classic)","#1a0f0d","#ff7a45"],["sakura","Sakura (Classic)","#fff5f8","#d14d84"],["crimson","Crimson Eclipse","#190d16","#f05b70"],["azure","Azure Legion","#08162f","#4b95ff"],["void","Void Nexus","#140c28","#b55bff"],["spirit","Moonlit Spirit","#17182e","#a5abff"],["verdant","Verdant Wilds","#091f18","#4acb87"],["starlight","Starlight Horizon","#07172d","#48d6f2"],["bloom","Sakura Bloom","#2a1427","#f38ab7"],["thunder","Thunder Crest","#1f160e","#f6b43d"],["arcane","Arcane Veil","#1b102d","#b67bff"],["frost","Frostbound","#0a1c31","#7fc5ff"]],LIGHT={paper:1,sakura:1};
 const UI_LAYOUTS=[["classic","Classic Story Forge"],["premium","Premium Cinematic"],["modern","Modern Anime"],["adventure","Adventure Hub"],["character","Character RPG"],["world","World Map"],["guild","Guild Console"],["chronicle","Chronicle"],["academy","Academy"],["fantasy","Fantasy RPG"],["anime","Modern Anime RPG"],["jrpg","Classic JRPG"],["action","Action RPG"],["visual","Visual Novel RPG"],["kingdom","Strategy / Kingdom RPG"],["illustrated","Illustrated Reader"]];
 const FONTS=[["serif","Classic serif"],["book","Book"],["sans","Clean sans"],["easy","Easy-read"]],FONTCSS={serif:'Georgia,"Times New Roman",serif',book:'"Iowan Old Style",Palatino,"Book Antiqua",Georgia,serif',sans:'system-ui,-apple-system,"Segoe UI",sans-serif',easy:'Verdana,Tahoma,sans-serif'};
-function applyLook(){const r=document.documentElement,th=THEMES.find(x=>x[0]===DB.theme)||THEMES[0];r.setAttribute("data-theme",th[0]);r.style.setProperty("--fs",(DB.fs||17)+"px");
+const UI_FONTS={system:'system-ui,-apple-system,"Segoe UI",sans-serif',soft:'ui-rounded,"Avenir Next","Trebuchet MS",sans-serif',mono:'ui-monospace,"SF Mono",Consolas,monospace',editorial:'"Iowan Old Style",Palatino,Georgia,serif'};
+const LOOK_CONTROLS=[
+  ["icons","Icon style",[["outline","Outline"],["filled","Filled"],["ornate","Ornate"],["rounded","Rounded line"],["heavy","Heavy line"],["duotone","Duotone"],["badges","Soft badges"],["tiles","Square tiles"],["pixel","Pixel"],["glyph","Lettermarks"]]],
+  ["icon-art","Icon artwork",[["classic","Classic"],["editorial","Editorial"],["fantasy","Fantasy"],["cosmic","Cosmic"],["pixel","Pixel art"]]],
+  ["icon-shape","Icon shape",[["bare","Unframed"],["circle","Circle"],["squircle","Rounded square"],["square","Square"],["pill","Pill"],["diamond","Diamond"],["hex","Hexagon"],["shield","Shield"],["octagon","Octagon"]]],
+  ["labels","Navigation labels",[["on","Icons and labels"],["off","Icons only"],["text","Labels only"],["active","Active label only"]]],
+  ["nav","Main navigation",[["top","Top"],["bottom","Bottom"],["side","Desktop left sidebar"],["end","Desktop right sidebar"]]],
+  ["overlay","Story menu and dialogs",[["right","Right"],["left","Left"],["bottom","Bottom"],["center","Centered"]]],
+  ["dock","Navigation style",[["flush","Flush"],["floating","Floating dock"],["segmented","Segmented"],["underline","Underline"],["rails","Divided tiles"]]],
+  ["shape","Panel shape",[["soft","Rounded"],["square","Square"],["cut","Asymmetric"],["round","Extra rounded"]]],
+  ["density","Interface spacing",[["compact","Compact"],["standard","Balanced"],["airy","Spacious"]]],
+  ["font","Interface font",[["system","Modern"],["soft","Rounded"],["mono","Mono"],["editorial","Editorial"]]]
+];
+const LOOK_DEFAULTS={
+  paper:{nav:"top",overlay:"right",font:"editorial",icons:"outline"},
+  ink:{nav:"bottom",overlay:"center",font:"mono",icons:"filled"},
+  azure:{nav:"side",overlay:"left",font:"mono",icons:"outline"},
+  verdant:{nav:"bottom",overlay:"bottom",font:"soft",icons:"ornate"},
+  arcane:{nav:"bottom",overlay:"center",font:"editorial",icons:"ornate"},
+  starlight:{nav:"side",overlay:"right",font:"system",icons:"outline"}
+};
+function applyInterfaceLook(root,theme,design={},overrides={}){
+  const defaults=LOOK_DEFAULTS[theme]||{};
+  const values={icons:"outline","icon-art":"classic",labels:"on",nav:"top",font:"system",...defaults,...design};
+  const preferences={...DB.interfaceLook,...overrides};
+  for(const [key,,options] of LOOK_CONTROLS){
+    if(options.some(([value])=>value===preferences[key]))values[key]=preferences[key];
+    if(values[key])root.setAttribute("data-look-"+key,values[key]);
+    else root.removeAttribute("data-look-"+key);
+  }
+  root.style.setProperty("--interface-font",UI_FONTS[values.font]);
+}
+function applyLook(){const r=document.documentElement,th=THEMES.find(x=>x[0]===DB.theme)||THEMES[0];r.setAttribute("data-theme",th[0]);applyInterfaceLook(r,th[0]);r.style.setProperty("--fs",(DB.fs||17)+"px");
   r.style.setProperty("--bodyfont",FONTCSS[DB.font||"serif"]||('"'+String(DB.font).replace(/["<>;]/g,"")+'",Georgia,serif'));r.style.setProperty("--lh",String(num(DB.lh,1.75)));r.style.setProperty("--mx",num(DB.mx,16)+"px");
   document.body.classList.toggle("novel",DB.layout==="novel");document.body.dataset.uiLayout=UI_LAYOUTS.some(x=>x[0]===DB.uiLayout)?DB.uiLayout:"classic";const mc=document.querySelector('meta[name="theme-color"]');if(mc)mc.setAttribute("content",th[2])}
 const applyFs=applyLook;
@@ -479,11 +515,31 @@ const chk=(label,val,on)=>h("label",{class:"chk"},h("input",{type:"checkbox",che
 function card(st){const name=st.kind==="character"?(st.charName||st.title):st.title;
   const init=String(name||"?").split(/\s+/).map(w=>w[0]).join("").slice(0,3).toUpperCase();
   return h("button",{class:"card",onclick:()=>go({n:"story",id:st.id})},h("div",{class:"cover"+(st.coverT?" img":""),style:st.coverT?"background:url("+st.coverT+")":grad(stHue(st))},h("span",{text:init}),h("em",{text:st.kind==="character"?"Character":st.life?"Life sim":"Story"})),h("b",{text:name||"Untitled"}),h("small",{text:st.tag||st.style||(st.canon?"Based on "+st.canon:"Original")}))}
-function readerCover(st){
+function readerCover(st,full=false){
+  if(!full&&st.coverT)return h("img",{class:"reader-cover",src:st.coverT,alt:"",loading:"lazy"});
+  if(st.cover){
+    const cover=idbImg(st.cover,"reader-cover","");
+    if(st.coverT)cover.src=st.coverT;
+    return cover;
+  }
+  if(st.coverT)return h("img",{class:"reader-cover",src:st.coverT,alt:""});
+  return h("div",{class:"reader-cover reader-cover-placeholder","aria-hidden":"true",style:grad(stHue(st)),
+    text:(st.title||st.charName||"?").trim().split(/\s+/).slice(0,3).map(word=>word[0]).join("").toUpperCase()});
+}
+function readerFeature(st,featured=false){
   const title=st.title||st.charName||"Untitled";
-  if(st.cover)return idbImg(st.cover,"reader-cover",title+" cover");
-  if(st.coverT)return h("img",{class:"reader-cover",src:st.coverT,alt:title+" cover"});
-  return h("div",{class:"reader-cover reader-cover-placeholder",style:grad(stHue(st)),text:title});
+  const cover=readerCover(st,true);
+  const backdrop=h("div",{class:"reader-backdrop","aria-hidden":"true"});
+  const paint=()=>{if(cover.currentSrc)backdrop.style.backgroundImage="url("+JSON.stringify(cover.currentSrc)+")"};
+  if(cover.tagName==="IMG"){cover.addEventListener("load",paint);paint()}
+  return h(featured?"button":"section",{
+    class:"reader-feature"+(featured?" reader-feature-discover":""),
+    style:"--reader-story-hue:"+Number(stHue(st)),
+    onclick:featured?()=>go({n:"story",id:st.id}):null
+  },backdrop,cover,h("div",{class:"reader-feature-copy"},
+    h(featured?"strong":"h2",{text:title}),
+    featured?h("span",{class:"reader-feature-link",text:"View story"}):
+      st.author?h("p",{class:"sub",text:"by "+st.author}):null));
 }
 function readerDiscovery(main, worlds){
   const recent=[];
@@ -494,25 +550,127 @@ function readerDiscovery(main, worlds){
     seen.add(story.id);
     recent.push({story,session});
   }
-  const featured=DB.stories.find(st=>st.kind!=="character"&&(st.cover||st.coverT))
-    ||recent[0]?.story||worlds[0];
-  if(featured)ap(main,h("button",{class:"reader-feature",onclick:()=>go({n:"story",id:featured.id})},
-    readerCover(featured),h("strong",{text:featured.title||featured.charName})));
+  const featured=DB.stories.filter(st=>st.kind!=="character"&&(st.cover||st.coverT)).slice(0,8);
+  if(!featured.length&&recent.length)featured.push(recent[0].story);
+  if(!featured.length&&worlds.length)featured.push(worlds[0]);
+  const catalog=[...DB.stories,...worlds];
+  const browse=h("section",{class:"reader-browse"});
+  const results=h("section",{class:"reader-search-results",hidden:true,"aria-label":"Search results"});
+  const status=h("p",{class:"sub",role:"status"});
+  const search=h("input",{type:"search",class:"reader-search-input",
+    "aria-label":"Search stories",placeholder:"Search by title, genre or tag",
+    oninput:()=>filter()});
+  const tile=({story,session})=>
+    h("button",{class:"reader-tile",onclick:()=>go(session?{n:"chat",id:session.id}:{n:"story",id:story.id})},
+      readerCover(story),h("b",{text:story.title||story.charName||"Untitled"}));
+  function filter(){
+    const query=search.value.trim().toLocaleLowerCase();
+    browse.hidden=!!query;
+    results.hidden=!query;
+    if(!query){status.textContent="";results.replaceChildren();return}
+    const terms=query.split(/\s+/);
+    const found=catalog.filter(story=>{
+      const text=[story.title,story.charName,story.author,story.tag,story.style,story.canon,...(story.tags||[])]
+        .filter(Boolean).join(" ").toLocaleLowerCase();
+      return terms.every(term=>text.includes(term));
+    });
+    status.textContent=found.length?found.length+(found.length===1?" story found":" stories found"):"No matching stories.";
+    results.replaceChildren(h("div",{class:"reader-result-grid"},...found.map(story=>tile({story}))));
+  }
+  if(featured.length){
+    let selected=0;
+    const panel=h("div",{class:"reader-feature-panel","aria-live":"polite"},readerFeature(featured[0],true));
+    const counter=h("span",{class:"sub",text:"1 / "+featured.length});
+    const navigate=offset=>{
+      selected=(selected+offset+featured.length)%featured.length;
+      panel.replaceChildren(readerFeature(featured[selected],true));
+      counter.textContent=(selected+1)+" / "+featured.length;
+    };
+    ap(browse,panel);
+    if(featured.length>1)ap(browse,h("nav",{class:"reader-feature-nav","aria-label":"Featured stories"},
+      h("button",{text:"Previous",onclick:()=>navigate(-1)}),counter,
+      h("button",{text:"Next",onclick:()=>navigate(1)})));
+  }
+  ap(main,search,status,results,browse);
   const shelf=(label,entries)=>{if(!entries.length)return;
-    ap(main,h("h2",{text:label}),h("div",{class:"reader-shelf"},entries.map(({story,session})=>
-      h("button",{class:"reader-tile",onclick:()=>go(session?{n:"chat",id:session.id}:{n:"story",id:story.id})},
-        readerCover(story),h("b",{text:story.title||story.charName||"Untitled"})))))};
+    ap(browse,h("h2",{text:label}),h("div",{class:"reader-shelf"},entries.map(tile)))};
   shelf("Continue playing",recent);
   shelf("My stories",DB.stories.map(story=>({story})));
   shelf("Explore worlds",worlds.map(story=>({story})));
-  ap(main,h("div",{class:"row reader-tools"},
+  ap(browse,h("div",{class:"row reader-tools"},
     h("button",{class:"cta",text:"Build a world",onclick:()=>go({n:"build"})}),
     h("button",{text:"World Simulator",onclick:()=>go({n:"story",id:"lib:sim"})})));
 }
+const HOME_TABS=[
+  ["discover","Discover","M12 2l3 7 7 3-7 3-3 7-3-7-7-3 7-3z"],
+  ["continue","Continue","M7 4l13 8-13 8z"],
+  ["studio","Studio","M3 4h8v7H3zM13 4h8v7h-8zM3 13h18v7H3z"],
+  ["library","Library","M3 5h4v14H3zM9 5h4v14H9zM14 6l4-1 3 13-4 1z"],
+  ["create","Create","M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z"]
+];
+// Paths follow HOME_TABS order: Discover, Continue, Studio, Library, Create.
+const HOME_ICON_ART={
+  editorial:[
+    "M3 5c4-1 6 0 9 2v14c-3-2-5-3-9-2zM21 5c-4-1-6 0-9 2v14c3-2 5-3 9-2z",
+    "M6 3h12v18l-6-4-6 4z",
+    "M4 19c3-7 8-12 16-15-1 7-5 12-12 13zM4 21l9-9",
+    "M4 7V4h16v3M5 9h14v11H5zM10 13h4",
+    "M5 4h10l4 4v12H5zM9 13h6M12 10v6"
+  ],
+  fantasy:[
+    "M3 20l5-9 4 3 4-8 5 14zM15 9l1-3 2 3",
+    "M6 21V9l6-5 6 5v12zM10 21v-7h4v7",
+    "M5 20L17 8M17 3l1 4 4 1-4 1-1 4-1-4-4-1 4-1z",
+    "M4 10h16v10H4zM4 10l2-5h12l2 5M10 10v4h4v-4",
+    "M7 5h10l4 6-9 10-9-10zM3 11h18M7 5l5 16 5-16"
+  ],
+  cosmic:[
+    "M20 12a8 8 0 1 0-16 0 8 8 0 1 0 16 0zM3 16c-4-3 14-12 18-8s-14 13-18 8",
+    "M20 15A8 8 0 0 1 9 4a8 8 0 1 0 11 11z",
+    "M12 3v18M3 12h18M6 6l12 12M18 6L6 18",
+    "M5 6l7-3 7 3v12l-7 3-7-3zM5 6l7 4 7-4M12 10v11",
+    "M9 14c0-5 3-9 10-10 0 6-3 10-8 12zM9 10H6l-2 4h5M14 15v3l-4 2v-4M7 17l-3 3"
+  ],
+  pixel:[
+    "M10 3h4v5h2v2h5v4h-5v2h-2v5h-4v-5H8v-2H3v-4h5V8h2z",
+    "M6 4h4v3h4v3h4v4h-4v3h-4v3H6z",
+    "M4 6h4V3h8v3h4v13H4zM8 10h2v2H8zM14 10h2v2h-2z",
+    "M3 8h5V5h6v3h7v12H3zM10 12h4v4h-4z",
+    "M9 3h6v6h6v6h-6v6H9v-6H3V9h6z"
+  ]
+};
+function homeIcon(path,index){
+  const icon=h("span",{class:"look-icon","aria-hidden":"true"});
+  icon.innerHTML='<svg viewBox="0 0 24 24" fill-rule="evenodd"><path data-icon-art="classic" d="'+path+'"/>'+
+    Object.entries(HOME_ICON_ART).map(([art,paths])=>'<path data-icon-art="'+art+'" d="'+paths[index]+'"/>').join("")+"</svg>";
+  return icon;
+}
+function homeNav(active,preview=false){
+  return h("nav",{class:"tabs","aria-label":"Main navigation"},HOME_TABS.map(([id,label,path],index)=>
+    h(preview?"span":"button",{class:"look-tab"+(active===id?" on":""),"aria-label":label,
+      "aria-current":active===id?"page":null,onclick:preview?null:()=>go({n:"home",tab:id})},
+      h("span",{class:"look-mark","aria-hidden":"true"},homeIcon(path,index),h("span",{class:"look-letter",text:id==="create"?"+":label[0]})),h("span",{class:"look-label",text:label}))));
+}
+function interfaceLookPreview(){
+  return h("div",{class:"look-mini","aria-hidden":"true"},
+    h("div",{class:"look-mini-title",text:"Story Forge"}),homeNav("discover",true),
+    h("div",{class:"look-mini-stage"},h("div",{class:"look-mini-panel"},
+      h("strong",{text:"Story menu"}),h("span",{text:"Saved sessions"}))));
+}
+function interfaceLookSettings(){
+  return h("section",{class:"look-settings","aria-label":"Interface customization"},
+    h("h3",{text:"Make it yours"}),interfaceLookPreview(),
+    h("div",{class:"look-fields"},LOOK_CONTROLS.map(([key,label,options])=>
+      fld(label,sel(DB.interfaceLook?.[key]||"",[["","Theme default"],...options],value=>{
+        DB.interfaceLook={...DB.interfaceLook,[key]:value};
+        save();
+        applyLook();
+        window.SFVisualV48?.apply();
+      })))));
+}
 function vHome(){const tab=view.tab||"discover";
-  ap(app,h("header",null,h("h1",{text:"Story Forge"}),h("button",{text:"Settings",onclick:()=>go({n:"settings"})})),
-    h("nav",{class:"tabs"},[["discover","Discover"],["continue","Continue"],["studio","Studio"],["library","Library"],["create","Create"]].map(t=>h("button",{class:tab===t[0]?"on":"",text:t[1],onclick:()=>go({n:"home",tab:t[0]})}))));
-  const m=h("main",{class:"page"+(illustratedReader()&&tab==="discover"?" reader-discover":"")});ap(app,m);
+  ap(app,h("header",null,h("h1",{text:"Story Forge"}),h("button",{text:"Settings",onclick:()=>go({n:"settings"})})),homeNav(tab));
+  const m=h("main",{class:"page"+(illustratedReader()&&["discover","studio","library"].includes(tab)?" reader-"+tab:"")});ap(app,m);
   if(!hasKey())ap(m,h("div",{class:"notice"},"Add your OpenRouter key before you play. ",h("div",{class:"row"},h("button",{class:"primary",text:"Open Settings",onclick:()=>go({n:"settings"})}))));
   if(tab==="studio"){vVisualStudio(m);
   }else if(tab==="discover"&&illustratedReader()){
@@ -541,7 +699,35 @@ function vHome(){const tab=view.tab||"discover";
 
 
 /* ---------- v45 Cinematic Studio: read-only views, optional presentation toggle ---------- */
+function readerStudio(main){
+  const recent=DB.sessions.slice().sort((a,b)=>(b.updated||0)-(a.updated||0))
+    .find(session=>getStory(session.storyId));
+  const active=recent&&getStory(recent.storyId);
+  ap(main,h("section",{class:"reader-workspace-head"},
+    h("h2",{text:"Creator Studio"}),
+    h("button",{class:"primary",text:"Build a world",onclick:()=>go({n:"build"})})));
+  if(active)ap(main,h("h2",{text:"Recent playthrough"}),h("section",{class:"reader-workspace-current"},
+    readerCover(active),h("div",null,h("h3",{text:active.title||active.charName||"Untitled"}),
+      h("p",{class:"sub",text:recent.char?.name||"Playthrough"}),
+      h("button",{text:"Resume",onclick:()=>go({n:"chat",id:recent.id})}))));
+  const tools=h("div",{class:"reader-workspace-tools"});
+  const action=(label,onclick)=>ap(tools,h("button",{text:label,onclick}));
+  action("New story",()=>go({n:"edit",kind:"story"}));
+  action("Characters",()=>window.SFCharacterStudioV51?.open("Profiles"));
+  action("Appearance",()=>window.SFVisualV48?.open());
+  if(recent){
+    action("Art references",()=>sfStyleStudio(recent));
+    action("Visual Suite",()=>sfVisualSuite(recent));
+  }
+  ap(main,h("h2",{text:"Tools"}),tools);
+  if(DB.stories.length)ap(main,h("h2",{text:"Your worlds"}),h("div",{class:"reader-workspace-list"},
+    DB.stories.map(story=>h("article",{class:"reader-workspace-entry"},readerCover(story),
+      h("strong",{text:story.title||story.charName||"Untitled"}),
+      h("button",{text:"Edit","aria-label":"Edit "+(story.title||story.charName||"story"),
+        onclick:()=>go({n:"edit",id:story.id})})))));
+}
 function vVisualStudio(m){
+  if(illustratedReader()){readerStudio(m);return}
   const sessions=(DB.sessions||[]).slice().sort((a,b)=>(b.updated||0)-(a.updated||0));
   const hero=h("section",{class:"sf-studio-hero"},h("div",{class:"sf-studio-kicker",text:"STORY FORGE · CREATOR STUDIO"}),h("h2",{text:"Your worlds. Your legends."}),h("p",{text:"A cinematic command center for your stories, characters and visual settings. Memory and generation logic are unchanged."}));ap(m,hero);
   const grid=h("div",{class:"sf-studio-grid"});ap(m,grid);
@@ -573,31 +759,60 @@ function sfVisualSuite(se,initial){
  if(active==='atlas'){paragraph(panel,'World codex · a text-based atlas using existing setting and lore. No invented locations or map coordinates.');[['Setting',st.setting],['World lore',st.lore],['Canon',st.canon],['Your starting point',st.starts],['Current world',se.world]].forEach(([label,value])=>{if(value)ap(panel,h('article',{class:'sf-v46-card'},h('h3',{text:label}),h('p',{text:safe(value,2200)})))});if(![st.setting,st.lore,st.canon,st.starts,se.world].some(Boolean))paragraph(panel,'No world details are available yet.');}
  if(active==='timeline'){paragraph(panel,'Read-only message chronology. This does not create, rewind or modify branches.');const turns=se.turns||[];if(!turns.length)paragraph(panel,'Your timeline will appear when the story begins.');turns.forEach((t,i)=>{if(i>149)return;ap(panel,h('div',{class:'sf-v46-step'},h('b',{text:'#'+(i+1)+' · '+(t.role==='user'?'Player':'Narrator')}),h('p',{text:safe(t.show||t.text||'(No text)',280)})))});if(turns.length>150)paragraph(panel,'Showing the first 150 messages of '+turns.length+'. Use the existing chapter list for the full history.');}
  if(active==='novel'){paragraph(panel,'Visual Novel preview uses existing story text. No image generation or dialogue parsing is performed.');const last=(se.turns||[]).filter(t=>t.role==='ai'&&t.text).slice(-1)[0];ap(panel,h('div',{class:'sf-v46-preview'},h('div',{class:'speaker',text:st.charName||'NARRATOR'}),h('blockquote',{text:safe(last?(last.show||last.text):'Your next scene will appear here.',900)})));ap(panel,h('button',{class:'primary',text:DB.visualNovelMode?'Disable cinematic reading':'Enable cinematic reading',onclick:()=>{DB.visualNovelMode=!DB.visualNovelMode;save();draw()}}));}
- if(active==='themes'){paragraph(panel,'Choose a visual theme or layout. These are presentation settings only.');ap(panel,h('h3',{text:'Color themes'}));const colors=h('div',{class:'sf-v46-palette'});THEMES.forEach(t=>ap(colors,h('button',{class:DB.theme===t[0]?'primary':'ghost',text:t[1],onclick:()=>{DB.theme=t[0];save();applyLook();draw()}})));ap(panel,colors,h('h3',{text:'Interface layouts'}));const layouts=h('div',{class:'sf-v46-palette'});UI_LAYOUTS.forEach(t=>ap(layouts,h('button',{class:DB.uiLayout===t[0]?'primary':'ghost',text:t[1],onclick:()=>{DB.uiLayout=t[0];save();applyLook();draw()}})));ap(panel,layouts);}
+ if(active==='themes'){paragraph(panel,'Choose a visual theme or layout. These are presentation settings only.');ap(panel,h('h3',{text:'Color themes'}));const colors=h('div',{class:'sf-v46-palette'});THEMES.forEach(t=>ap(colors,h('button',{class:DB.theme===t[0]?'primary':'ghost',text:t[1],onclick:()=>{DB.theme=t[0];save();window.SFVisualV48?.useAppTheme();applyLook();draw()}})));ap(panel,colors,h('h3',{text:'Interface layouts'}));const layouts=h('div',{class:'sf-v46-palette'});UI_LAYOUTS.forEach(t=>ap(layouts,h('button',{class:DB.uiLayout===t[0]?'primary':'ghost',text:t[1],onclick:()=>{DB.uiLayout=t[0];save();applyLook();draw()}})));ap(panel,layouts);}
  if(active==='art'){paragraph(panel,'Original artwork and style references remain separate. No paid API calls are made by this suite.');ap(panel,h('button',{text:'Open Art Style Reference Studio',onclick:()=>{closeSheet();sfStyleStudio(se)}}),h('button',{text:'Open character artwork',onclick:()=>{closeSheet();castSheet(se)}}));}
  }draw();sheet('Visual Suite',root);
 }
 
 /* ---------- Story page ---------- */
 const AGES=[["0","Birth"],["6","Childhood (age 6)"],["12","Age 12"],["16","Age 16"],["18","Adult (age 18)"],["25","Age 25"]],PLAYS=[["story","Story (scene by scene)"],["life","Life simulator (live a whole life)"]];
+function storySessions(storyId){
+  return DB.sessions.filter(session=>session.storyId===storyId)
+    .map((session,index)=>({session,number:index+1}))
+    .sort((a,b)=>(b.session.updated||0)-(a.session.updated||0)||b.number-a.number);
+}
+function savedStorySessions(entries){
+  if(!entries.length)return null;
+  return h("details",{class:"reader-extra story-sessions"},
+    h("summary",{text:"Saved sessions ("+entries.length+")"}),
+    h("div",{class:"story-session-list"},entries.map(({session,number})=>{
+      const last=session.turns?.slice().reverse().find(turn=>!turn.hide&&(turn.show||turn.text));
+      const text=String(last?.show||last?.text||session.start||"").replace(/\s+/g," ").trim();
+      const title=session.bname||"Session "+number;
+      const date=session.updated?new Date(session.updated).toLocaleDateString():null;
+      return h("button",{class:"sessbtn",onclick:()=>go({n:"chat",id:session.id})},
+        h("b",{text:title}),h("small",{text:[session.char?.name,date].filter(Boolean).join(" · ")}),
+        text?h("small",{text:text.slice(0,130)}):null);
+    })));
+}
 function vStory(){const st=getStory(view.id);if(!st){view={n:"home",tab:"discover"};return render()}
   if(st.sim)return vSimStory(st);
   const isC=st.kind==="character",c0=DB.chars[0];
   const d=view.d||(view.d={start:(st.starts&&st.starts[0])||"",follow:st.follow||"strict",name:c0?c0.name:"",desc:c0?c0.desc:"",trait:c0?c0.trait:"",len:"300",play:st.life?"life":"story",age:"0",agec:""});
   const life=!isC&&d.play==="life",ends=life?lifeEnds(st):(st.endings||[]),sts=life?lifeStats(st):(st.stats||[]),ne=(st.entries||[]).length,fo=foundOf(st);
   ap(app,h("header",null,back(()=>go({n:"home",tab:"discover"})),h("h1",{text:st.title||st.charName||"Untitled"})));
-  const reader=illustratedReader();
+  const reader=illustratedReader(),sessions=storySessions(st.id);
   const m=h("main",{class:"page"+(reader?" reader-details":"")});ap(app,m);
-  if(reader)ap(m,h("div",{class:"reader-feature"},readerCover(st),h("h2",{text:st.title||st.charName||"Untitled"}),
-    st.author?h("p",{class:"sub",text:"by "+st.author}):null));
+  if(reader)ap(m,readerFeature(st));
   else if(st.cover)ap(m,idbImg(st.cover,"ocover",st.title+" cover"),h("h2",{text:st.title,style:"margin:4px 0"}),st.author?h("p",{class:"sub",text:"by "+st.author+" · imported for personal use"}):null);
   else ap(m,h("div",{class:"hero",style:grad(stHue(st))},h("em",{text:isC?"Character":life?"Life sim":"Story"}),h("b",{text:isC?(st.charName||st.title):st.title}),h("small",{text:st.tag||st.style||""})));
   if(st.tags&&st.tags.length)ap(m,h("div",{class:"tags"},st.tags.map(t=>h("span",{text:t}))));
+  ap(m,savedStorySessions(sessions));
   if(st.desc)ap(m,h("h2",{text:"Description"}),h("div",{class:"body"},String(st.desc).split(/\n+/).map(p=>h("p",{text:p}))));
   if(isC&&st.charDesc)ap(m,h("p",{text:st.charDesc}));
   if(st.setting&&!st.desc)ap(m,h("p",{text:st.setting}));
-  if(st.cast0&&st.cast0.length)ap(m,h("h2",{text:"Characters"}),st.cast0.map(c=>h("div",{class:"ocard"},c.img?idbImg(c.img,"",c.n):null,h("div",null,h("p",{text:"👤 "+c.n+(c.age?" · "+c.age:"")}),c.role||c.looks?h("p",{text:"🗡 "+[c.role,c.looks].filter(Boolean).join(" · ")}):null,c.hook?h("p",{text:"🤝 "+c.hook}):null,c.quote?h("p",{text:"💬 “"+String(c.quote).replace(/^["“]|["”]$/g,"")+"”"}):null))));
-  if(st.guide)ap(m,h("div",{class:"oguide"},h("b",{text:"Play guide"}),st.guide));
+  if(st.cast0&&st.cast0.length){
+    const cards=st.cast0.map(c=>h("div",{class:"ocard"},c.img?idbImg(c.img,"",c.n):null,
+      h("div",null,h("p",{text:"👤 "+c.n+(c.age?" · "+c.age:"")}),
+        c.role||c.looks?h("p",{text:"🗡 "+[c.role,c.looks].filter(Boolean).join(" · ")}):null,
+        c.hook?h("p",{text:"🤝 "+c.hook}):null,
+        c.quote?h("p",{text:"💬 “"+String(c.quote).replace(/^["“]|["”]$/g,"")+"”"}):null)));
+    if(reader)ap(m,h("details",{class:"reader-extra"},h("summary",{text:"Characters ("+cards.length+")"}),
+      h("div",{class:"reader-character-shelf"},cards)));
+    else ap(m,h("h2",{text:"Characters"}),cards);
+  }
+  if(st.guide)ap(m,reader?h("details",{class:"reader-extra"},h("summary",{text:"Play guide"}),
+    h("p",{text:st.guide})):h("div",{class:"oguide"},h("b",{text:"Play guide"}),st.guide));
   if(st.prologue)ap(m,h("h2",{text:"Prologue preview"}),st.proImg?idbImg(st.proImg,"genimg","Prologue picture"):null,h("div",{class:"body"},String(st.prologue).slice(0,700).split(/\n+/).map(p=>h("p",{class:"narr",text:p}))));
   if(!isC&&!st.builtin)ap(m,h("div",{class:"row"},h("button",{text:"Edit story page",onclick:()=>pageSheet(st)})));
   if(st.known&&st.known!=="well")ap(m,h("div",{class:"notice",text:"The model only "+(st.known==="no"?"barely":"partly")+" knows this story, so details may be off. Check the canon notes in Edit, or rebuild with web lookup or reference text."}));
@@ -605,7 +820,7 @@ function vStory(){const st=getStory(view.id);if(!st){view={n:"home",tab:"discove
   ap(m,h("div",{class:"row"},h("button",{text:"Reference texts ("+refsFor(st.id).length+")",onclick:()=>refSheet(st.id)})));
   if(!isC&&st.canon)ap(m,wikiBox({get:()=>wikiOf(null,st),set:v=>{if(st.builtin){DB.libWiki=DB.libWiki||{};DB.libWiki[st.id]=v}else st.wiki=v;save()},title:()=>st.canon,model:()=>(DB.modes[DB.mode]||DB.modes[0]).id,sid:()=>st.id,onDl:()=>soft()}));
   if(reader){
-    const latest=DB.sessions.filter(s=>s.storyId===st.id).sort((a,b)=>(b.updated||0)-(a.updated||0))[0];
+    const latest=sessions[0]?.session;
     const setup=h("h2",{text:"Session setup",tabindex:"-1"});
     ap(app,h("footer",{class:"reader-session-actions"},
       latest?h("button",{text:"Continue session",onclick:()=>go({n:"chat",id:latest.id})}):null,
@@ -628,8 +843,6 @@ function vStory(){const st=getStory(view.id);if(!st){view={n:"home",tab:"discove
   else if(!isC)ap(m,fld(life?"When in the world’s timeline (optional)":"Starting point (optional)",inp(d.start,v=>{d.start=v},"e.g. the night before the exam")));
   if(st.canon)ap(m,fld("How closely to follow canon",selC(d.follow,[["strict","Follow canon closely"],["loose","Loose, my choices change things"]],v=>{d.follow=v},"e.g. Follow canon, but my character can save people who died")));
   ap(m,fld("Reply length",selC(d.len,LENS,v=>{d.len=String(Math.max(50,Math.min(8000,Math.round(num(v,300)))))},"Number of words, e.g. 1500","number")),h("div",{class:"row"},h("button",{class:"primary big",text:isC?"Start chat":life?"Begin life":"Start story",onclick:()=>play(st,d)})));
-  const mine=DB.sessions.filter(s=>s.storyId===st.id).length;
-  if(mine)ap(m,h("p",{class:"sub",text:mine+" saved playthrough"+(mine>1?"s":"")+" in the Continue tab."}));
   ap(m,h("div",{class:"row"},st.builtin
     ?[st.canon?h("button",{text:"Build deeper canon notes",onclick:()=>go({n:"build",b:{src:st.canon,idea:"",ref:"",play:d.play,depth:"deep",web:false,mode:DB.modes.length-1}})}):null,
       h("button",{text:"Customize a copy",onclick:()=>{const c=JSON.parse(JSON.stringify(st));c.id=uid();delete c.builtin;delete c.orig;c.title+=" (my version)";go({n:"edit",w:c})}})]
@@ -643,7 +856,7 @@ function vSimStory(st){const c0=DB.chars[0],d=view.d||(view.d={name:c0?c0.name:"
   if(DB.chars.length)ap(m,fld("Saved avatars",sel("",[["","Choose…"]].concat(DB.chars.map(c=>[c.id,c.name])),v=>{const c=DB.chars.find(x=>x.id===v);if(c){d.name=c.name;d.desc=c.desc;d.trait=c.trait;soft()}})));
   ap(m,fld("Name",inp(d.name,v=>{d.name=v},"Your character’s name")),fld("Looks and background (optional)",area(d.desc,v=>{d.desc=v},"White hair, silver eyes, a lean swordsman’s build…",3)),
     h("div",{class:"row"},h("button",{class:"primary big",text:"Start setup with the guide",onclick:()=>play(st,d)})));
-  const mine=DB.sessions.filter(s=>s.storyId===st.id).length;if(mine)ap(m,h("p",{class:"sub",text:mine+" saved simulation"+(mine>1?"s":"")+" in the Continue tab."}));
+  ap(m,savedStorySessions(storySessions(st.id)));
   ap(m,h("div",{class:"row"},h("button",{text:"Reference texts ("+refsFor(st.id).length+")",onclick:()=>refSheet(st.id)})))}
 const GUIDE="Quill",SIMHI="Hi, I’m Quill, your guide to the World Simulator. Here’s how it works.\n\n**What it is.** An interactive story you step into. Pick a world from any anime, manga, novel, webnovel, game or film, or invent your own. Follow the original story, make a what if, or build a whole new timeline.\n\n**Your role.** Play as a character from the story, enter as an original character, observe a timeline unfold, or step in and change what happens next.\n\n**Commands.** Type these in the box below, or tap the / button.\n/summary: review the key story so far, and save it as a memory.\n/ooc: talk to me directly about settings, fixes or corrections.\n/impersonation: use this if a reply speaks or acts for you, and I’ll rewrite it.\n/status: open the World Status panel.\n/rule: add a rule, for example /rule no one can read minds.\n\n**Best way to start.** In your first message, describe your world, your role, where in the timeline to start, the mood you want, and any rules. Anything you leave out I’ll ask about or fill in.\n\nOnce I have your setup, I’ll give you an overview of the world and a short preview. The story only begins after you confirm it looks good.";
 function play(st,d){if(!hasKey()){toast("Add your OpenRouter key in Settings first.");return}
@@ -759,8 +972,48 @@ window.visualViewport?.addEventListener("resize",syncReaderViewport);
 window.visualViewport?.addEventListener("scroll",syncReaderViewport);
 app.addEventListener("focusin",syncReaderViewport);
 app.addEventListener("focusout",syncReaderViewport);
+function cinematicScene(se,st,turn){
+  const passages=String(turn.show||turn.text).trim().split(/\n{2,}|\n(?=[^|\n]{1,60}\s+\|)/);
+  const preset=window.SFScenesV54?.exportPresets([se])[se.id];
+  const scene=h("div",{class:"reader-scene-art","aria-hidden":"true"});
+  if(turn.img)ap(scene,idbImg(turn.img.includes(":")?turn.img:"gen:"+turn.img,"",""));
+  else if(preset?.background)ap(scene,h("img",{src:preset.background,alt:""}));
+  else ap(scene,readerCover(st,true));
+  const portrait=h("div",{class:"reader-scene-portrait","aria-hidden":"true"});
+  ap(scene,portrait);
+  const speaker=h("strong",{class:"reader-scene-speaker"});
+  const dialogue=h("div",{class:"body","aria-live":"polite"});
+  const count=h("span",{class:"sub"});
+  let index=0;
+  const prev=h("button",{text:"Back",onclick:()=>step(index-1)});
+  const next=h("button",{class:"primary",text:"Next passage",onclick:()=>step(index+1)});
+  const step=position=>{
+    index=position;
+    const text=passages[index];
+    const tag=text.match(/^([^|\n]{1,60})\s+\|\s+([\s\S]+)$/);
+    const name=tag?tag[1].trim():"";
+    speaker.textContent=name||"Narration";
+    portrait.replaceChildren();
+    if(name){
+      const profile=(st.cast0||[]).find(c=>String(c.n||"").toLowerCase()===name.toLowerCase());
+      const active=Object.entries(se.cast||{}).find(([key])=>key.toLowerCase()===name.toLowerCase())?.[1];
+      if(active?.pic)ap(portrait,h("img",{src:active.pic,alt:""}));
+      else if(profile?.img)ap(portrait,idbImg(profile.img,"",""));
+      else if(profile?.th)ap(portrait,h("img",{src:profile.th,alt:""}));
+    }
+    fill(dialogue,tag?tag[2]:text);
+    count.textContent=(index+1)+" / "+passages.length;
+    prev.disabled=index===0;
+    next.disabled=index===passages.length-1;
+  };
+  step(0);
+  return h("section",{class:"reader-scene","aria-label":"Cinematic Visual Novel"},
+    scene,h("div",{class:"reader-scene-dialogue"},speaker,dialogue,
+      passages.length>1?h("div",{class:"reader-scene-nav"},prev,count,next):null));
+}
 function vChat(){const se=DB.sessions.find(s=>s.id===view.id),st=se&&getStory(se.storyId);
   if(!st){view={n:"home",tab:"continue"};if(se)toast("That story was deleted.");return render()}
+  const cinematic=illustratedReader()&&DB.readerPresentation==="cinematic";
   const isC=st.kind==="character",mode=DB.modes[DB.mode]||DB.modes[0],stats=sd(se,st),ends=ed(se,st),C=isC?null:chapsOf(se);
   if(C&&!view.och)view.och=Object.assign({},se.och||{});setFX(se,st);const F=FX.f;
   ap(app,h("header",null,back(()=>go({n:"home",tab:"continue"})),h("h1",{text:se.sim?(se.sim.canon||se.world||st.title).split(" by ")[0]:st.title||st.charName,role:C?"button":null,"aria-label":C?"Open the chapter list":null,onclick:C?()=>chapSheet(se):null}),illustratedReader()?null:h("button",{class:"pill",text:"Visuals",onclick:()=>sfVisualSuite(se)}),h("button",{class:"pill",text:(mode.n||"Mode")+" ▾",onclick:()=>modeSheet(se)}),h("button",{"aria-label":"Menu",onclick:()=>menuSheet(se,st)},ic("menu"))));
@@ -776,9 +1029,10 @@ function vChat(){const se=DB.sessions.find(s=>s.id===view.id),st=se&&getStory(se
   const draw=(t,i,dc)=>{if(t.hide)return;const body=h("div",{class:"body"+(dc&&F.drop?" dropcap":"")});if(busy&&t.role==="ai"&&!t.text&&i===se.turns.length-1)ap(body,h("span",{class:"typing","aria-label":"Writing"},h("i"),h("i"),h("i")));else fill(body,t.show||t.text);
     if(t.role==="user"){ap(log,h("div",{class:"turn user","data-i":i},h("div",{class:"who"},h("span",{text:se.char.name||"You"}),h("button",{class:"dots","aria-label":"Message options",onclick:()=>turnMenu(se,i)},ic("dots"))),body));return}
     if(t.save)ap(log,h("div",{class:"savept",text:"★ Save point"}));
-    if(t.img)ap(log,genImg(t.img));if(t.imgBusy)ap(log,h("p",{class:"sub",text:"Painting this scene…"}));
+    const stage=cinematic&&!busy&&i===lastAi&&String(t.show||t.text||"").trim();
+    if(t.img&&!stage)ap(log,genImg(t.img));if(t.imgBusy)ap(log,h("p",{class:"sub",text:"Painting this scene…"}));
     const last=i===lastAi&&!busy;
-    ap(log,h("div",{class:"turn ai","data-i":i},isC?h("div",{class:"who"},h("span",{text:st.charName})):null,body));
+    ap(log,h("div",{class:"turn ai","data-i":i},isC?h("div",{class:"who"},h("span",{text:st.charName})):null,stage?cinematicScene(se,st,t):body));
     if(last&&!isC&&!se.ending&&!illustratedReader())ap(log,h("div",{class:"askline",text:"What do you do?"}));
     ap(log,h("div",{class:"acts"+(last?"":" old")},last?[h("button",{"aria-label":"Regenerate",onclick:regen},ic("regen")),h("button",{"aria-label":"Continue the scene",onclick:()=>send(CONT,true)},ic("next")),h("button",{"aria-label":"Move the story on without my input",onclick:()=>advance(se)},ic("ff")),t.vs&&t.vs.length>1?verSw(se,t):null]:null,
       h("button",{"aria-label":"Read this reply aloud",onclick:()=>ttsStart([t.text],"this reply")},ic("speak")),h("button",{"aria-label":"Message options",onclick:()=>turnMenu(se,i)},ic("dots")),DB.cost!==false&&t.u?h("span",{class:"spend",text:spendText(t)}):null));
@@ -1132,9 +1386,13 @@ const BOOKC={};async function bookLoad(id){if(BOOKC[id])return BOOKC[id];const v
 function libTab(m){const books=DB.books||[],note=h("p",{class:"sub"});
   const file=h("input",{type:"file",accept:".epub,.txt,.md,.html,.htm,application/epub+zip,text/plain",style:"display:none",onchange:async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;note.textContent="Reading "+f.name+"…";
     try{const b=await bookImport(f,t=>{note.textContent=t});toast("Added “"+b.title+"” with "+b.n+" chapters.");render()}catch(x){note.textContent=String((x&&x.message)||x)}}});
-  ap(m,h("h2",{text:"Library"}),h("p",{class:"sub",text:"Import EPUBs you own to read them, listen to them chapter by chapter, or start your own story inside them with your OC."}),file,h("div",{class:"row"},h("button",{class:"primary",text:"Import an EPUB or text file",onclick:()=>file.click()})),note);
+  const importButton=h("button",{class:"primary",text:"Import an EPUB or text file",onclick:()=>file.click()});
+  const reader=illustratedReader();
+  if(reader)ap(m,h("section",{class:"reader-workspace-head"},h("h2",{text:"Library"}),importButton),file,note);
+  else ap(m,h("h2",{text:"Library"}),h("p",{class:"sub",text:"Import EPUBs you own to read them, listen to them chapter by chapter, or start your own story inside them with your OC."}),file,h("div",{class:"row"},importButton),note);
   if(!books.length)ap(m,h("p",{class:"hint",text:"No books yet."}));
-  books.forEach(b=>ap(m,h("div",{class:"row tight"},h("button",{class:"sessbtn",onclick:()=>go({n:"book",id:b.id})},h("b",{text:b.title}),h("small",{text:[b.author,"Chapter "+(b.pos.c+1)+" of "+b.n,Math.round(b.w/1000)+"k words"].filter(Boolean).join(" · ")})),
+  books.forEach(b=>ap(m,h("div",{class:reader?"reader-book-entry":"row tight"},h("button",{class:"sessbtn",onclick:()=>go({n:"book",id:b.id})},h("b",{text:b.title}),h("small",{text:[b.author,"Chapter "+(b.pos.c+1)+" of "+b.n,Math.round(b.w/1000)+"k words"].filter(Boolean).join(" · ")}),
+    reader?h("progress",{max:b.n||1,value:(b.pos?.c||0)+1,"aria-label":"Chapter progress"}):null),
     confirmBtn("Delete",async()=>{DB.books=DB.books.filter(x=>x.id!==b.id);delete BOOKC[b.id];save();try{await idbDel("book:"+b.id)}catch(e){}render()}))))}
 function vBook(){const b=(DB.books||[]).find(x=>x.id===view.id);if(!b){view={n:"home",tab:"library"};return render()}
   const k=Math.max(0,Math.min(b.n-1,view.c!=null?view.c:b.pos.c));
@@ -1188,8 +1446,15 @@ function syncSoon(){if(!DB.syncAuto||SYNC.busy||!DB.syncPass)return;clearTimeout
 /* ---------- Generated pictures ---------- */
 const IMGMODEL="google/gemini-2.5-flash-image";
 function shrinkURL(url,max,q){return new Promise((res,rej)=>{const im=new Image();im.onload=()=>{const k=Math.min(1,max/Math.max(im.naturalWidth,im.naturalHeight)),w=Math.max(1,Math.round(im.naturalWidth*k)),hh=Math.max(1,Math.round(im.naturalHeight*k)),c=document.createElement("canvas");c.width=w;c.height=hh;c.getContext("2d").drawImage(im,0,0,w,hh);res(c.toDataURL("image/jpeg",q||0.85))};im.onerror=()=>rej(new Error("The picture couldn’t be opened."));im.src=url})}
-async function genImage(prompt,refs,se){if(!DB.key){const e=new Error("Pictures need an OpenRouter key in Settings.");e.code="or_key";throw e}
-  const content=[{type:"text",text:prompt}].concat((refs||[]).filter(Boolean).map(u=>({type:"image_url",image_url:{url:u}})));
+async function genImage(prompt,refs,se,style){if(!DB.key){const e=new Error("Pictures need an OpenRouter key in Settings.");e.code="or_key";throw e}
+  const image=url=>({type:"image_url",image_url:{url}});
+  const content=[{type:"text",text:prompt}];
+  if(style){
+    const data=await idbGet(style.imageId);
+    if(!sfValidOriginalData(data,style.type))throw Error("The style image is missing. Reimport it or generate without the style reference.");
+    content.push({type:"text",text:"Use the next image for art style only. Match its linework, colors, shading, lighting and texture. Keep the subject and scene from the request. "+(style.notes||"")},image(data));
+  }
+  for(const url of (refs||[]).filter(Boolean))content.push({type:"text",text:"Character or scene reference for visual identity."},image(url));
   let r;try{r=await fetch("https://openrouter.ai/api/v1/chat/completions",{method:"POST",headers:{"Authorization":"Bearer "+DB.key,"Content-Type":"application/json"},body:JSON.stringify({model:DB.imgModel||IMGMODEL,modalities:["image","text"],messages:[{role:"user",content}]})})}catch(x){throw new Error("Couldn’t reach OpenRouter. Are you online?")}
   if(!r.ok){let m=await r.text();try{m=JSON.parse(m).error.message||m}catch(x){}throw new Error(String(m).slice(0,240))}
   const j=await r.json();tally(j.usage,se,false);const msg=j.choices&&j.choices[0]&&j.choices[0].message,im=msg&&msg.images&&msg.images[0],url=im&&((im.image_url&&im.image_url.url)||im.url);
@@ -1197,15 +1462,25 @@ async function genImage(prompt,refs,se){if(!DB.key){const e=new Error("Pictures 
 const PICRULE=" No words, captions or watermarks in the picture. No nudity or sexual content. Anyone who is or looks under 18 is fully clothed and shown in a non-romantic way.";
 async function picRefs(se,text){const lc=String(text).toLowerCase(),out=[],st0=getStory(se.storyId);
   for(const c of((st0&&st0.cast0)||[])){if(out.length>=2)break;if(c.img&&lc.indexOf(c.n.toLowerCase().split(/\s+/)[0])>=0){try{const u=await idbGet(c.img);if(u)out.push(u)}catch(e){}}}for(const x of(se.vis||[])){if(out.length>=2)break;if(x.on!==false&&x.name&&lc.indexOf(x.name.toLowerCase().split(/\s+/)[0])>=0){try{const u=await idbGet("img:"+x.id);if(u)out.push(u)}catch(e){}}}return out}
-async function scenePic(se,i){const st=getStory(se.storyId),t=se.turns[i];if(!t||t.role!=="ai")return;if(t.imgBusy)return;t.imgBusy=1;rerender();toast("Painting the scene… this takes about 10 to 30 seconds.");
+function chooseImageStyle(se,generate){
+  const style=sfStylePresets().find(p=>p.id===se.artStylePresetId);
+  if(!style)return generate(null);
+  const run=value=>{closeSheet(true);generate(value)};
+  sheet("Generate artwork",h("div",null,
+    h("p",{text:"Send “"+style.name+"” to your image model as a style reference?"}),
+    h("div",{class:"row"},
+      h("button",{class:"primary",text:"Use story style",onclick:()=>run(style)}),
+      h("button",{text:"Generate without style",onclick:()=>run(null)}))));
+}
+async function scenePic(se,i,style){if(style===undefined)return chooseImageStyle(se,chosen=>scenePic(se,i,chosen));const st=getStory(se.storyId),t=se.turns[i];if(!t||t.role!=="ai")return;if(t.imgBusy)return;t.imgBusy=1;rerender();toast("Painting the scene… this takes about 10 to 30 seconds.");
   try{const text=(t.show||t.text).slice(0,1800),lc=text.toLowerCase(),cast=Object.keys(se.cast||{}).filter(n=>lc.indexOf(n.toLowerCase().split(/\s+/)[0])>=0).slice(0,5).map(n=>n+": "+[se.cast[n].l,se.cast[n].r].filter(Boolean).join("; "));
     const pr="Create one illustration of this moment from an interactive story"+(st&&st.title?" ("+(se.sim&&se.sim.canon||st.title)+")":"")+". Style: "+(DB.imgStyle||"detailed anime illustration")+".\nThe moment:\n"+text+(cast.length?"\nCharacters in it:\n"+cast.join("\n"):"")+(visText(se)?"\nHow things look (match these where they appear; reference pictures may be attached):\n"+visText(se):"")+(se.char.desc?"\nThe player character, "+(se.char.name||"the hero")+": "+se.char.desc:"")+"\n"+PICRULE;
-    const url=await genImage(pr,await picRefs(se,text),se),id=uid();await idbSet("gen:"+id,url);t.img=id;save()}catch(e){toast(errMsg(e))}delete t.imgBusy;if(view.n==="chat"&&view.id===se.id)rerender()}
+    const url=await genImage(pr,await picRefs(se,text),se,style),id=uid();await idbSet("gen:"+id,url);t.img=id;save()}catch(e){toast(errMsg(e))}delete t.imgBusy;if(view.n==="chat"&&view.id===se.id)rerender()}
 function idbImg(key,cls,alt){const im=h("img",{class:cls||"",alt:alt||""});idbGet(key).then(u=>{if(u)im.src=u}).catch(()=>{});return im}
 function genImg(id){const im=h("img",{class:"genimg",alt:"Scene picture",onclick:()=>sheet("Picture",h("div",null,h("img",{class:"vprev",style:"max-height:none",src:im.src,alt:"Scene picture"}),h("div",{class:"row"},h("button",{text:"Save or share",onclick:async()=>{const b=await (await fetch(im.src)).blob();shareFile(b,"story-picture.png")}}))))});idbGet(id.indexOf(":")>0?id:"gen:"+id).then(u=>{if(u)im.src=u}).catch(()=>{});return im}
-async function portrait(se,k,btn){const c=se.cast[k],st=getStory(se.storyId);if(!c)return;btn.disabled=true;btn.textContent="Painting…";
+async function portrait(se,k,btn,style){if(style===undefined)return chooseImageStyle(se,chosen=>portrait(se,k,btn,chosen));const c=se.cast[k],st=getStory(se.storyId);if(!c)return;btn.disabled=true;btn.textContent="Painting…";
   try{const v=visFor(se,k),refs=[];if(v){try{const u=await idbGet("img:"+v.id);if(u)refs.push(u)}catch(e){}}
-    const url=await genImage("Create a character portrait, head and shoulders, of "+k+(st&&st.title?" from "+(se.sim&&se.sim.canon||st.title):"")+". Style: "+(DB.imgStyle||"detailed anime illustration")+". "+[c.r&&"Role: "+c.r,c.l&&"Looks: "+c.l,(c.t||[]).length&&"Personality: "+c.t.join(", ")].filter(Boolean).join(". ")+(v&&v.desc?". Reference description: "+v.desc:"")+"."+PICRULE,refs,se);
+    const url=await genImage("Create a character portrait, head and shoulders, of "+k+(st&&st.title?" from "+(se.sim&&se.sim.canon||st.title):"")+". Style: "+(DB.imgStyle||"detailed anime illustration")+". "+[c.r&&"Role: "+c.r,c.l&&"Looks: "+c.l,(c.t||[]).length&&"Personality: "+c.t.join(", ")].filter(Boolean).join(". ")+(v&&v.desc?". Reference description: "+v.desc:"")+"."+PICRULE,refs,se,style);
     c.pic=await shrinkURL(url,256,0.82);const id=uid();await idbSet("gen:"+id,url);c.picId=id;save();toast("Portrait made.")}catch(e){toast(errMsg(e))}btn.disabled=false;btn.textContent="Make a portrait"}
 function pageSheet(st){const d={desc:st.desc||"",tags:(st.tags||[]).join(", "),guide:st.guide||"",pro:st.prologue||"",info:st.info||"",ctr:(st.ctr||[]).map(c=>c.n+"/"+c.max).join(", "),cmds:(st.cmds||[]).map(c=>c.c+(c.d?" = "+c.d:"")).join("\n")},cast=JSON.parse(JSON.stringify(st.cast0||[])),box=h("div");
   const pickImg=async cb=>{const f=h("input",{type:"file",accept:"image/*"});f.onchange=async()=>{const x=f.files[0];if(!x)return;try{const full=await imgShrink(x,1200,0.86),th=await imgShrink(x,360,0.8),id="img:"+uid();await idbSet(id,full);cb(id,th)}catch(e){toast(e.message)}};f.click()};
@@ -1409,6 +1684,13 @@ function menuSheet(se,st){closeSheet(true);const ends=ed(se,st),fo=foundOf(st),n
     h("button",{class:"dhead","aria-label":"Open the story page",onclick:()=>go(st.builtin?{n:"story",id:st.id}:{n:"edit",id:st.id})},h("i",{style:grad(stHue(st)),text:String(name).split(/\s+/).map(w=>w[0]).join("").slice(0,3).toUpperCase()}),h("b",{text:name}),ic("edit")),
     illustratedReader()?[
       h("div",{class:"dsec",text:"Reading and artwork"}),
+      drow("Play presentation",()=>sheet("Play presentation",h("div",{class:"row"},
+        [["reader","Illustrated Reader"],["cinematic","Cinematic Visual Novel"]].map(([value,label])=>
+          h("button",{class:(DB.readerPresentation||"reader")===value?"primary":null,text:label,onclick:()=>{
+            DB.readerPresentation=value;
+            save();
+            closeSheet();
+          }}))))),
       drow("Visual Suite",()=>sfVisualSuite(se)),
       drow("Appearance",()=>{closeSheet(true);window.SFVisualV48?.open()}),
       drow("Dashboard",()=>{closeSheet(true);window.SFCharacterV50?.open()}),
@@ -1418,6 +1700,7 @@ function menuSheet(se,st){closeSheet(true);const ends=ed(se,st),fo=foundOf(st),n
       drow("Scene & Portraits",()=>{closeSheet(true);window.SFScenesV54?.open()}),
       drow("Toggle cinematic dialogue",()=>{closeSheet(true);$(".sf53-tools button")?.click()})
     ]:null,
+    drow("Story and saved sessions",()=>go({n:"story",id:st.id})),
     h("div",{class:"dsec",text:"Session settings"}),
     st.kind!=="character"?drow("World Status",()=>worldSheet(se,st),se.sim&&se.sim.ph==="setup"?"Setting up":""):null,
     drow("Commands",()=>cmdSheet(se,st)),
@@ -1611,20 +1894,82 @@ function setFX(se,st){const f=fmtOf(se),pal=[];if(se&&st&&st.kind!=="character")
     ks.forEach(k=>{const ws=k.split(/\s+/);[ws[0],ws.length>1?ws[ws.length-1]:""].forEach(w=>{if(w&&w.length>=3)first[w]=(first[w]||0)+1})});
     ks.forEach(k=>{const col=nameCol(k),esc2=x=>x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");const alts=[k],ws=k.split(/\s+/);if(ws.length>1)[ws[0],ws[ws.length-1]].forEach(w=>{if(w.length>=3&&first[w]===1&&!alts.includes(w))alts.push(w)});pal.push({k,col,re:new RegExp("(^|[^\\p{L}])("+alts.map(esc2).join("|")+")(?![\\p{L}])","u")})})}
   FX={f,pal,me:((se&&se.char&&se.char.name)||"").toLowerCase()}}
-const TTS={on:false,paused:false,q:[],i:0,id:0,label:"",us:[]},ttsOK=()=>"speechSynthesis"in window&&"SpeechSynthesisUtterance"in window;
+const TTS={on:false,paused:false,q:[],id:0,label:"",us:[],timeline:[],total:0,position:0,anchor:null,timer:null},ttsOK=()=>"speechSynthesis"in window&&"SpeechSynthesisUtterance"in window;
 function ttsParts(text){const out=[],two=!!DB.voice2&&DB.voice2!==DB.voice;
   const chunk=(p,pre)=>{let cur="";(p.match(/[^.!?…]+[.!?…]*["”’)\]]*\s*/g)||[p]).forEach(sn=>{if(cur&&cur.length+sn.length>220){out.push(pre+cur.trim());cur=""}cur+=sn});if(cur.trim())out.push(pre+cur.trim())};
   if(two){String(text||"").replace(/[*_]/g,"").replace(/[◆◇📱✉📩💬]/gu,"").replace(/^\s*\[([^\]]+)\]/gm,"$1.").split(/\n+/).forEach(p=>p.split(/("[^"\n]+"|“[^”\n]+”)/).forEach(seg=>{if(!seg.trim())return;const d=/^["“]/.test(seg);chunk(d?seg.replace(/^["“]|["”]$/g,""):seg,d?"\u0002":"")}));return out}
   String(text||"").replace(/[*_]/g,"").replace(/[◆◇📱✉📩💬]/gu,"").replace(/^\s*\[([^\]]+)\]/gm,"$1.").split(/\n+/).forEach(p=>{let cur="";(p.match(/[^.!?…]+[.!?…]*["”’)\]]*\s*/g)||[]).forEach(sn=>{if(cur&&cur.length+sn.length>220){out.push(cur.trim());cur=""}cur+=sn});if(cur.trim())out.push(cur.trim())});return out}
-const ttsLabel0=()=>(TTS.paused?"Paused: ":"Reading ")+TTS.label+" · "+(TTS.i+1)+"/"+TTS.q.length;
-const ttsLabel=()=>ttsLabel0();
-function ttsQueue(from){const id=++TTS.id,vs0=speechSynthesis.getVoices(),v=vs0.find(x=>x.voiceURI===DB.voice),v2=DB.voice2?vs0.find(x=>x.voiceURI===DB.voice2):null;TTS.us=[];
-  for(let i=from;i<TTS.q.length;i++){const dl=TTS.q[i][0]==="\u0002",u=new SpeechSynthesisUtterance(dl?TTS.q[i].slice(1):TTS.q[i]),vv=dl&&v2?v2:v;u.rate=DB.rate||1;if(vv){u.voice=vv;u.lang=vv.lang}
-    u.onstart=()=>{if(TTS.id!==id)return;TTS.i=i;const e=$("#ptext");if(e)e.textContent=ttsLabel()};
+const ttsRate=()=>Number(DB.rate)||1;
+const ttsLabel=()=>(TTS.paused?"Paused: ":"Reading ")+TTS.label;
+function ttsTimeline(q){
+  let end=0;
+  return q.map(part=>{
+    const text=part.replace(/^\u0002/,""),starts=[...text.matchAll(/\S+/g)].map(m=>m.index);
+    const step=60/155;
+    const entry={text,starts,step,start:end,end:end+Math.max(1,starts.length)*step};
+    end=entry.end;
+    return entry;
+  });
+}
+function ttsPosition(){
+  const a=TTS.anchor;
+  return a?Math.min(a.end,a.position+(performance.now()-a.at)*a.rate/1000):TTS.position;
+}
+function ttsLocate(position){
+  const i=Math.max(0,TTS.timeline.findIndex(part=>position<part.end));
+  const index=position>=TTS.total?TTS.timeline.length-1:i;
+  const part=TTS.timeline[index];
+  const word=Math.max(0,Math.min(part.starts.length-1,Math.floor((position-part.start)/part.step+1e-7)));
+  return {index,offset:part.starts[word]||0,position:part.start+word*part.step};
+}
+function ttsClock(seconds){
+  const n=Math.max(0,Math.floor(seconds));
+  return n>=3600?Math.floor(n/3600)+":"+String(Math.floor(n/60)%60).padStart(2,"0")+":"+String(n%60).padStart(2,"0"):Math.floor(n/60)+":"+String(n%60).padStart(2,"0");
+}
+function ttsProgress(preview){
+  const slider=$("#pseek"),label=$("#pelapsed");
+  if(!slider||!label)return;
+  if(preview==null&&slider.dataset.scrubbing)return;
+  const seconds=preview??ttsPosition()/ttsRate();
+  slider.value=seconds;
+  slider.setAttribute("aria-valuetext",ttsClock(seconds)+" of "+ttsClock(TTS.total/ttsRate())+" estimated");
+  label.textContent=ttsClock(seconds);
+}
+function ttsQueue(){
+  const id=++TTS.id,from=ttsLocate(TTS.position),rate=ttsRate(),voices=speechSynthesis.getVoices();
+  const v=voices.find(x=>x.voiceURI===DB.voice),v2=voices.find(x=>x.voiceURI===DB.voice2);
+  TTS.us=[];
+  for(let i=from.index;i<TTS.q.length;i++){
+    const part=TTS.timeline[i],offset=i===from.index?from.offset:0;
+    const u=new SpeechSynthesisUtterance(part.text.slice(offset));
+    const voice=TTS.q[i][0]==="\u0002"&&v2?v2:v;
+    u.rate=rate;
+    if(voice){u.voice=voice;u.lang=voice.lang}
+    const anchor=position=>{TTS.position=position;TTS.anchor={position,rate,end:part.end,at:performance.now()}};
+    u.onstart=()=>{if(TTS.id===id){anchor(i===from.index?from.position:part.start);ttsProgress()}};
+    u.onboundary=event=>{
+      if(TTS.id!==id||event.name!=="word")return;
+      const word=part.starts.findIndex(start=>start>=offset+event.charIndex);
+      if(word>=0)anchor(part.start+word*part.step);
+    };
     u.onend=()=>{if(TTS.id===id&&i===TTS.q.length-1)ttsStop()};
     u.onerror=ev=>{if(TTS.id===id&&ev.error!=="interrupted"&&ev.error!=="canceled"&&i===TTS.q.length-1)ttsStop()};
-    TTS.us.push(u);speechSynthesis.speak(u)}}
-function ttsRestart(){const was=speechSynthesis.speaking||speechSynthesis.pending;TTS.id++;speechSynthesis.cancel();const go=()=>{if(TTS.on&&!TTS.paused)ttsQueue(TTS.i)};if(was)setTimeout(go,90);else go()}
+    TTS.us.push(u);speechSynthesis.speak(u);
+  }
+}
+function ttsRestart(){
+  const was=speechSynthesis.speaking||speechSynthesis.pending,id=++TTS.id;
+  TTS.anchor=null;
+  speechSynthesis.cancel();
+  const resume=()=>{if(TTS.id===id&&TTS.on&&!TTS.paused)ttsQueue()};
+  if(was)setTimeout(resume,90);else resume();
+}
+function ttsSeek(position){
+  TTS.position=ttsLocate(Math.max(0,Math.min(TTS.total,position))).position;
+  TTS.anchor=null;
+  if(!TTS.paused)ttsRestart();
+  ttsProgress();
+}
 function ttsUI(){if(view.n!=="chat"&&view.n!=="book")return;const old=$("#player");if(TTS.on){const n=playerEl();if(old)old.replaceWith(n);else{const f=$("footer");if(f)f.prepend(n)}}else if(old)old.remove()}
 /* iPhone mutes web speech in Silent mode. Asking for a "playback" audio session, plus a silent looping
    audio track, puts the page in the same category as music apps, so speech plays through the speaker. */
@@ -1636,12 +1981,33 @@ function spkOn(){if(DB.spk===false)return;try{if(navigator.audioSession)navigato
     const p=SPK.play();if(p&&p.catch)p.catch(()=>{})}catch(e){}}
 function spkOff(){try{if(SPK)SPK.pause()}catch(e){}}
 function ttsStart(texts,label){if(!ttsOK()){toast("This browser can’t read aloud.");return}const q=[];texts.forEach(t=>ttsParts(t).forEach(x=>q.push(x)));if(!q.length){toast("Nothing to read yet.");return}
-  spkOn();TTS.q=q;TTS.i=0;TTS.on=true;TTS.paused=false;TTS.label=label;ttsRestart();ttsUI()}
-function ttsStop(quiet){spkOff();TTS.id++;TTS.on=false;TTS.paused=false;TTS.us=[];if(ttsOK())speechSynthesis.cancel();if(!quiet)ttsUI()}
-function playerEl(){const RATES=[0.8,1,1.2,1.5,1.8],r=DB.rate||1;return h("div",{id:"player"},h("span",{id:"ptext",text:ttsLabel()}),
-  h("button",{text:r+"×","aria-label":"Reading speed",onclick:()=>{DB.rate=RATES[(RATES.indexOf(r)+1)%RATES.length];save();if(!TTS.paused)ttsRestart();ttsUI()}}),
-  h("button",{"aria-label":TTS.paused?"Resume reading":"Pause reading",onclick:()=>{if(TTS.paused){spkOn();TTS.paused=false;ttsRestart()}else{TTS.paused=true;TTS.id++;speechSynthesis.cancel();spkOff()}ttsUI()}},ic(TTS.paused?"send":"pause")),
-  h("button",{"aria-label":"Stop reading",onclick:()=>ttsStop()},ic("stop")))}
+  spkOn();TTS.q=q;TTS.timeline=ttsTimeline(q);TTS.total=TTS.timeline.at(-1).end;
+  TTS.position=0;TTS.on=true;TTS.paused=false;TTS.label=label;
+  clearInterval(TTS.timer);TTS.timer=setInterval(ttsProgress,250);ttsRestart();ttsUI()}
+function ttsStop(quiet){spkOff();TTS.id++;TTS.on=false;TTS.paused=false;TTS.anchor=null;TTS.us=[];clearInterval(TTS.timer);if(ttsOK())speechSynthesis.cancel();if(!quiet)ttsUI()}
+function playerEl(){
+  const rates=[0.8,1,1.2,1.5,1.8],r=ttsRate(),total=TTS.total/r,current=ttsPosition()/r;
+  const slider=h("input",{id:"pseek",type:"range",min:0,max:total,step:"any",value:current,
+    "aria-label":"Seek in chapter","aria-valuetext":ttsClock(current)+" of "+ttsClock(total)+" estimated",
+    oninput:e=>{e.target.dataset.scrubbing="true";ttsProgress(Number(e.target.value))},
+    onchange:e=>{delete e.target.dataset.scrubbing;ttsSeek(Number(e.target.value)*r)},
+    onblur:e=>{delete e.target.dataset.scrubbing;ttsProgress()}});
+  return h("div",{id:"player"},
+    h("div",{class:"player-controls"},h("span",{id:"ptext",text:ttsLabel()}),
+      h("button",{text:"−15s","aria-label":"Back 15 seconds",onclick:()=>ttsSeek(ttsPosition()-15*r)}),
+      h("button",{text:"+15s","aria-label":"Forward 15 seconds",onclick:()=>ttsSeek(ttsPosition()+15*r)}),
+      h("button",{text:r+"×","aria-label":"Reading speed",onclick:()=>{
+        TTS.position=ttsPosition();DB.rate=rates[(rates.indexOf(r)+1)%rates.length];save();if(!TTS.paused)ttsRestart();ttsUI()
+      }}),
+      h("button",{"aria-label":TTS.paused?"Resume reading":"Pause reading",onclick:()=>{
+        if(TTS.paused){spkOn();TTS.paused=false;ttsRestart()}
+        else{TTS.position=ttsPosition();TTS.anchor=null;TTS.paused=true;TTS.id++;speechSynthesis.cancel();spkOff()}
+        ttsUI()
+      }},ic(TTS.paused?"send":"pause")),
+      h("button",{"aria-label":"Stop reading",onclick:()=>ttsStop()},ic("stop"))),
+    h("div",{class:"player-timeline"},h("time",{id:"pelapsed",text:ttsClock(current)}),slider,
+      h("span",{class:"player-total",title:"Estimated duration",text:"~"+ttsClock(total)})));
+}
 function chParas(se,C,k,you){const out=[],nm=se.char.name||"You";for(let j=C[k].i;j<chEnd(se,C,k);j++){const t=se.turns[j];if(t.hide)continue;const tx=String(t.show||t.text||"").replace(/\*+/g,"").trim();if(!tx)continue;
     if(t.role==="user"){if(you)out.push("u"+nm+": "+tx.replace(/\s*\n+\s*/g," "))}else tx.split(/\n{2,}/).forEach(p=>{p=p.replace(/\s*\n\s*/g," ").trim();if(p)out.push("n"+p)})}return out}
 async function packListen(obj){const js=JSON.stringify(obj);if(window.CompressionStream){try{const buf=new Uint8Array(await new Response(new Blob([new TextEncoder().encode(js)]).stream().pipeThrough(new CompressionStream("deflate-raw"))).arrayBuffer());let b="";for(let i=0;i<buf.length;i+=32768)b+=String.fromCharCode.apply(null,buf.subarray(i,i+32768));
@@ -1780,7 +2146,7 @@ async function sfStyleReferenceFile(file){
 function sfStylePrompt(p,subject){return 'Create original '+(subject||'character or creature')+' artwork. Use the supplied reference image only for visual direction: '+(p.notes||'match linework, coloring, shading, lighting and composition style')+'. Maintain a distinct subject design; do not copy the reference subject. Preserve any separately imported original character images unchanged.'}
 async function sfStyleStudio(se){
   const root=h('div',null),presets=sfStylePresets();let current=null,selected=null;
-  function render(){root.textContent='';ap(root,h('p',{class:'sub',text:'Store an unaltered reference image and art-direction notes for future optional image generation. This version does not send images to an AI service or charge API fees.'}));
+  function render(){root.textContent='';ap(root,h('p',{class:'sub',text:'Upload a style reference and select it for this playthrough. When you generate a scene or portrait, choose Use story style to send it to your image model.'}));
     const name=h('input',{placeholder:'Preset name (e.g. Moonlit Anime)',maxlength:80});
     const notes=h('textarea',{rows:3,placeholder:'Describe linework, shading, color palette, lighting and texture'});
     const file=h('input',{type:'file',accept:'image/png,image/jpeg,image/webp,image/gif',onchange:async e=>{try{current=await sfStyleReferenceFile(e.target.files[0]);toast('Reference ready; save preset to keep it.')}catch(err){toast(err.message)}}});
@@ -1791,7 +2157,7 @@ async function sfStyleStudio(se){
       if(se.artStylePresetId===p.id)ap(row,h('small',{text:'Selected for this story'}));ap(root,row);
     }
     ap(root,h('div',{class:'row'},h('button',{text:'Export styles + original images',onclick:async()=>{try{const out=[];for(const p of presets){const data=await idbGet(p.imageId);if(!sfValidOriginalData(data,p.type))throw Error('Missing reference for '+p.name);out.push({name:p.name,notes:p.notes,type:p.type,filename:p.filename,data})}sfDownloadJSON('story-forge-art-style-presets.json',{format:'story-forge-art-style-presets',version:1,styles:out});toast('Style presets exported.')}catch(e){toast('Export failed: '+e.message)}}}),h('label',null,'Import styles ',h('input',{type:'file',accept:'.json,application/json',onchange:async e=>{try{const f=e.target.files[0];if(!f)return;if(f.size>60*1024*1024)throw Error('Archive too large');const payload=JSON.parse(await f.text());if(payload.format!=='story-forge-art-style-presets'||payload.version!==1||!Array.isArray(payload.styles)||payload.styles.length>100)throw Error('Invalid style archive');for(const x of payload.styles)if(!x||typeof x.name!=='string'||!x.name.trim()||!sfValidOriginalData(x.data,x.type))throw Error('Invalid reference entry');let count=0;for(const x of payload.styles){if(presets.some(p=>p.name.toLowerCase()===x.name.toLowerCase()))continue;const id='style-ref:'+uid();await idbSet(id,x.data);presets.push({id:uid(),name:x.name.slice(0,80),notes:String(x.notes||'').slice(0,1500),imageId:id,type:x.type,filename:String(x.filename||'reference').slice(0,160),created:Date.now()});count++}save();render();toast('Imported '+count+' styles.')}catch(err){toast('Import failed: '+err.message)}}}))));
-    ap(root,h('p',{class:'sub',text:'Original character artwork import remains separate: selecting a style never changes existing portraits or creature images. AI generation will require a later provider integration and explicit approval.'}));
+    ap(root,h('p',{class:'sub',text:'The original reference stays on this device until you choose to send it for a generation.'}));
   }render();sheet('Art Style Reference Studio',root);
 }
 /* v38: original-art imports. Full-resolution bytes are stored in IndexedDB, not resized or sent to an image API. */
@@ -1878,26 +2244,29 @@ function relationshipSheet(se){
   }
   refresh();sheet('Social Links & Relationships',root);
 }
-function relationshipMapSheet(se){
+function relationshipMapSheet(se,mount){
   if(!Array.isArray(se.relationshipLinks))se.relationshipLinks=[];
   const root=h('div',{class:'sf-map-sheet'}), names=()=>Array.from(new Set([...Object.keys(se.cast||{}),...Object.keys(se.relationships||{}),...se.relationshipLinks.flatMap(x=>[x.a,x.b])].filter(Boolean))).sort();
-  let editing=-1,filter='',typeFilter='All';
-  function draw(){root.textContent='';const ns=names();const links=se.relationshipLinks.filter(link=>(typeFilter==='All'||link.type===typeFilter)&&(!filter||[link.a,link.b,link.type,link.note].some(v=>String(v||'').toLowerCase().includes(filter.toLowerCase()))));
-    ap(root,h('p',{class:'sub',text:'Connections between characters in this playthrough. Select a node or connection to edit it. These manual links do not alter the AI memory engine.'}));
-    const types=['All',...new Set(se.relationshipLinks.map(x=>x.type).filter(Boolean))];ap(root,h('div',{class:'row'},fld('Find character or link',inp(filter,v=>{filter=v;draw()},'Search connections')),fld('Connection type',sel(typeFilter,types.map(x=>[x,x]),v=>{typeFilter=v;draw()}))));
-    if(ns.length){const graph=h('div',{class:'sf-network'}),svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 600 360');svg.setAttribute('role','img');svg.setAttribute('aria-label','Character relationship network');
-      const points=Object.fromEntries(ns.map((n,i)=>[n,{x:300+230*Math.cos(2*Math.PI*i/ns.length-Math.PI/2),y:180+125*Math.sin(2*Math.PI*i/ns.length-Math.PI/2)}]));
+  let editing=-1,filter='',typeFilter='All',focus='';
+  function draw(){root.textContent='';const ns=names();const links=se.relationshipLinks.filter(link=>(!focus||link.a===focus||link.b===focus)&&(typeFilter==='All'||link.type===typeFilter)&&(!filter||[link.a,link.b,link.type,link.note].some(v=>String(v||'').toLowerCase().includes(filter.toLowerCase()))));
+    ap(root,h('p',{class:'sub',text:'Select a character to focus on their connections, or choose a link to view its details and history.'}));
+    const types=['All',...new Set(se.relationshipLinks.map(x=>x.type).filter(Boolean))];ap(root,h('div',{class:'row'},fld('Find character or link',h('input',{type:'search',placeholder:'Search connections',value:filter,'data-map-search':'',oninput:e=>{const caret=e.target.value.length;filter=e.target.value;draw();const field=root.querySelector('[data-map-search]');field.focus();field.setSelectionRange(caret,caret)}})),fld('Connection type',sel(typeFilter,types.map(x=>[x,x]),v=>{typeFilter=v;draw()})),fld('Focus character',sel(focus,[['','Everyone'],...ns.map(n=>[n,n])],v=>{focus=v;draw()}))));
+    const visible=focus?[...new Set([focus,...links.flatMap(link=>[link.a,link.b])])]:ns;
+    if(visible.length){const graph=h('div',{class:'sf-network'}),svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 600 360');svg.setAttribute('role','img');svg.setAttribute('aria-label','Character relationship network');
+      const points=Object.fromEntries(visible.map((n,i)=>[n,n===focus?{x:300,y:180}:{x:300+230*Math.cos(2*Math.PI*(focus?i-1:i)/(focus?visible.length-1:visible.length)-Math.PI/2),y:180+125*Math.sin(2*Math.PI*(focus?i-1:i)/(focus?visible.length-1:visible.length)-Math.PI/2)}]));
       const node=(tag,attrs)=>{const el=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,String(v)));svg.appendChild(el);return el};
-      links.forEach((link)=>{const i=se.relationshipLinks.indexOf(link);if(!points[link.a]||!points[link.b])return;const a=points[link.a],b=points[link.b];const line=node('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:'#a99be8','stroke-width':Math.max(2,Math.min(7,(Number(link.strength)||50)/18)),opacity:'.75'});line.style.cursor='pointer';line.addEventListener('click',()=>{editing=i;draw()});});
-      ns.forEach(n=>{const pt=points[n],circle=node('circle',{cx:pt.x,cy:pt.y,r:ns.length>14?15:22,fill:'#51477e',stroke:'#d2c5ff','stroke-width':2});circle.style.cursor='pointer';circle.addEventListener('click',()=>castSheet(se,n));const label=node('text',{x:pt.x,y:pt.y+37,'text-anchor':'middle',fill:'currentColor','font-size':ns.length>12?10:13});label.textContent=n.length>17?n.slice(0,16)+'…':n;});
+      const defs=node('defs',{});const arrow=node('marker',{id:'sf-map-arrow',viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:4,markerHeight:4,orient:'auto-start-reverse'});
+      defs.append(arrow);arrow.append(node('path',{d:'M0 0L10 5L0 10z',fill:'var(--accent)'}));
+      links.forEach((link)=>{const i=se.relationshipLinks.indexOf(link);if(!points[link.a]||!points[link.b])return;const a=points[link.a],b=points[link.b];const distance=Math.hypot(b.x-a.x,b.y-a.y)||1;const line=node('line',{x1:a.x,y1:a.y,x2:b.x-(b.x-a.x)*24/distance,y2:b.y-(b.y-a.y)*24/distance,...(link.oneWay?{'marker-end':'url(#sf-map-arrow)'}:{}),stroke:'var(--accent)','stroke-width':Math.max(2,Math.min(7,(Number(link.strength)||50)/18)),opacity:'.75'});line.style.cursor='pointer';line.addEventListener('click',()=>{editing=i;draw()});});
+      visible.forEach(n=>{const pt=points[n],circle=node('circle',{cx:pt.x,cy:pt.y,r:ns.length>14?15:22,fill:'#51477e',stroke:'#d2c5ff','stroke-width':2});circle.style.cursor='pointer';circle.addEventListener('click',()=>{focus=focus===n?'':n;draw()});const label=node('text',{x:pt.x,y:pt.y+37,'text-anchor':'middle',fill:'currentColor','font-size':ns.length>12?10:13});label.textContent=n.length>17?n.slice(0,16)+'…':n;});
       graph.appendChild(svg);ap(root,graph);
     }else ap(root,h('p',{class:'sub',text:'Add characters in the Characters menu to start your map.'}));
-    if(editing>=0){const old=se.relationshipLinks[editing]||{},v={a:old.a||'',b:old.b||'',type:old.type||'Ally',strength:old.strength==null?50:old.strength,note:old.note||''};const choices=[['','Choose character'],...ns.map(n=>[n,n])];
-      ap(root,h('h3',{text:'Edit connection'}),fld('Character A',sel(v.a,choices,x=>v.a=x)),fld('Character B',sel(v.b,choices,x=>v.b=x)),fld('Connection type',inp(v.type,x=>v.type=x,'Friend, rival, family, mentor…')),fld('Strength (0–100)',inp(String(v.strength),x=>v.strength=x,'50','number')),fld('Shared history',area(v.note,x=>v.note=x,'How this connection developed',3)),h('div',{class:'row'},h('button',{class:'primary',text:'Save link',onclick:()=>{if(!v.a||!v.b||v.a===v.b){toast('Choose two different characters.');return}const rec={a:v.a,b:v.b,type:String(v.type).slice(0,80),strength:Math.max(0,Math.min(100,Number(v.strength)||0)),note:String(v.note).slice(0,2000)};const duplicate=se.relationshipLinks.findIndex((x,i)=>i!==editing&&((x.a===rec.a&&x.b===rec.b)||(x.a===rec.b&&x.b===rec.a)));if(duplicate>=0){toast('Those characters already have a connection.');return}if(editing===se.relationshipLinks.length)se.relationshipLinks.push(rec);else se.relationshipLinks[editing]=rec;save();editing=-1;draw()}}),h('button',{text:'Cancel',onclick:()=>{editing=-1;draw()}}),editing<se.relationshipLinks.length?h('button',{class:'ghost',text:'Delete link',onclick:()=>{if(!confirm('Delete this connection?'))return;se.relationshipLinks.splice(editing,1);save();editing=-1;draw()}}):null));return}
-    links.forEach(link=>{const i=se.relationshipLinks.indexOf(link);ap(root,h('button',{class:'sf-map-link',onclick:()=>{editing=i;draw()}},h('b',{text:link.a+' ↔ '+link.b}),h('small',{text:link.type+' · '+link.strength+'/100'}),link.note?h('small',{text:link.note}):null))});
+    if(editing>=0){const old=se.relationshipLinks[editing]||{},v={a:old.a||'',b:old.b||'',type:old.type||'Ally',strength:old.strength==null?50:old.strength,note:old.note||'',oneWay:!!old.oneWay,event:''};const choices=[['','Choose character'],...ns.map(n=>[n,n])];
+      ap(root,h('h3',{text:'Edit connection'}),fld('Character A',sel(v.a,choices,x=>v.a=x)),fld('Character B',sel(v.b,choices,x=>v.b=x)),fld('Connection type',inp(v.type,x=>v.type=x,'Friend, rival, family, mentor…')),fld('Strength (0–100)',inp(String(v.strength),x=>v.strength=x,'50','number')),fld('Shared history',area(v.note,x=>v.note=x,'How this connection developed',3)),chk('One-way link from A to B',v.oneWay,x=>v.oneWay=x),...(Array.isArray(old.history)?old.history:[]).filter(Boolean).map(entry=>h('p',{class:'sub',text:'Chapter '+entry.chapter+' · '+entry.note})),fld('Add a milestone to the latest chapter',inp('',x=>v.event=x,'What changed?')),h('div',{class:'row'},h('button',{class:'primary',text:'Save link',onclick:()=>{if(!v.a||!v.b||v.a===v.b){toast('Choose two different characters.');return}const history=Array.isArray(old.history)?old.history.slice():[];if(v.event.trim())history.push({chapter:chapsOf(se).length,note:v.event.trim().slice(0,500)});const rec={a:v.a,b:v.b,oneWay:v.oneWay,history,type:String(v.type).slice(0,80),strength:Math.max(0,Math.min(100,Number(v.strength)||0)),note:String(v.note).slice(0,2000)};const duplicate=se.relationshipLinks.findIndex((x,i)=>i!==editing&&((x.a===rec.a&&x.b===rec.b)||(x.a===rec.b&&x.b===rec.a)));if(duplicate>=0){toast('Those characters already have a connection.');return}if(editing===se.relationshipLinks.length)se.relationshipLinks.push(rec);else se.relationshipLinks[editing]=rec;save();editing=-1;draw()}}),h('button',{text:'Cancel',onclick:()=>{editing=-1;draw()}}),editing<se.relationshipLinks.length?h('button',{class:'ghost',text:'Delete link',onclick:()=>{if(!confirm('Delete this connection?'))return;se.relationshipLinks.splice(editing,1);save();editing=-1;draw()}}):null));return}
+    links.forEach(link=>{const i=se.relationshipLinks.indexOf(link);ap(root,h('button',{class:'sf-map-link',onclick:()=>{editing=i;draw()}},h('b',{text:link.a+(link.oneWay?' → ':' ↔ ')+link.b}),h('small',{text:link.type+' · '+link.strength+'/100'}),link.note?h('small',{text:link.note}):null))});
     ap(root,h('button',{class:'primary',text:'+ Add character connection',onclick:()=>{if(ns.length<2){toast('Add at least two characters first.');return}editing=se.relationshipLinks.length;draw()}}));
   }
-  draw();sheet('Relationship Map',root);
+  draw();if(mount)mount.append(root);else sheet('Relationship Map',root);
 }
 function fmtSheet(se){const f=fmtOf(se);sheet("Story formats",h("div",null,h("p",{class:"sub",text:"Choose how this story is written and shown. Changes apply from your next message, and old chapters are shown with the new choices."}),
   FMTS.map(x=>chk(x[1],!!f[x[0]],v=>{se.fmt=Object.assign(fmtOf(se),{[x[0]]:v?1:0});save()}))))}
@@ -2110,7 +2479,8 @@ function vSettings(){ap(app,h("header",null,back(()=>go({n:"home",tab:"discover"
     h("h2",{text:"Saving money"}),fld("How much is resent each turn, in every story",sel(String(DB.saver||0),SAVER.map((x,i)=>[String(i),x[0]]),v=>{DB.saver=+v;save()})),
     h("p",{class:"sub",text:"Recommended trims the prompt with little loss. To see what each choice costs, open Save money in a story’s menu."}),
     h("h2",{text:"Avatars"}),h("p",{class:"sub",text:DB.chars.length+" saved. These are the characters you play."}),h("div",{class:"row"},h("button",{text:"Manage avatars",onclick:()=>avatarSheet(null)})),
-    h("h2",{text:"Look"}),h("div",{class:"opts"},THEMES.map(t=>h("button",{class:"opt"+((DB.theme||"midnight")===t[0]?" on":""),onclick:()=>{DB.theme=t[0];save();applyLook();soft()}},h("span",{class:"swatch"},h("i",{style:"background:"+t[2]}),h("i",{style:"background:"+t[3]})),h("b",{text:t[1]})))),
+    h("h2",{text:"Look"}),h("p",{class:"sub",text:"Story and device theme overrides are managed in Appearance."}),h("div",{class:"opts"},THEMES.map(t=>h("button",{class:"opt"+((DB.theme||"midnight")===t[0]?" on":""),onclick:()=>{DB.theme=t[0];save();window.SFVisualV48?.useAppTheme();applyLook();soft()}},h("span",{class:"swatch"},h("i",{style:"background:"+t[2]}),h("i",{style:"background:"+t[3]})),h("b",{text:t[1]})))),
+    interfaceLookSettings(),
     fld("Story font",selC(DB.font||"serif",FONTS,v=>{DB.font=v;save();applyLook()},"Any font installed on your phone, e.g. Avenir")),
     fld("Line spacing",selC(String(num(DB.lh,1.75)),[["1.5","Compact"],["1.75","Normal"],["2","Airy"]],v=>{DB.lh=Math.max(1.2,Math.min(2.6,num(v,1.75)));save();applyLook()},"e.g. 1.9","number")),
     fld("Page margins",selC(String(num(DB.mx,16)),[["8","Narrow"],["16","Normal"],["28","Wide"]],v=>{DB.mx=Math.max(0,Math.min(60,num(v,16)));save();applyLook()},"Pixels, e.g. 20","number")),
