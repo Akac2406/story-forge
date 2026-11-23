@@ -33,6 +33,15 @@ srv = subprocess.Popen([sys.executable, "-m", "http.server", str(PORT), "--bind"
 errs = []
 def db(pg): return pg.evaluate("JSON.parse(localStorage.getItem('story-forge-v2'))")
 def strip(s): return {k: v for k, v in s.items() if k not in ("updated",)}
+def open_visuals(pg, screen):
+    if screen == "phone":
+        pg.get_by_role("button", name="Menu", exact=True).click()
+        pg.get_by_text("Reading and artwork", exact=True).click()
+        pg.get_by_role("button", name="Visual Suite", exact=True).click()
+    else:
+        pg.locator("button.pill.story-visuals").click()
+    pg.locator(".sf-v46-tabs").wait_for()
+
 with sync_playwright() as p:
     for name, vp in (("phone", {"width": 390, "height": 844}), ("desktop", {"width": 1280, "height": 860})):
         N[0] = 0
@@ -48,7 +57,7 @@ with sync_playwright() as p:
         pg.evaluate("go({n:'chat',id:'t1'})"); pg.wait_for_selector("#log")
         ok(pg.evaluate("document.documentElement.scrollWidth <= innerWidth"), f"{name}: story fits the screen width")
         before = strip(db(pg)["sessions"][0])
-        pg.click("button.pill:has-text('Visuals')"); pg.wait_for_timeout(300)
+        open_visuals(pg, name); pg.wait_for_timeout(300)
         for t in ["Character RPG", "Relationships", "World Atlas", "Timeline", "Visual Novel", "Themes", "Art Studio"]:
             pg.click(f".sf-v46-tabs button:has-text('{t}')", timeout=3000); pg.wait_for_timeout(150)
         pg.evaluate("closeSheet(true)"); pg.wait_for_timeout(200)
@@ -68,7 +77,7 @@ with sync_playwright() as p:
         pg.click("button[aria-label='Next version']"); pg.wait_for_selector("text=Reply number 2")
         ok(True, f"{name}: next version shows reply 2")
         # visuals again mid-story
-        pg.click("button.pill:has-text('Visuals')"); pg.wait_for_timeout(200); pg.evaluate("closeSheet(true)"); pg.wait_for_timeout(200)
+        open_visuals(pg, name); pg.wait_for_timeout(200); pg.evaluate("closeSheet(true)"); pg.wait_for_timeout(200)
         # branch
         pg.locator("button[aria-label='Message options']").first.click(); pg.click("text=Branch from here")
         pg.wait_for_selector("text=New branch started")
@@ -110,7 +119,7 @@ with sync_playwright() as p:
             pg.get_by_text("Visual Suite", exact=True).first.wait_for()
             pg.evaluate("go({n:'chat',id:'t1'})")
             pg.wait_for_selector("#log")
-            pg.click("button.pill:has-text('Visuals')")
+            open_visuals(pg, name)
             pg.click(".sf-v46-tabs button:has-text('Visual Novel')")
             pg.get_by_text("Visual Novel preview", exact=False).wait_for()
             pg.evaluate("closeSheet(true)")

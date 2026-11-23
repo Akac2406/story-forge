@@ -14,14 +14,18 @@ BOOK = sys.argv[1] if len(sys.argv) > 1 else ""
 NEEDS_BOOK = {"imp21", "lib29"}
 NEEDS_SHOTS = {"imp30", "crop30"}
 import shutil
-if shutil.which("node"):
-    r = subprocess.run(["node", os.path.join(HERE, "memory_phase1_unit.mjs")], capture_output=True, text=True)
-    print(("ok  " if r.returncode == 0 else "FAIL"), "memory_phase1_unit (node)")
-    if r.returncode: print(r.stdout[-1500:])
-else:
-    print("-- memory_phase1_unit: skipped (install Node.js to run it)")
-names = sorted(f[:-3] for f in os.listdir(HERE) if f.endswith(".py") and f != "run_all.py")
 failed = []
+node_tests = ("memory_phase1_unit", "scene_backup_v55", "story_setup_and_deadlines", "unknown_v43", "chapter_audio_seek")
+for name in node_tests:
+    if not shutil.which("node"):
+        print(f"-- {name}: skipped (install Node.js to run it)")
+        continue
+    result = subprocess.run(["node", os.path.join(HERE, name + ".mjs")], capture_output=True, text=True)
+    print(("ok  " if result.returncode == 0 else "FAIL"), name + " (node)")
+    if result.returncode:
+        failed.append(name)
+        print((result.stdout + result.stderr)[-1500:])
+names = sorted(f[:-3] for f in os.listdir(HERE) if f.endswith(".py") and f != "run_all.py")
 for n in names:
     if n in NEEDS_BOOK and not BOOK:
         print(f"-- {n}: skipped (pass an EPUB path to run it)"); continue

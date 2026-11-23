@@ -37,7 +37,10 @@ with sync_playwright() as p:
                 ok(pg.locator("text=too quickly").first.is_visible(), tag + ": story text visible")
                 for lab in ("Send", "Regenerate", "Menu"):
                     ok(pg.locator(f"button[aria-label='{lab}']").first.is_visible(), f"{tag}: {lab} button visible")
-                ok(pg.locator("button.pill:has-text('Visuals')").first.is_visible(), tag + ": Visuals pill visible")
+                pg.get_by_role("button", name="Menu", exact=True).click()
+                pg.get_by_text("Reading and artwork", exact=True).click()
+                pg.get_by_role("button", name="Visual Suite", exact=True).click()
+                pg.locator(".sheet").get_by_text("Visual Suite", exact=True).wait_for()
                 n += 1
         pg.close()
     br.close()

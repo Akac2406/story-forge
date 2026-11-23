@@ -324,7 +324,7 @@ const KEY="story-forge-v2",app=document.getElementById("app"),$=s=>document.quer
 function ap(p,...k){for(const c of k.flat(4)){if(c==null||c===false)continue;p.appendChild(c.nodeType?c:document.createTextNode(String(c)))}}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const num=(v,d)=>{const n=parseFloat(v);return isFinite(n)?n:d};
-const VER=64,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
+const VER=84,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
 function fixCh(se){const c=(se.chaps||[]).filter(x=>x&&x.i>=0&&x.i<Math.max(1,se.turns.length)).sort((a,b)=>a.i-b.i),out=[];c.forEach(x=>{if(!out.length||x.i>out[out.length-1].i)out.push(x)});if(!out.length||out[0].i!==0)out.unshift({i:0,t:""});se.chaps=out;return out}
 function autoCh(se){const N=se.chapN==null?1500:se.chapN,out=[{i:0,t:""}];if(N>0){let acc=0;se.turns.forEach((t,i)=>{if(t.role==="user"&&i>0&&(N===1?acc>0:acc>=N)){out.push({i,t:""});acc=0}if(t.role==="ai")acc+=words(t.text)})}return out}
 function chapsOf(se){if(!se.chaps)se.chaps=autoCh(se);return fixCh(se)}
@@ -408,7 +408,7 @@ e:[{k:"the Ebb, the return",a:true,t:"Timeline: the Ebb comes every seventh year
 {k:"Vael, drowned city, seabed",t:"A city of salt-white glass on the seabed, older than the shoals’ records. Streets hold their shape, doors still open, and some rooms are warm. Its machines run on tides nobody can see. Nothing taken from Vael is ever fully quiet."},
 {k:"Reckoners, Reckoner, claim",t:"The guild that licenses seabed claims, weighs every find and takes a third. Its ledgers are the nearest thing the shoals have to law. An unlicensed find is forfeit, and so is the finder’s boat."}]}};
 
-function blankDB(){return{memv2:false,characterTemplates:[],artStylePresets:[],key:"",modes:MODES0(),mode:0,fs:17,globalNote:"",chars:[],stories:[],sessions:[],found:{}}}
+function blankDB(){return{memv2:false,characterTemplates:[],storyTemplates:[],artStylePresets:[],key:"",modes:MODES0(),mode:0,fs:17,globalNote:"",chars:[],stories:[],sessions:[],found:{}}}
 function norm(d){d=Object.assign(blankDB(),d||{});if(!Array.isArray(d.modes)||!d.modes.length)d.modes=MODES0();
   const M0=MODES0();d.modes.forEach(m=>{const k=MP[m.n],dm=M0.find(x=>x.n===m.n);if(!m.d&&dm)m.d=dm.d;if(m.p==null)m.p=k?k[0]:"";if(m.t==null)m.t=k?k[1]:0.9});
   (d.sessions||[]).forEach(se=>{se.mems=(se.mems||[]).map(x=>typeof x==="string"?{t:"",x:x}:x);if(!se.cast){se.cast={};Object.keys(se.people||{}).forEach(k=>{se.cast[k]={r:"",l:"",t:[],a:String(se.people[k]||""),ch:0}})}});return d}
@@ -504,7 +504,7 @@ const foundOf=st=>(DB.found&&DB.found[st.id])||[];
 function endChips(st,list){const f=foundOf(st);return h("div",{class:"chips"},(list||st.endings||[]).map(e=>f.includes(e.n)?h("span",{class:"chip r-"+e.r,text:e.r+" · "+e.n}):h("span",{class:"chip lock",text:e.r+" · ???"})))}
 
 function go(v){if(TTS.on)ttsStop(true);if(v&&v.n!=="edit"&&v.n!=="build"&&view&&view.imp)delete view.imp;if(v&&v.n==="chat")v.restore=true;view=v;render()}
-function render(){const b=$("#sheetbg");if(b)b.remove();app.textContent="";app.className=view.n==="chat"?(illustratedReader()?"reader-playing":DB.visualNovelMode?"sf-visual-chat":""):"";({home:vHome,story:vStory,edit:vEdit,chat:vChat,settings:vSettings,build:vBuild,book:vBook,shot:vShot}[view.n]||vHome)()}
+function render(){const b=$("#sheetbg");if(b)b.remove();app.textContent="";app.className=view.n==="chat"?["story-playing",illustratedReader()?"reader-playing":DB.visualNovelMode?"sf-visual-chat":""].join(" "):"";({home:vHome,story:vStory,edit:vEdit,chat:vChat,settings:vSettings,build:vBuild,book:vBook,shot:vShot}[view.n]||vHome)()}
 function sheet(title,body){closeSheet(true);const bg=h("div",{class:"sheetbg",id:"sheetbg",onclick:e=>{if(e.target===bg)closeSheet()}},h("div",{class:"sheet"},h("div",{class:"sheethead"},h("h2",{text:title}),h("button",{class:"ghost",text:"Done",onclick:()=>closeSheet()})),body));ap(document.body,bg)}
 function closeSheet(quiet){const b=$("#sheetbg");if(!b)return;b.remove();if(!quiet&&view.n==="chat"&&!busy)rerender()}
 function rerender(){const lg=$("#log");view.scroll=lg?lg.scrollTop:null;render()}
@@ -528,15 +528,15 @@ function readerCover(st,full=false){
 }
 function readerFeature(st,featured=false){
   const title=st.title||st.charName||"Untitled";
-  const cover=readerCover(st,true);
+  const artwork=st.bannerT?storyBanner(st):readerCover(st,true);
   const backdrop=h("div",{class:"reader-backdrop","aria-hidden":"true"});
-  const paint=()=>{if(cover.currentSrc)backdrop.style.backgroundImage="url("+JSON.stringify(cover.currentSrc)+")"};
-  if(cover.tagName==="IMG"){cover.addEventListener("load",paint);paint()}
+  const paint=()=>{if(artwork.currentSrc)backdrop.style.backgroundImage="url("+JSON.stringify(artwork.currentSrc)+")"};
+  if(artwork.tagName==="IMG"){artwork.addEventListener("load",paint);paint()}
   return h(featured?"button":"section",{
     class:"reader-feature"+(featured?" reader-feature-discover":""),
     style:"--reader-story-hue:"+Number(stHue(st)),
     onclick:featured?()=>go({n:"story",id:st.id}):null
-  },backdrop,cover,h("div",{class:"reader-feature-copy"},
+  },backdrop,artwork,h("div",{class:"reader-feature-copy"},
     h(featured?"strong":"h2",{text:title}),
     featured?h("span",{class:"reader-feature-link",text:"View story"}):
       st.author?h("p",{class:"sub",text:"by "+st.author}):null));
@@ -550,7 +550,7 @@ function readerDiscovery(main, worlds){
     seen.add(story.id);
     recent.push({story,session});
   }
-  const featured=DB.stories.filter(st=>st.kind!=="character"&&(st.cover||st.coverT)).slice(0,8);
+  const featured=DB.stories.filter(st=>st.kind!=="character"&&(st.cover||st.coverT||st.bannerT)).slice(0,8);
   if(!featured.length&&recent.length)featured.push(recent[0].story);
   if(!featured.length&&worlds.length)featured.push(worlds[0]);
   const catalog=[...DB.stories,...worlds];
@@ -689,10 +689,10 @@ function vHome(){const tab=view.tab||"discover";
     const list=DB.sessions.slice().sort((a,b)=>(b.updated||0)-(a.updated||0));
     if(!list.length)ap(m,h("p",{class:"hint",text:"No stories in progress yet. Pick one in Discover."}));
     list.forEach(se=>{const st=getStory(se.storyId),last=se.turns.slice().reverse().find(t=>!t.hide);
-      ap(m,h("div",{class:"row tight"},h("button",{class:"sessbtn",onclick:()=>go({n:"chat",id:se.id})},h("b",{text:(st?(st.sim&&(se.sim&&se.sim.canon||se.world)?String(se.sim&&se.sim.canon||se.world).split(" by ")[0].slice(0,50):(st.title||st.charName)):"Deleted story")+" · "+(se.char.name||"You")+(se.life?" · age "+se.life.age:"")+(se.bname?" · "+se.bname:"")}),h("small",{text:last?(last.show||last.text).slice(0,90):"Not started"})),confirmBtn("Delete",()=>{bury(se.id);DB.sessions=DB.sessions.filter(x=>x.id!==se.id);save();render()})))});
+      ap(m,h("div",{class:"row tight"},h("button",{class:"sessbtn story-art-session",onclick:()=>go({n:"chat",id:se.id})},st?readerCover(st):null,h("span",{class:"story-art-session-copy"},h("b",{text:(st?(st.sim&&(se.sim&&se.sim.canon||se.world)?String(se.sim&&se.sim.canon||se.world).split(" by ")[0].slice(0,50):(st.title||st.charName)):"Deleted story")+" · "+(se.char.name||"You")+(se.life?" · age "+se.life.age:"")+(se.bname?" · "+se.bname:"")}),h("small",{text:last?(last.show||last.text).slice(0,90):"Not started"}))),confirmBtn("Delete",()=>{bury(se.id);DB.sessions=DB.sessions.filter(x=>x.id!==se.id);save();render()})))});
   }else{
     ap(m,h("h2",{text:"Make your own"}),h("p",{class:"sub",text:"A story has a world, a narrator, stats and endings. A character is a one-on-one chat."}),
-      h("div",{class:"row"},h("button",{class:"primary",text:"Build any world",onclick:()=>go({n:"build"})}),h("button",{text:"Import from screenshots",onclick:()=>go({n:"shot"})}),h("button",{text:"New story by hand",onclick:()=>go({n:"edit",kind:"story"})}),h("button",{text:"New character",onclick:()=>go({n:"edit",kind:"character"})})));
+      h("div",{class:"row"},h("button",{class:"primary",text:"Build any world",onclick:()=>go({n:"build"})}),h("button",{text:"Import from screenshots",onclick:()=>go({n:"shot"})}),h("button",{text:"New story by hand",onclick:()=>go({n:"edit",kind:"story"})}),h("button",{text:"Story templates",onclick:()=>storyTemplatesSheet()}),h("button",{text:"New character",onclick:()=>go({n:"edit",kind:"character"})})));
     if(DB.stories.length)ap(m,h("h2",{text:"My creations"}));
     DB.stories.forEach(st=>ap(m,h("div",{class:"row tight"},h("button",{class:"sessbtn",onclick:()=>go({n:"story",id:st.id})},h("b",{text:st.title||st.charName||"Untitled"}),h("small",{text:st.kind==="character"?"Character":"Story"})),h("button",{text:"Edit",onclick:()=>go({n:"edit",id:st.id})}))));
   }}
@@ -713,7 +713,10 @@ function readerStudio(main){
   const tools=h("div",{class:"reader-workspace-tools"});
   const action=(label,onclick)=>ap(tools,h("button",{text:label,onclick}));
   action("New story",()=>go({n:"edit",kind:"story"}));
+  action("Story templates",()=>storyTemplatesSheet());
   action("Characters",()=>window.SFCharacterStudioV51?.open("Profiles"));
+  action("Artwork",storyArtworkPicker);
+  action("Share a world",worldSharingSheet);
   action("Appearance",()=>window.SFVisualV48?.open());
   if(recent){
     action("Art references",()=>sfStyleStudio(recent));
@@ -733,9 +736,12 @@ function vVisualStudio(m){
   const grid=h("div",{class:"sf-studio-grid"});ap(m,grid);
   const tile=(symbol,title,detail,action)=>ap(grid,h("button",{class:"sf-studio-tile",onclick:action},h("span",{text:symbol}),h("strong",{text:title}),h("small",{text:detail})));
   tile("✦","Create a world","Launch the existing world builder",()=>go({n:"build"}));
+  tile("◇","Story templates","Save or reuse a world’s setup",()=>storyTemplatesSheet());
   tile("◈","My library",(n=>n+(n===1?" custom creation":" custom creations"))((DB.stories||[]).length),()=>go({n:"home",tab:"library"}));
   tile("◇","Continue a story",sessions.length+(sessions.length===1?" saved story":" saved stories"),()=>go({n:"home",tab:"continue"}));
   tile("✧","Character creator","Profiles, portraits and relationships",()=>sessions.length?go({n:"chat",id:sessions[0].id}):go({n:"home",tab:"discover"}));
+  tile("◇","Share a world","Export or import a playable world",worldSharingSheet);
+  tile("▧","Artwork","Set a cover and banner for your story",storyArtworkPicker);
   tile("▧","Art references","Open the existing style reference studio",()=>{if(typeof sfStyleStudio==="function")sessions.length?sfStyleStudio(sessions[0]):toast("Start a story to manage its art references.");else toast("Art reference studio is unavailable.")});
   tile("▣","Visual Suite","Character RPG, atlas, timeline, novel and themes",()=>sessions.length?sfVisualSuite(sessions[0]):toast("Start a story to open the visual suite."));
   tile("⚙","Presentation","Switch cinematic reading on or off",()=>{DB.visualNovelMode=!DB.visualNovelMode;save();soft()});
@@ -771,7 +777,7 @@ function storySessions(storyId){
     .map((session,index)=>({session,number:index+1}))
     .sort((a,b)=>(b.session.updated||0)-(a.session.updated||0)||b.number-a.number);
 }
-function savedStorySessions(entries){
+function savedStorySessions(entries,st){
   if(!entries.length)return null;
   return h("details",{class:"reader-extra story-sessions"},
     h("summary",{text:"Saved sessions ("+entries.length+")"}),
@@ -780,24 +786,41 @@ function savedStorySessions(entries){
       const text=String(last?.show||last?.text||session.start||"").replace(/\s+/g," ").trim();
       const title=session.bname||"Session "+number;
       const date=session.updated?new Date(session.updated).toLocaleDateString():null;
-      return h("button",{class:"sessbtn",onclick:()=>go({n:"chat",id:session.id})},
-        h("b",{text:title}),h("small",{text:[session.char?.name,date].filter(Boolean).join(" · ")}),
-        text?h("small",{text:text.slice(0,130)}):null);
+      return h("button",{class:"sessbtn story-art-session",onclick:()=>go({n:"chat",id:session.id})},
+        readerCover(st),h("span",{class:"story-art-session-copy"},
+          h("b",{text:title}),h("small",{text:[session.char?.name,date].filter(Boolean).join(" · ")}),
+          text?h("small",{text:text.slice(0,130)}):null));
     })));
+}
+function avatarSetup(avatar){
+  return {avatarId:avatar?.id||"",name:avatar?.name||"",desc:avatar?.desc||"",trait:avatar?.trait||""};
+}
+function savedAvatarField(d){
+  if(!DB.chars.length)return null;
+  return fld("Saved avatars",sel(d.avatarId,[["","Choose…"],...DB.chars.map(c=>[c.id,c.name])],id=>{
+    const avatar=DB.chars.find(c=>c.id===id);
+    if(avatar)Object.assign(d,avatarSetup(avatar));
+    else d.avatarId="";
+    soft();
+  }));
+}
+function storyDescriptionField(value,onInput){
+  return fld("Story description (optional)",area(value,onInput,
+    "Premise, backstory, and rules. Copied into User notes for this story.",5));
 }
 function vStory(){const st=getStory(view.id);if(!st){view={n:"home",tab:"discover"};return render()}
   if(st.sim)return vSimStory(st);
   const isC=st.kind==="character",c0=DB.chars[0];
-  const d=view.d||(view.d={start:(st.starts&&st.starts[0])||"",follow:st.follow||"strict",name:c0?c0.name:"",desc:c0?c0.desc:"",trait:c0?c0.trait:"",len:"300",play:st.life?"life":"story",age:"0",agec:""});
+  const d=view.d||(view.d={start:(st.starts&&st.starts[0])||"",follow:st.follow||"strict",...avatarSetup(c0),storyDescription:st.storyDescription||"",len:"300",play:st.life?"life":"story",age:"0",agec:""});
   const life=!isC&&d.play==="life",ends=life?lifeEnds(st):(st.endings||[]),sts=life?lifeStats(st):(st.stats||[]),ne=(st.entries||[]).length,fo=foundOf(st);
   ap(app,h("header",null,back(()=>go({n:"home",tab:"discover"})),h("h1",{text:st.title||st.charName||"Untitled"})));
   const reader=illustratedReader(),sessions=storySessions(st.id);
   const m=h("main",{class:"page"+(reader?" reader-details":"")});ap(app,m);
   if(reader)ap(m,readerFeature(st));
-  else if(st.cover)ap(m,idbImg(st.cover,"ocover",st.title+" cover"),h("h2",{text:st.title,style:"margin:4px 0"}),st.author?h("p",{class:"sub",text:"by "+st.author+" · imported for personal use"}):null);
+  else if(st.bannerT||st.cover||st.coverT)ap(m,st.bannerT?storyBanner(st):readerCover(st,true),h("h2",{text:st.title,style:"margin:4px 0"}),st.author?h("p",{class:"sub",text:"by "+st.author+" · imported for personal use"}):null);
   else ap(m,h("div",{class:"hero",style:grad(stHue(st))},h("em",{text:isC?"Character":life?"Life sim":"Story"}),h("b",{text:isC?(st.charName||st.title):st.title}),h("small",{text:st.tag||st.style||""})));
   if(st.tags&&st.tags.length)ap(m,h("div",{class:"tags"},st.tags.map(t=>h("span",{text:t}))));
-  ap(m,savedStorySessions(sessions));
+  ap(m,savedStorySessions(sessions,st));
   if(st.desc)ap(m,h("h2",{text:"Description"}),h("div",{class:"body"},String(st.desc).split(/\n+/).map(p=>h("p",{text:p}))));
   if(isC&&st.charDesc)ap(m,h("p",{text:st.charDesc}));
   if(st.setting&&!st.desc)ap(m,h("p",{text:st.setting}));
@@ -814,7 +837,10 @@ function vStory(){const st=getStory(view.id);if(!st){view={n:"home",tab:"discove
   if(st.guide)ap(m,reader?h("details",{class:"reader-extra"},h("summary",{text:"Play guide"}),
     h("p",{text:st.guide})):h("div",{class:"oguide"},h("b",{text:"Play guide"}),st.guide));
   if(st.prologue)ap(m,h("h2",{text:"Prologue preview"}),st.proImg?idbImg(st.proImg,"genimg","Prologue picture"):null,h("div",{class:"body"},String(st.prologue).slice(0,700).split(/\n+/).map(p=>h("p",{class:"narr",text:p}))));
-  if(!isC&&!st.builtin)ap(m,h("div",{class:"row"},h("button",{text:"Edit story page",onclick:()=>pageSheet(st)})));
+  if(!st.builtin)ap(m,h("div",{class:"row"},
+    h("button",{text:"Artwork",onclick:()=>storyArtworkSheet(st)}),
+    !isC?h("button",{text:"Edit story page",onclick:()=>pageSheet(st)}):null,
+    !isC?h("button",{text:"Save as template",onclick:()=>storyTemplatesSheet(st)}):null));
   if(st.known&&st.known!=="well")ap(m,h("div",{class:"notice",text:"The model only "+(st.known==="no"?"barely":"partly")+" knows this story, so details may be off. Check the canon notes in Edit, or rebuild with web lookup or reference text."}));
   if(ne)ap(m,h("p",{class:"sub",text:ne+" canon notes loaded for the narrator."}));
   ap(m,h("div",{class:"row"},h("button",{text:"Reference texts ("+refsFor(st.id).length+")",onclick:()=>refSheet(st.id)})));
@@ -831,13 +857,14 @@ function vStory(){const st=getStory(view.id);if(!st){view={n:"home",tab:"discove
   if(sts.length)ap(m,h("p",{class:"sub",text:"Stats: "+sts.map(s=>s.n).join(", ")}));
   if(ends.length)ap(m,h("h2",{text:"Endings "+ends.filter(e=>fo.includes(e.n)).length+"/"+ends.length}),endChips(st,ends));
   ap(m,h("h2",{text:"Your character"}));
-  if(DB.chars.length)ap(m,fld("Saved avatars",sel("",[["","Choose…"]].concat(DB.chars.map(c=>[c.id,c.name])),v=>{const c=DB.chars.find(x=>x.id===v);if(c){d.name=c.name;d.desc=c.desc;d.trait=c.trait;soft()}})));
+  ap(m,savedAvatarField(d));
   const ta=area(d.desc,v=>{d.desc=v},life?"Who they are, or who you hope they become. Leave it open to be surprised.":"Personality, abilities, backstory…",4);
   ap(m,fld("Name",inp(d.name,v=>{d.name=v},"Your character’s name")),fld("Description",ta),fld("Trait (optional)",selC(d.trait,TRAITS,v=>{d.trait=v},"Describe a trait, e.g. quietly ruthless when cornered")));
   const gb=h("button",{text:"Generate a background",onclick:async()=>{if(gb.disabled)return;gb.disabled=true;gb.textContent="Generating…";
-    try{const r=await ask([{role:"user",content:ideaPrompt(st,d,d.start,"","oc","")}],{max:800,onText:t=>{ta.value=t}});ta.value=r.text.trim();d.desc=ta.value}catch(e){toast(errMsg(e))}
+    try{const r=await ask([{role:"user",content:ideaPrompt(st,d,d.start,"","oc","")}],{max:800,onText:t=>{if(ta.isConnected)ta.value=t}});if(ta.isConnected){ta.value=r.text.trim();d.desc=ta.value}}catch(e){toast(errMsg(e))}
     gb.disabled=false;gb.textContent="Generate a background"}});
   ap(m,h("div",{class:"row"},gb),h("h2",{text:"Before you start"}));
+  if(!isC)ap(m,storyDescriptionField(d.storyDescription,v=>{d.storyDescription=v}));
   if(life)ap(m,fld("Start your life at",selC(d.age,AGES,v=>{d.age=v},"Age in years, e.g. 30","number")));
   if(st.starts&&st.starts.length)ap(m,fld(life?"When in the world’s timeline":"Starting point",selC(d.start,st.starts.map(s=>[s,s]),v=>{d.start=v},life?"e.g. The year 1995, or three years before the main story":"e.g. The night before the exam")));
   else if(!isC)ap(m,fld(life?"When in the world’s timeline (optional)":"Starting point (optional)",inp(d.start,v=>{d.start=v},"e.g. the night before the exam")));
@@ -847,22 +874,31 @@ function vStory(){const st=getStory(view.id);if(!st){view={n:"home",tab:"discove
     ?[st.canon?h("button",{text:"Build deeper canon notes",onclick:()=>go({n:"build",b:{src:st.canon,idea:"",ref:"",play:d.play,depth:"deep",web:false,mode:DB.modes.length-1}})}):null,
       h("button",{text:"Customize a copy",onclick:()=>{const c=JSON.parse(JSON.stringify(st));c.id=uid();delete c.builtin;delete c.orig;c.title+=" (my version)";go({n:"edit",w:c})}})]
     :[h("button",{text:"Edit",onclick:()=>go({n:"edit",id:st.id})}),confirmBtn("Delete (and its playthroughs)",()=>{bury(st.id);DB.sessions.filter(x=>x.storyId===st.id).forEach(x=>bury(x.id));DB.stories=DB.stories.filter(x=>x.id!==st.id);DB.sessions=DB.sessions.filter(x=>x.storyId!==st.id);save();go({n:"home",tab:"discover"})})]))}
-function vSimStory(st){const c0=DB.chars[0],d=view.d||(view.d={name:c0?c0.name:"",desc:c0?c0.desc:"",trait:c0?c0.trait:"",len:"500",sim:true});
+function vSimStory(st){const c0=DB.chars[0],d=view.d||(view.d={...avatarSetup(c0),storyDescription:"",len:"500",sim:true});
   ap(app,h("header",null,back(()=>go({n:"home",tab:"discover"})),h("h1",{text:st.title})));
   const m=h("main",{class:"page"});ap(app,m);
   ap(m,h("div",{class:"hero",style:grad(stHue(st))},h("em",{text:"Simulator"}),h("b",{text:st.title}),h("small",{text:"Enter the story. Rewrite the world."})),h("p",{text:st.setting}),
     h("div",{class:"wstat"},h("b",{text:"CHOOSE YOUR ROLE"}),[["Play as a character","Become someone who already exists in the story."],["Original character","Enter the world as someone new."],["Observe","Watch a timeline, an event or a character unfold."],["Intervene","Step in at any moment and change what happens next."]].map(x=>h("div",{class:"ok"},h("span",{text:x[0]}),h("em",{text:x[1]})))),
     h("h2",{text:"Your character"}),h("p",{class:"sub",text:"Optional. You can also describe who you are to the guide."}));
-  if(DB.chars.length)ap(m,fld("Saved avatars",sel("",[["","Choose…"]].concat(DB.chars.map(c=>[c.id,c.name])),v=>{const c=DB.chars.find(x=>x.id===v);if(c){d.name=c.name;d.desc=c.desc;d.trait=c.trait;soft()}})));
+  ap(m,savedAvatarField(d));
   ap(m,fld("Name",inp(d.name,v=>{d.name=v},"Your character’s name")),fld("Looks and background (optional)",area(d.desc,v=>{d.desc=v},"White hair, silver eyes, a lean swordsman’s build…",3)),
+    storyDescriptionField(d.storyDescription,v=>{d.storyDescription=v}),
     h("div",{class:"row"},h("button",{class:"primary big",text:"Start setup with the guide",onclick:()=>play(st,d)})));
-  ap(m,savedStorySessions(storySessions(st.id)));
+  ap(m,savedStorySessions(storySessions(st.id),st));
   ap(m,h("div",{class:"row"},h("button",{text:"Reference texts ("+refsFor(st.id).length+")",onclick:()=>refSheet(st.id)})))}
 const GUIDE="Quill",SIMHI="Hi, I’m Quill, your guide to the World Simulator. Here’s how it works.\n\n**What it is.** An interactive story you step into. Pick a world from any anime, manga, novel, webnovel, game or film, or invent your own. Follow the original story, make a what if, or build a whole new timeline.\n\n**Your role.** Play as a character from the story, enter as an original character, observe a timeline unfold, or step in and change what happens next.\n\n**Commands.** Type these in the box below, or tap the / button.\n/summary: review the key story so far, and save it as a memory.\n/ooc: talk to me directly about settings, fixes or corrections.\n/impersonation: use this if a reply speaks or acts for you, and I’ll rewrite it.\n/status: open the World Status panel.\n/rule: add a rule, for example /rule no one can read minds.\n\n**Best way to start.** In your first message, describe your world, your role, where in the timeline to start, the mood you want, and any rules. Anything you leave out I’ll ask about or fill in.\n\nOnce I have your setup, I’ll give you an overview of the world and a short preview. The story only begins after you confirm it looks good.";
 function play(st,d){if(!hasKey()){toast("Add your OpenRouter key in Settings first.");return}
-  const ch={name:(d.name||"").trim(),desc:(d.desc||"").trim(),trait:d.trait||""},life=st.kind!=="character"&&d.play==="life";
-  let cid="";if(ch.name){const old=DB.chars.find(c=>c.name.toLowerCase()===ch.name.toLowerCase());cid=old?old.id:uid();DB.chars=DB.chars.filter(c=>c.id!==cid);DB.chars.unshift(Object.assign({id:cid},ch));DB.chars=DB.chars.slice(0,30)}
-  const se={id:uid(),storyId:st.id,start:d.start||"",follow:d.follow||"strict",char:ch,turns:[],temp:"",mems:[],note:"",stats:{},upto:0,len:d.len||"300",sugg:[],ending:null,ended:[],people:{},think:0,wstyle:"default",wcustom:"",goal:"",cid,updated:Date.now()};
+  const ch={name:(d.name||"").trim(),desc:d.desc||"",trait:d.trait||""},life=st.kind!=="character"&&d.play==="life";
+  const savedAvatar=DB.chars.find(c=>c.id===d.avatarId)
+    || (ch.name&&DB.chars.find(c=>c.name.toLowerCase()===ch.name.toLowerCase()));
+  let cid=savedAvatar?.id||"";
+  if(savedAvatar){
+    DB.chars=[savedAvatar,...DB.chars.filter(c=>c.id!==cid)];
+  }else if(ch.name){
+    cid=uid();
+    DB.chars=[{id:cid,...ch},...DB.chars].slice(0,30);
+  }
+  const se={id:uid(),storyId:st.id,start:d.start||"",follow:d.follow||"strict",char:ch,turns:[],temp:"",mems:[],note:d.storyDescription||"",stats:{},upto:0,len:d.len||"300",sugg:[],ending:null,ended:[],people:{},think:0,wstyle:"default",wcustom:"",goal:"",cid,updated:Date.now()};
   if(st.sim){se.sim={ph:"setup",log:[{role:"ai",text:SIMHI,g:1}],canon:"",prev:"",ready:false};se.follow="Use canon as the starting point and keep its characters true to themselves, but the player’s choices can change what happens next.";se.nmode="auto";DB.sessions.push(se);save();view={n:"chat",id:se.id};render();return}
   if(life){se.sdefs=lifeStats(st);se.edefs=lifeEnds(st);se.life={age:Math.max(0,Math.min(110,Math.round(num(d.age==="c"?d.agec:d.age,0)))),time:""};se.log=[]}
   sd(se,st).forEach(s=>{se.stats[s.n]=num(s.v,0)});
@@ -905,6 +941,7 @@ function vEdit(){let st=view.w;if(!st){const o=view.id&&DB.stories.find(s=>s.id=
   ap(m,fld(isC?"Title (optional)":"Title",inp(st.title,v=>{st.title=v},"e.g. The Lantern Road")),
     h("div",{class:"fld"},h("span",{text:"Based on (anime, book, webnovel, game…)"}),workPicker(st.canon,"Leave empty for an original world",v=>{st.canon=v;ewc.textContent=""},async w=>{st.canon=workLabel(w);ewc.textContent="";ap(ewc,recallCard(w,null));if(!st.wiki)ewb._find(true);if(!hasKey())return;try{const rc=await recallCheck(w,(DB.modes[DB.mode]||DB.modes[0]).id);st.known=rc.k;ewc.textContent="";ap(ewc,recallCard(w,rc))}catch(e){ewc.textContent=""}},()=>(DB.modes[DB.mode]||DB.modes[0]).id),ewc),ewb,
     fld("How closely to follow it",selC(st.follow||"strict",[["strict","Follow canon closely"],["loose","Loose, my choices change things"]],v=>{st.follow=v},"e.g. Follow canon, but my character can save people who died")),
+    !isC?storyDescriptionField(st.storyDescription,v=>{st.storyDescription=v}):null,
     fld("World and premise",area(st.setting,v=>{st.setting=v},"Where and when, who is in it, what is going on…",4)),
     fld("Tone and style",inp(st.style,v=>{st.style=v},"e.g. dark, slow-burn, witty dialogue")),
     fld("Lore and rules for the narrator",area(st.lore,v=>{st.lore=v},"Power systems, key characters, things to avoid…",5)));
@@ -948,7 +985,292 @@ function metaAt(t){t=String(t||"");let i=t.indexOf("[[META");if(i>=0)return i;
     if(m){keys++;if(CORE.test(m[1].trim()))core++;start=pos;continue}if(C.test(l))continue;break}
   return keys>=2&&core>=2?start:-1}
 function vis(t){let i=metaAt(t);if(i<0){const j=t.lastIndexOf("[");if(j>=0&&t.length-j<8){const k=(j>0&&t[j-1]==="[")?j-1:j;if("[[META]]".indexOf(t.slice(k))===0)i=k}}return(i<0?t:t.slice(0,i)).trim()}
-const SKIPS=[["Next day","A day passes.","Time skip: move on to the next day."],["Skip a month","A month passes.","Time skip: one month passes."],["Skip a year","A year passes.","Time skip: one year passes."],["Next turning point","Time moves on.","Time skip: jump ahead to the next major turning point in my life."]];
+const SKIPS=[["Next day","A day passes.","Time skip: move on to the next day.",1],["Skip a month","A month passes.","Time skip: one month passes.",30],["Skip a year","A year passes.","Time skip: one year passes.",365],["Next turning point","Time moves on.","Time skip: jump ahead to the next major turning point in my life.",null]];
+const PROGRESSION={
+  skill:{title:"Skills",name:"Skill",value:"Rating",min:0,max:100,initial:1},
+  item:{title:"Inventory",name:"Item",value:"Quantity",min:0,max:999,initial:1},
+  reputation:{title:"Reputation",name:"Person or faction",value:"Standing",min:-100,max:100,initial:0},
+};
+function progressionState(se,turnCount){
+  const entries=new Map();
+  for(const change of Array.isArray(se.progression)?se.progression:[]){
+    if(!change||!Object.hasOwn(PROGRESSION,change.kind)||typeof change.name!=="string"||
+      !Number.isInteger(change.after)||change.after<0||change.after>turnCount)continue;
+    const key=change.kind+":"+change.name.toLowerCase();
+    const rule=PROGRESSION[change.kind];
+    if(change.value===null)entries.delete(key);
+    else if(Number.isInteger(change.value)&&change.value>=rule.min&&change.value<=rule.max)entries.set(key,change);
+  }
+  return [...entries.values()];
+}
+function saveProgression(se,kind,name,value,effect){
+  if(busy||!DB.sessions.includes(se)){toast("Finish the current scene before editing progression.");return false}
+  const rule=PROGRESSION[kind],after=se.turns.length;
+  name=name.trim().slice(0,80);
+  effect=effect.trim().slice(0,240);
+  if(!name||value!==null&&(!Number.isInteger(value)||value<rule.min||value>rule.max)){
+    toast("Enter a name and a whole number from "+rule.min+" to "+rule.max+".");return false;
+  }
+  const entries=progressionState(se,after).filter(entry=>entry.kind===kind);
+  const current=entries.find(entry=>entry.name.toLowerCase()===name.toLowerCase());
+  if(!current&&value!==null&&entries.length>=12){toast("Remove an entry before adding another.");return false}
+  if((current?.value===value&&current?.effect===effect)||(!current&&value===null))return true;
+  // At the same story point, keep only the last edit to this entry.
+  const history=Array.isArray(se.progression)?se.progression:[];
+  se.progression=[...history.filter(entry=>!(entry?.after===after&&entry.kind===kind&&
+    typeof entry.name==="string"&&entry.name.toLowerCase()===name.toLowerCase())),{kind,name,value,effect,after}];
+  se.updated=Date.now();
+  save();
+  return true;
+}
+function trimProgression(se,turnCount){
+  if(Array.isArray(se.progression))se.progression=se.progression.filter(entry=>entry&&entry.after<=turnCount);
+}
+function shiftProgressionAfterDeletion(se,index){
+  if(Array.isArray(se.progression))se.progression=se.progression.map(entry=>
+    entry?.after>index?{...entry,after:entry.after-1}:entry);
+}
+function progressionPrompt(se,turnCount){
+  const entries=progressionState(se,turnCount);
+  if(!entries.length)return "";
+  return "\n\nPlayer-tracked RPG progression. Use these values and effects when judging available actions and NPC reactions. "+
+    "Skill ratings run from 0 (untrained) to 100 (expert). Item quantities are exact; zero means unavailable. "+
+    "Reputation runs from hostile (-100) through neutral (0) to trusted (100). "+
+    "Do not silently grant, spend, or change tracked entries. If the scene offers a change, show it clearly and let the player record it.\n"+
+    entries.map(entry=>{
+      const rule=PROGRESSION[entry.kind];
+      return "- "+rule.title+" · "+entry.name+" ("+rule.value+" "+entry.value+")"+(entry.effect?" — "+entry.effect:"");
+    }).join("\n");
+}
+function progressionSheet(se){
+  const box=h("div");
+  let kind="skill",editing=null;
+  const draw=()=>{
+    box.replaceChildren();
+    const rule=PROGRESSION[kind];
+    const entries=progressionState(se,se.turns.length).filter(entry=>entry.kind===kind);
+    let name=editing?.name||"",value=String(editing?.value??rule.initial),effect=editing?.effect||"";
+    ap(box,h("p",{class:"sub",text:"Record changes earned in the story. These values guide later scenes in this playthrough."}),
+      fld("Category",sel(kind,Object.entries(PROGRESSION).map(([key,item])=>[key,item.title]),key=>{kind=key;editing=null;draw()})),
+      entries.length?entries.map(entry=>h("div",{class:"item"},
+        h("b",{text:entry.name}),h("p",{class:"sub",text:rule.value+" "+entry.value}),entry.effect?h("p",{text:entry.effect}):null,
+        h("button",{text:"Edit "+entry.name,onclick:()=>{editing=entry;draw()}}))):h("p",{class:"sub",text:"No entries yet."}),
+      h("h3",{text:editing?"Edit entry":"Add entry"}),
+      fld(rule.name,editing?h("input",{value:name,readOnly:true}):inp(name,v=>name=v,"Name")),
+      fld(rule.value+" ("+rule.min+" to "+rule.max+")",inp(value,v=>value=v,"","number")),
+      fld("Effect in the story (optional)",area(effect,v=>effect=v,"E.g. Allows entry to the guild workshop",2)),
+      h("div",{class:"row"},
+        h("button",{class:"primary",text:"Save entry",onclick:()=>{
+          if(saveProgression(se,kind,name,value.trim()===""?NaN:Number(value),effect)){editing=null;draw()}
+        }}),
+        editing?h("button",{text:"Remove entry",onclick:()=>{
+          if(saveProgression(se,kind,name,null,"")){editing=null;draw()}
+        }}):null,
+        editing?h("button",{text:"Cancel",onclick:()=>{editing=null;draw()}}):null));
+  };
+  draw();
+  sheet("Progression",box);
+}
+
+function worldDay(turns){
+  return turns.reduce((day,turn)=>day+(turn.role==="user"&&Number.isInteger(turn.worldDays)&&turn.worldDays>0?turn.worldDays:0),0);
+}
+function worldSchedule(se){
+  return Array.isArray(se.worldSchedule)?se.worldSchedule:[];
+}
+function worldScheduleState(entry,turnCount){
+  const outcomes=Array.isArray(entry.outcomes)?entry.outcomes:[];
+  return outcomes.findLast(outcome=>outcome.after<=turnCount)||{status:"Pending",note:""};
+}
+function recordWorldOutcome(entry,after,status,note,consequence){
+  const outcomes=Array.isArray(entry.outcomes)?entry.outcomes:[];
+  entry.outcomes=[...outcomes.filter(outcome=>outcome.after!==after),{
+    after,status,note:status==="Pending"?"":note.trim().slice(0,360),
+    ...(status!=="Pending"&&consequence.trim()?{consequence:consequence.trim().slice(0,360)}:{})
+  }];
+}
+function recordedWorldOutcomes(entries,turnCount){
+  return entries.filter(entry=>entry.createdAfter<=turnCount)
+    .map(entry=>({entry,state:worldScheduleState(entry,turnCount)}))
+    .filter(({state})=>state.status!=="Pending")
+    .sort((a,b)=>b.state.after-a.state.after);
+}
+function branchWorldSchedule(entries,cut){
+  return entries.filter(entry=>entry.createdAfter<=cut).map(entry=>({
+    ...entry,outcomes:(Array.isArray(entry.outcomes)?entry.outcomes:[]).filter(outcome=>outcome.after<=cut)
+  }));
+}
+function plannedSkip(se,days){
+  if(days!==null)return days;
+  const day=worldDay(se.turns);
+  const next=worldSchedule(se).filter(entry=>entry.day>day&&worldScheduleState(entry,se.turns.length).status==="Pending").sort((a,b)=>a.day-b.day)[0];
+  return next?next.day-day:0;
+}
+function worldSchedulePrompt(se,hist,days){
+  const entries=worldSchedule(se).filter(entry=>entry.createdAfter<=hist.length);
+  if(!entries.length)return "";
+  const before=worldDay(hist),after=before+days;
+  const pending=entries.filter(entry=>worldScheduleState(entry,hist.length).status==="Pending").sort((a,b)=>a.day-b.day);
+  const crossed=pending.filter(entry=>entry.day>before&&entry.day<=after);
+  const upcoming=pending.filter(entry=>entry.day>after).slice(0,6);
+  const overdue=pending.filter(entry=>entry.day<=before).slice(-6);
+  const outcomes=recordedWorldOutcomes(entries,hist.length).slice(0,8);
+  const line=(entry,status,pending=false)=>"- Day "+entry.day+" ("+status+", "+entry.kind+"): "+entry.text+
+    (entry.actor?" | Character: "+entry.actor:"")+(entry.goal?" | Goal: "+entry.goal:"")+
+    (entry.quest?" | Quest: "+entry.quest:"")+(entry.requirement?" | Requirement: "+entry.requirement:"")+
+    (pending&&entry.fallback?" | Conditional consequence if missed: "+entry.fallback:"");
+  return "\n\nPlaythrough schedule, tracked day "+after+
+    (days?" (advance exactly "+days+" tracked days).":".")+
+    " Treat recorded outcomes as established. Carry their effects into later scenes when relevant, including how NPCs respond and what routes remain open. Keep the player’s choices open. Pending entries are plans. Address dates crossed by this skip in order. A date reached with no recorded outcome does not establish what happened.\n"+
+    [...crossed.map(entry=>line(entry,"reached by this skip",true)),
+      ...upcoming.map(entry=>line(entry,"scheduled",true)),
+      ...overdue.map(entry=>line(entry,"date reached, outcome unrecorded",true)),
+      ...outcomes.map(({entry,state})=>{
+        const effect=worldOutcomeEffect(entry,state);
+        return line(entry,state.status)+(state.note?" — "+state.note:"")+
+          (effect?" | Effect on future scenes: "+effect:"");
+      })].join("\n");
+}
+
+function worldOutcomeEffect(entry,state){
+  return state.consequence||(state.status==="Missed"?entry.fallback||"":"");
+}
+function relationshipMilestoneAt(entry){
+  return entry.recordedAfter??((entry.turn??entry.recordedTurn??-1)+1);
+}
+function recordedRelationshipMilestones(se,turns){
+  return (Array.isArray(se.relationshipLinks)?se.relationshipLinks:[]).flatMap(link=>
+    (Array.isArray(link?.history)?link.history:[]).filter(entry=>
+      entry?.note&&relationshipMilestoneAt(entry)>0&&relationshipMilestoneAt(entry)<=turns.length&&
+      (entry.source===undefined||turns[entry.turn]?.text===entry.source))
+      .map(entry=>({a:link.a,b:link.b,note:entry.note,after:relationshipMilestoneAt(entry)})))
+    .sort((a,b)=>b.after-a.after);
+}
+function relationshipConsequencePrompt(se,turns){
+  const milestones=recordedRelationshipMilestones(se,turns).slice(0,8);
+  return milestones.length?"\n\nRecorded relationship changes. Let these shape the characters’ behavior when relevant, while preserving what each character knows:\n"+
+    milestones.map(entry=>"- "+entry.a+" / "+entry.b+": "+entry.note).join("\n"):"";
+}
+function reviewStoryChanges(se){
+  const count=se.turns.length,index=se.turns.findLastIndex(turn=>turn.role==="ai"&&!turn.hide&&turn.text);
+  const scene=se.turns[index],box=h("div");
+  if(!scene){sheet("Review story changes",h("p",{class:"sub",text:"Play a scene first."}));return}
+  const decisions=Array.isArray(se.sceneReviews)?se.sceneReviews:[];
+  const already=key=>decisions.some(record=>record.key===key&&record.turn===index&&record.source===scene.text);
+  const remember=key=>{
+    if(!DB.sessions.includes(se)||se.turns.length!==count||se.turns[index]!==scene||scene.text!==sceneText||(se.sceneReviews||[]).length!==decisions.length||busy){toast("The playthrough changed. Reopen the review.");return false}
+    se.sceneReviews=[...decisions,{key,turn:index,source:sceneText}];
+    se.updated=Date.now();
+    return true;
+  };
+  const commit=(key,apply)=>{
+    if(remember(key)){apply();save();reviewStoryChanges(se)}
+  };
+  const card=(title,key,initial,apply,control)=> {
+    let note=initial;
+    return h("div",{class:"item"},h("b",{text:title}),control,
+      fld("Review note",area(note,value=>note=value,"What changed?",2)),
+      h("div",{class:"row"},
+        h("button",{class:"primary",text:"Accept",onclick:()=>{
+          const text=note.trim().slice(0,360);
+          if(!text){toast("Add a review note first.");return}
+          commit(key,()=>apply(text));
+        }}),
+        h("button",{text:"Dismiss",onclick:()=>commit(key,()=>{})})));
+  };
+  const sceneText=scene.text;
+  const day=worldDay(se.turns);
+  const chapter=chapsOf(se).filter(ch=>ch.i<=index).length;
+  const cards=[];
+  worldSchedule(se).forEach((entry,i)=>{
+    const key="schedule:"+JSON.stringify([i,entry.day,entry.text]);
+    if(entry.day>day||worldScheduleState(entry,count).status!=="Pending"||already(key))return;
+    let status="Resolved",consequence="";
+    cards.push(card("Review due entry · "+entry.text,key,"",note=>{
+      recordWorldOutcome(entry,count,status,note,consequence);
+    },[
+      fld("Outcome",sel(status,["Resolved","Missed","Cancelled"].map(value=>[value,value]),value=>status=value)),
+      fld("Effect on future scenes (optional)",area(consequence,value=>consequence=value,"E.g. The harbor office closes its public entrance",2))
+    ]));
+  });
+  const events=(se.mem?.events||[]).filter(event=>scene.tid?event.tid===scene.tid:event.t===index);
+  for(const link of se.relationshipLinks||[]){
+    const key="relationship:"+JSON.stringify([link.a,link.b]);
+    const event=events.find(event=>event.who?.includes(link.a)&&event.who.includes(link.b));
+    if(!event||already(key))continue;
+    cards.push(card("Possible milestone · "+link.a+" / "+link.b,key,event.text,note=>{
+      link.history=[...(link.history||[]),{chapter,note,turn:index,recordedAfter:count,source:sceneText}];
+    }));
+  }
+  for(const fact of se.mem?.facts||[]){
+    const key="fact:"+fact.id;
+    if(!(scene.tid?fact.tid===scene.tid:!fact.legacy&&fact.since===index)||already(key))continue;
+    cards.push(card("Confirm as canon",key,fact.text,note=>{
+      se.sceneReviews.at(-1).fact=note;
+    }));
+  }
+  ap(box,h("details",{open:true},h("summary",{text:"Latest scene excerpt"}),h("p",{text:sceneText.slice(0,1200)})),
+    cards.length?cards:h("p",{class:"sub",text:"No changes to review for this scene. Relationship and canon candidates use recorded story memory."}));
+  sheet("Review story changes",box);
+}
+function worldScheduleSheet(se){
+  const day=worldDay(se.turns),box=h("div");
+  let kind="Deadline",text="",delay="7",actor="",goal="",quest="",requirement="",fallback="";
+  const update=()=>{se.updated=Date.now();save();draw()};
+  const draw=()=>{
+    box.replaceChildren();
+    const entries=worldSchedule(se);
+    ap(box,h("p",{class:"sub",text:"Tracked day "+day+". Advance time counts explicit skips from this update onward. A month adds 30 days and a year adds 365."}),
+      entries.slice().sort((a,b)=>a.day-b.day).map(entry=>{
+        const current=worldScheduleState(entry,se.turns.length);
+        let status=current.status,note=current.note,consequence=current.consequence||"";
+        const effect=worldOutcomeEffect(entry,current);
+        return h("details",{class:"item schedule-entry"},
+          h("summary",null,h("b",{text:entry.text}),h("small",{class:"sub",text:entry.kind+" · Day "+entry.day+" · "+
+            (status==="Pending"?(entry.day<=day?"Date reached":"In "+(entry.day-day)+" days"):status)})),
+          current.note?h("p",{text:current.note}):null,
+          effect?h("p",{class:"sub",text:"Effect on future scenes · "+effect}):null,
+          entry.actor?h("p",{class:"sub",text:"Character · "+entry.actor+(entry.goal?" · Goal: "+entry.goal:"")}):null,
+          entry.quest?h("p",{class:"sub",text:"Quest · "+entry.quest}):null,
+          entry.requirement?h("p",{class:"sub",text:"Requirement · "+entry.requirement}):null,
+          entry.fallback?h("p",{class:"sub",text:"If missed · "+entry.fallback}):null,
+          fld("Outcome",sel(status,["Pending","Resolved","Cancelled","Missed"].map(value=>[value,value]),v=>status=v)),
+          fld("What happened?",area(note,v=>note=v,"Record the event or character’s decision",2)),
+          fld("Effect on future scenes (optional)",area(consequence,v=>consequence=v,"What changes for later scenes?",2)),
+          h("div",{class:"row"},
+            h("button",{text:"Save outcome",onclick:()=>{
+              const nextNote=status==="Pending"?"":note.trim().slice(0,360);
+              const nextConsequence=status==="Pending"?"":consequence.trim().slice(0,360);
+              if(status===current.status&&nextNote===current.note&&nextConsequence===(current.consequence||""))return;
+              recordWorldOutcome(entry,se.turns.length,status,nextNote,nextConsequence);
+              update();
+            }}),
+            confirmBtn("Remove",()=>{se.worldSchedule=entries.filter(item=>item!==entry);update()})));
+      }),
+      fld("Type",sel(kind,[["Deadline","Deadline"],["Character plan","Character plan"],["World event","World event"],["Quest deadline","Quest deadline"]],v=>{kind=v;draw()})),
+      fld("What is scheduled?",inp(text,v=>text=v,"The academy closes applications")),
+      kind==="Character plan"?[
+        fld("Character",inp(actor,v=>actor=v,"Who is making the plan?")),
+        fld("Goal",inp(goal,v=>goal=v,"What do they want to achieve?"))
+      ]:null,
+      kind==="Quest deadline"?[
+        fld("Quest",sel(quest,[["","Standalone deadline"],...new Set((se.quests||[]).map(q=>q.t).filter(Boolean))].map(value=>Array.isArray(value)?value:[value,value]),v=>quest=v)),
+        fld("Requirement",inp(requirement,v=>requirement=v,"What must the player do before the deadline?")),
+        fld("If missed",inp(fallback,v=>fallback=v,"What alternative route or consequence applies?"))
+      ]:null,
+      fld("Days from now",inp(delay,v=>delay=v,"7","number")),
+      h("button",{class:"primary",text:"Add to schedule",onclick:()=>{
+        const n=Number(delay);
+        if(!text.trim()||!Number.isInteger(n)||n<1||n>36500){toast("Enter an event and a whole number of days from 1 to 36,500.");return}
+        if(entries.length>=30){toast("Remove an entry before adding another.");return}
+        se.worldSchedule=[...entries,{kind,text:text.trim().slice(0,240),day:day+n,createdAfter:se.turns.length,
+          ...(kind==="Character plan"?{actor:actor.trim().slice(0,80),goal:goal.trim().slice(0,200)}:{}),
+          ...(kind==="Quest deadline"?{quest,requirement:requirement.trim().slice(0,200),fallback:fallback.trim().slice(0,240)}:{})
+        }];text="";update();
+      }}));
+  };
+  draw();sheet("World schedule",box);
+}
 function ins(ta,a,b){const s=ta.selectionStart,e=ta.selectionEnd,v=ta.value;ta.value=v.slice(0,s)+a+v.slice(s,e)+b+v.slice(e);const p=e>s?e+a.length+b.length:s+a.length;ta.focus();ta.setSelectionRange(p,p);view.draft=ta.value}
 // Mobile browsers can shrink the visual viewport while leaving the layout viewport unchanged.
 let readerViewportFrame=0;
@@ -972,12 +1294,13 @@ window.visualViewport?.addEventListener("resize",syncReaderViewport);
 window.visualViewport?.addEventListener("scroll",syncReaderViewport);
 app.addEventListener("focusin",syncReaderViewport);
 app.addEventListener("focusout",syncReaderViewport);
-function cinematicScene(se,st,turn){
+function cinematicScene(se,st,turn,preset){
   const passages=String(turn.show||turn.text).trim().split(/\n{2,}|\n(?=[^|\n]{1,60}\s+\|)/);
-  const preset=window.SFScenesV54?.exportPresets([se])[se.id];
-  const scene=h("div",{class:"reader-scene-art","aria-hidden":"true"});
+  const scene=h("div",{class:"reader-scene-art","aria-hidden":"true",
+    "data-portrait-position":preset?.portraitPosition,"data-portrait-size":preset?.portraitSize});
   if(turn.img)ap(scene,idbImg(turn.img.includes(":")?turn.img:"gen:"+turn.img,"",""));
-  else if(preset?.background)ap(scene,h("img",{src:preset.background,alt:""}));
+  else if(preset?.background)ap(scene,h("img",{class:"reader-scene-background",src:preset.background,alt:"",
+    "data-background-position":preset.backgroundPosition,"data-background-light":preset.backgroundLight}));
   else ap(scene,readerCover(st,true));
   const portrait=h("div",{class:"reader-scene-portrait","aria-hidden":"true"});
   ap(scene,portrait);
@@ -1001,6 +1324,9 @@ function cinematicScene(se,st,turn){
       else if(profile?.img)ap(portrait,idbImg(profile.img,"",""));
       else if(profile?.th)ap(portrait,h("img",{src:profile.th,alt:""}));
     }
+    if(!portrait.childElementCount&&preset?.selectedImage&&(!name||name.toLowerCase()===preset.portrait?.toLowerCase())){
+      ap(portrait,h("img",{src:preset.selectedImage,alt:""}));
+    }
     fill(dialogue,tag?tag[2]:text);
     count.textContent=(index+1)+" / "+passages.length;
     prev.disabled=index===0;
@@ -1008,19 +1334,30 @@ function cinematicScene(se,st,turn){
   };
   step(0);
   return h("section",{class:"reader-scene","aria-label":"Cinematic Visual Novel"},
-    scene,h("div",{class:"reader-scene-dialogue"},speaker,dialogue,
+    scene,preset?.caption?h("p",{class:"reader-scene-caption",text:preset.caption}):null,
+    h("div",{class:"reader-scene-dialogue"},speaker,dialogue,
       passages.length>1?h("div",{class:"reader-scene-nav"},prev,count,next):null));
 }
 function vChat(){const se=DB.sessions.find(s=>s.id===view.id),st=se&&getStory(se.storyId);
   if(!st){view={n:"home",tab:"continue"};if(se)toast("That story was deleted.");return render()}
   const cinematic=illustratedReader()&&DB.readerPresentation==="cinematic";
+  const scenePreset=cinematic?window.SFScenesV54?.readerPreset?.(se):null;
   const isC=st.kind==="character",mode=DB.modes[DB.mode]||DB.modes[0],stats=sd(se,st),ends=ed(se,st),C=isC?null:chapsOf(se);
   if(C&&!view.och)view.och=Object.assign({},se.och||{});setFX(se,st);const F=FX.f;
-  ap(app,h("header",null,back(()=>go({n:"home",tab:"continue"})),h("h1",{text:se.sim?(se.sim.canon||se.world||st.title).split(" by ")[0]:st.title||st.charName,role:C?"button":null,"aria-label":C?"Open the chapter list":null,onclick:C?()=>chapSheet(se):null}),illustratedReader()?null:h("button",{class:"pill",text:"Visuals",onclick:()=>sfVisualSuite(se)}),h("button",{class:"pill",text:(mode.n||"Mode")+" ▾",onclick:()=>modeSheet(se)}),h("button",{"aria-label":"Menu",onclick:()=>menuSheet(se,st)},ic("menu"))));
-  if((stats.length||se.life)&&DB.statsTap&&!view.stats){const dl=Object.keys(se.delta||{}).map(k=>k+" "+(se.delta[k]>0?"+":"")+se.delta[k]).join(" · ");ap(app,h("button",{class:"statsmini",onclick:()=>{view.stats=1;rerender()}},h("b",{text:"Stats ▾"}),se.life?"Age "+se.life.age+(dl?" · ":""):"",dl))}
-  else if(stats.length||se.life){const bar=h("div",{class:"stats",onclick:DB.statsTap?()=>{view.stats=0;rerender()}:null});if(se.life)ap(bar,h("div",{class:"age"},h("b",{text:"Age "+se.life.age}),se.life.time||"Your life"));
-    stats.forEach(s=>{const v=num(se.stats[s.n],num(s.v,0)),lo=num(s.min,0),hi=num(s.max,100),dl=se.delta&&se.delta[s.n];
-      ap(bar,h("div",{class:"stat"},h("span",{text:s.n}),h("b",{text:v}),dl?h("s",{text:(dl>0?"+":"")+dl}):null,h("i",null,h("u",{style:"width:"+Math.max(0,Math.min(100,hi>lo?(v-lo)/(hi-lo)*100:0))+"%"}))))});ap(app,bar)}
+  ap(app,h("header",null,back(()=>go({n:"home",tab:"continue"})),h("h1",{text:se.sim?(se.sim.canon||se.world||st.title).split(" by ")[0]:st.title||st.charName,role:C?"button":null,"aria-label":C?"Open the chapter list":null,onclick:C?()=>chapSheet(se):null}),illustratedReader()?null:h("button",{class:"pill story-visuals",text:"Visuals",onclick:()=>sfVisualSuite(se)}),h("button",{class:"pill story-mode",text:(mode.n||"Mode")+" ▾",onclick:()=>modeSheet(se)}),h("button",{"aria-label":"Menu",onclick:()=>menuSheet(se,st)},ic("menu"))));
+  if(stats.length||se.life){
+    const summary=se.life?"Age "+se.life.age:"";
+    const makeStats=()=>{const bar=h("div",{class:"stats"});
+      if(se.life)ap(bar,h("div",{class:"age"},h("b",{text:summary}),se.life.time||"Your life"));
+      stats.forEach(s=>{const v=num(se.stats[s.n],num(s.v,0)),lo=num(s.min,0),hi=num(s.max,100),dl=se.delta&&se.delta[s.n];
+        ap(bar,h("div",{class:"stat"},h("span",{text:s.n}),h("b",{text:v}),dl?h("s",{text:(dl>0?"+":"")+dl}):null,h("i",null,h("u",{style:"width:"+Math.max(0,Math.min(100,hi>lo?(v-lo)/(hi-lo)*100:0))+"%"}))))});
+      return bar;
+    };
+    const openStats=()=>sheet("Story stats",h("div",{class:"story-stats-sheet"},makeStats()));
+    ap(app,h("button",{class:"statsmini story-stats-mobile",onclick:openStats},summary||"Stats",h("span",{text:summary?"View stats ▾":" ▾"})));
+    if(DB.statsTap)ap(app,h("button",{class:"statsmini story-stats-wide",onclick:openStats},summary?summary+" · Stats ▾":"Stats ▾"));
+    else ap(app,h("div",{class:"story-stats-wide"},makeStats()));
+  }
   if(!isC&&se.statusOn&&se.status&&Object.keys(se.status).length&&!se.sim||(se.sim&&se.sim.ph!=="setup"&&se.statusOn&&se.status&&Object.keys(se.status).length)){const ks=Object.keys(se.status);ap(app,h("button",{class:"statsmini",onclick:()=>statusSheet(se,st)},h("b",{text:"Status ▾ "}),ks.slice(0,3).map(k=>k+" "+se.status[k]).join(" · ").slice(0,90)))}
   const prog=h("div",{id:"prog"},h("u")),log=h("main",{id:"log",class:illustratedReader()?"reader-log":null});ap(app,prog,log);
   const ta=h("textarea",{id:"input",rows:1,value:view.draft||"",placeholder:isC?"Say something…":se.sim&&se.sim.ph==="setup"?"Describe your world, role and starting point…":"What do you do?",oninput:e=>{view.draft=e.target.value},onkeydown:e=>{if(e.key==="Enter"&&(e.metaKey||e.ctrlKey)){e.preventDefault();send(ta.value)}}});
@@ -1032,7 +1369,7 @@ function vChat(){const se=DB.sessions.find(s=>s.id===view.id),st=se&&getStory(se
     const stage=cinematic&&!busy&&i===lastAi&&String(t.show||t.text||"").trim();
     if(t.img&&!stage)ap(log,genImg(t.img));if(t.imgBusy)ap(log,h("p",{class:"sub",text:"Painting this scene…"}));
     const last=i===lastAi&&!busy;
-    ap(log,h("div",{class:"turn ai","data-i":i},isC?h("div",{class:"who"},h("span",{text:st.charName})):null,stage?cinematicScene(se,st,t):body));
+    ap(log,h("div",{class:"turn ai","data-i":i},isC?h("div",{class:"who"},h("span",{text:st.charName})):null,stage?cinematicScene(se,st,t,scenePreset):body));
     if(last&&!isC&&!se.ending&&!illustratedReader())ap(log,h("div",{class:"askline",text:"What do you do?"}));
     ap(log,h("div",{class:"acts"+(last?"":" old")},last?[h("button",{"aria-label":"Regenerate",onclick:regen},ic("regen")),h("button",{"aria-label":"Continue the scene",onclick:()=>send(CONT,true)},ic("next")),h("button",{"aria-label":"Move the story on without my input",onclick:()=>advance(se)},ic("ff")),t.vs&&t.vs.length>1?verSw(se,t):null]:null,
       h("button",{"aria-label":"Read this reply aloud",onclick:()=>ttsStart([t.text],"this reply")},ic("speak")),h("button",{"aria-label":"Message options",onclick:()=>turnMenu(se,i)},ic("dots")),DB.cost!==false&&t.u?h("span",{class:"spend",text:spendText(t)}):null));
@@ -1059,7 +1396,14 @@ function vChat(){const se=DB.sessions.find(s=>s.id===view.id),st=se&&getStory(se
     return h("div",{class:"sg"},h("button",{class:"sgside","aria-label":"Edit this reply",onclick:()=>use(x)},ic("edit")),h("div",{class:"sgtext",role:"button",tabindex:"0",onclick:()=>use(x),onkeydown:e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();use(x)}}},b),h("button",{class:"sgside","aria-label":"Send this reply",onclick:()=>send(x)},ic("up")))})));
   const f=h("footer",{class:illustratedReader()?"reader-composer":null});
   if(TTS.on)ap(f,playerEl());
-  if(!busy&&se.life&&se.turns.length)ap(f,h("div",{class:"skips"},SKIPS.map(k=>h("button",{text:k[0],onclick:()=>send(k[2]+" Sum up what changes for me and the people around me, then stop at a moment that needs my decision.",false,k[1])}))));
+  if(!busy&&se.life&&se.turns.length){
+    const choices=()=>SKIPS.map(([label,line,prompt,days])=>h("button",{text:label,onclick:()=>{
+      closeSheet(true);
+      send(prompt+" Sum up what changes for me and the people around me, then stop at a moment that needs my decision.",false,line,plannedSkip(se,days));
+    }}));
+    ap(f,h("div",{class:"skips story-skips-wide"},choices()),
+      h("button",{class:"story-skips-mobile",text:"Advance time ▾",onclick:()=>sheet("Advance time",h("div",{class:"story-time-options"},choices(),h("button",{text:"World schedule",onclick:()=>worldScheduleSheet(se)})))}));
+  }
   ap(f,h("div",{class:"bar"},ta,
     h("button",{text:"*","aria-label":"Add an action or thought",onclick:()=>ins(ta,"*","*")}),
     h("button",{class:"txt",text:"/","aria-label":"Commands",onclick:()=>cmdSheet(se,st)}),
@@ -1088,7 +1432,7 @@ function loreFor(st,se,hist,action){const es=st.entries||[];if(!es.length)return
   es.filter(e=>e.a).forEach(add);
   es.filter(e=>!e.a&&(!hist.length&&!DB.saver||String(e.k||"").split(",").some(k=>{k=k.trim().toLowerCase();return k.length>2&&hay.indexOf(k)>=0}))).forEach(add);
   return out.join("\n")}
-function buildMsgs(se,st,hist,action){if(se.sim)st=Object.assign({},st,{title:se.sim.canon||se.world||st.title,canon:se.sim.canon||"",setting:se.world||"",style:"",lore:""});const c=se.char,L=se.len||"300",isC=st.kind==="character",life=se.life,who=c.name||"the player";
+function buildMsgs(se,st,hist,action,days=0){if(se.sim)st=Object.assign({},st,{title:se.sim.canon||se.world||st.title,canon:se.sim.canon||"",setting:se.world||"",style:"",lore:""});const c=se.char,L=se.len||"300",isC=st.kind==="character",life=se.life,who=c.name||"the player";
   let s=isC?"You are "+st.charName+" in a one-on-one character chat with "+who+". Stay fully in character: speak in first person as "+st.charName+", with brief actions or expressions woven in as plain prose. Never speak, think or act for "+who+". Keep your personality, history and voice consistent."
     :life?"You are the narrator of a life simulator. The player lives the whole life of one character, "+who+", from the current age onward, and you play the world and everyone else in it.\nRules: Never speak, think or decide for the player’s character. Each reply covers the span of time the player’s action implies: a moment, a day, or, when they skip time, months or years told through two or three short vivid scenes plus the key changes. Life goes on with or without the player: family, friends and rivals age, change, leave and die, and the world’s events arrive on schedule. Choices have lasting consequences for health, money, reputation and relationships, and missed chances stay missed. Keep events fitting for the character’s current age. Death is possible from old age or from risks the player takes. End on a moment that needs the player’s decision."
     :"You are the narrator and every non-player character in an interactive text story. Continue the story in response to the player’s latest action.\nRules: Never speak, think or act for the player’s character. Keep characters, facts and tone consistent with the memories and notes. Show real consequences of the player’s choices; other characters have their own goals and may refuse, lie or disagree. End on a moment that invites the next action.";
@@ -1106,7 +1450,8 @@ function buildMsgs(se,st,hist,action){if(se.sim)st=Object.assign({},st,{title:se
   if(isC)s+="\nYour character: "+st.charName+(st.charDesc?" — "+st.charDesc:"");
   if(st.style)s+="\nTone and style: "+st.style;
   if(st.lore)s+="\nLore and rules:\n"+st.lore;
-  const lb=loreFor(st,se,hist,action);if(lb)s+="\n\nCanon notes (authoritative; if your memory disagrees, follow these):\n"+lb;
+  const schedule=isC?"":worldSchedulePrompt(se,hist,days);
+  const lb=loreFor(st,se,hist,action+schedule);if(lb)s+="\n\nCanon notes (authoritative; if your memory disagrees, follow these):\n"+lb;
   s+="\n\nPlayer character: "+who+(c.desc?" — "+c.desc:"")+(c.trait?" Personality trait: "+c.trait+".":"");
   if(se.role)s+="\nThe player’s role in this world: "+se.role;
   if(se.goal)s+="\nThe player character’s current goal: "+se.goal;
@@ -1125,6 +1470,9 @@ function buildMsgs(se,st,hist,action){if(se.sim)st=Object.assign({},st,{title:se
   if(DB.globalNote)s+="\n\nPlayer’s standing notes (always follow):\n"+DB.globalNote;
   if(se.note)s+="\n\nPlayer’s notes for this story (always follow):\n"+se.note;
   const vt=visText(se);if(vt)s+="\n\nVisual references from the player. Each describes a picture the player chose of how something in this story looks. Whenever that thing appears, whether named here or matched through the player’s notes (for example a beast the player is meant to gain later), describe it so it matches its reference: shape, colors, markings, clothing and atmosphere. Do not bring something in early just because it is listed here; follow the plot and the player’s notes for when it appears.\n"+vt;
+  const confirmed=(se.sceneReviews||[]).filter(entry=>entry.fact&&hist[entry.turn]?.text===entry.source).slice(-12);
+  if(confirmed.length)s+="\n\nPlayer-confirmed canon:\n"+confirmed.map(entry=>"- "+entry.fact).join("\n");
+  if(!isC)s+=schedule+relationshipConsequencePrompt(se,hist)+progressionPrompt(se,hist.length);
   const rc=isC?"":recText(se);if(rc)s+="\n\nStory record (authoritative: never contradict it, and if something in it has to change, show it changing in the story):\n"+rc;
   const lm=[];let used=0;for(const m of se.mems){const x=String(m.x||"").trim();if(!x)continue;if(used+x.length>[6000,3000,1500][DB.saver||0])break;used+=x.length;lm.unshift("- "+(m.t?m.t+": ":"")+x)}
   if(lm.length)s+="\n\nLong-term memories:\n"+lm.join("\n");
@@ -1181,7 +1529,7 @@ function applyMeta(se,st,raw){const i=metaAt(raw);se.sugg=[];if(i<0)return;const
   const tp=g("TOPICS");if(rsOn(se)&&tp&&!none.test(tp))tp.split(";").map(x=>x.trim().replace(/^["“]|["”.]$/g,"")).filter(x=>x&&x.length<80).slice(0,2).forEach(x=>rsAdd(se,x,true));
   const dd=g("DEAD");if(dd&&!none.test(dd)){se.dead=se.dead||[];dd.split(";").map(x=>x.replace(/^[-*\s"“]+|[*"”.\s]+$/g,"").slice(0,48)).filter(x=>x&&!dash(x)&&!se.dead.includes(x)&&x.toLowerCase()!==me).forEach(x=>se.dead.push(x))}
   se.sugg=g("NEXT").split("|").map(x=>x.replace(/^\s*(?:\d+[.)]|[-•])\s*/,"").trim()).filter(Boolean).slice(0,3)}
-async function send(text,hide,show){const se=DB.sessions.find(s=>s.id===view.id);if(!se||busy)return;PRE.cancel=false;const st=getStory(se.storyId);text=(text||"").trim();if(!st||!text)return;
+async function send(text,hide,show,days=0){const se=DB.sessions.find(s=>s.id===view.id);if(!se||busy)return;PRE.cancel=false;const st=getStory(se.storyId);text=(text||"").trim();if(!st||!text)return;
   if(!hide&&!show&&text[0]==="/"){const m=text.match(/^\/(\w+)\s*([\s\S]*)$/),c=m?m[1].toLowerCase():"",arg=m?m[2].trim():"";const clr=()=>{view.draft="";const ta=$("#input");if(ta)ta.value=""};
     if(c==="ooc"){if(!arg){toast("Type your note after /ooc");return}text="(OOC: "+arg+")"}
     else if(c==="summary"){clr();summarySheet(se,st);return}
@@ -1200,15 +1548,15 @@ async function send(text,hide,show){const se=DB.sessions.find(s=>s.id===view.id)
   const myRefs=refsFor(st.id).concat(refsFor(se.id));let rp="";if(myRefs.length){busy=true;try{rp=await refPick(se,st,text)}catch(e){}finally{busy=false}}
   let wn="";const wb=wikiOf(se,st);if(wb&&DB.wikiOn!==false&&!(se.sim&&se.sim.ph==="setup")&&!myRefs.some(r=>r.wiki===wb)){busy=true;try{wn=await wikiPick(se,st,text,wb)}catch(e){}finally{busy=false}}
   if(PRE.cancel){PRE.cancel=false;toast("Cancelled.");return}
-  const REG=REGV;const hist=se.turns.slice(),u={role:"user",text},ai={role:"ai",text:"",ps:Object.assign({},se.stats)};if(hide)u.hide=true;if(show)u.show=show;
+  const REG=REGV;const hist=se.turns.slice(),u={role:"user",text},ai={role:"ai",text:"",ps:Object.assign({},se.stats)};if(hide)u.hide=true;if(show)u.show=show;if(days&&REG)u.worldDays=days;
   if(se.life){ai.pl=Object.assign({},se.life);ai.ln=(se.log||[]).length}
   ai.md=modelOf(DB.modes[DB.mode]||DB.modes[0]);
   let nc=false;if(st.kind!=="character"){const C=chapsOf(se),N=se.chapN==null?1500:se.chapN;if(!se.turns.length)nc=true;else if(N>0){let w=0;for(let j=C[C.length-1].i;j<se.turns.length;j++)if(se.turns[j].role==="ai")w+=words(se.turns[j].text);nc=N===1?w>0:w>=N}}
   if(st.kind!=="character"&&view.och){const L=chapsOf(se).length-1;delete view.och[L];delete view.och[L+1];se.och=Object.assign({},view.och)}delete se.pos;
-  se.nc=nc;se.rp=rp;se.wn=wn;const msgs=buildMsgs(se,st,hist,text);delete se.nc;delete se.rp;delete se.wn;delete se.imp;const ui=se.turns.length;se.turns.push(u,ai);REGV=null;if(RBK&&RBK.sid===se.id)RBK=null;if(nc&&ui>0)se.chaps.push({i:ui,t:""});se.sugg=[];se.delta={};busy=true;ctrl=new AbortController();if(!hide&&!show)view.draft="";render();
+  se.nc=nc;se.rp=rp;se.wn=wn;const msgs=buildMsgs(se,st,hist,text,days);delete se.nc;delete se.rp;delete se.wn;delete se.imp;const ui=se.turns.length;se.turns.push(u,ai);REGV=null;if(RBK&&RBK.sid===se.id)RBK=null;if(nc&&ui>0)se.chaps.push({i:ui,t:""});se.sugg=[];se.delta={};busy=true;ctrl=new AbortController();if(!hide&&!show)view.draft="";render();
   let raw="";
   try{const r=await ask(msgs,{signal:ctrl.signal,se,think:se.think||0,max:Math.min(16000,Math.round((+se.len||300)*2.2)+900),onText:t=>{raw=t;ai.text=vis(t);paintLast(se,ai.text)}});
-    raw=r.text;ai.text=vis(raw)||raw.trim();{const mi=metaAt(raw);if(mi>=0)ai.mt=raw.slice(mi,mi+1500).trim();else delete ai.mt}delete se.newc;if(r.usage)ai.u={i:r.usage.prompt_tokens||0,o:r.usage.completion_tokens||0,c:typeof r.usage.cost==="number"?r.usage.cost:null};if(isOC())ai.gp=ocPct();applyMeta(se,st,raw);memRecord(se,st,ai,raw);if((DB.metaRepair||se.metaRepair)&&metaAt(raw)<0&&memOn(se)&&st.kind!=="character"&&!RPQ.has(se.id)){const pr=metaRepair(se,st,ai).finally(()=>RPQ.delete(se.id));RPQ.set(se.id,pr)}if(se.newc){ai.newc=se.newc;delete se.newc}ai.st2=Object.assign({},se.stats);if(se.info){ai.info=se.info;delete se.info}if(REG){ai.vs=REG.concat([{t:ai.text,s:ai.st2,sg:(se.sugg||[]).slice(),mx:ai.mx,mt:ai.mt}]).slice(-6);ai.vi=ai.vs.length-1}}
+    raw=r.text;if(days&&(vis(raw)||raw.trim()))u.worldDays=days;ai.text=vis(raw)||raw.trim();{const mi=metaAt(raw);if(mi>=0)ai.mt=raw.slice(mi,mi+1500).trim();else delete ai.mt}delete se.newc;if(r.usage)ai.u={i:r.usage.prompt_tokens||0,o:r.usage.completion_tokens||0,c:typeof r.usage.cost==="number"?r.usage.cost:null};if(isOC())ai.gp=ocPct();applyMeta(se,st,raw);memRecord(se,st,ai,raw);if((DB.metaRepair||se.metaRepair)&&metaAt(raw)<0&&memOn(se)&&st.kind!=="character"&&!RPQ.has(se.id)){const pr=metaRepair(se,st,ai).finally(()=>RPQ.delete(se.id));RPQ.set(se.id,pr)}if(se.newc){ai.newc=se.newc;delete se.newc}ai.st2=Object.assign({},se.stats);if(se.info){ai.info=se.info;delete se.info}if(REG){ai.vs=REG.concat([{t:ai.text,s:ai.st2,sg:(se.sugg||[]).slice(),mx:ai.mx,mt:ai.mt}]).slice(-6);ai.vi=ai.vs.length-1}}
   catch(e){const ab=e&&e.name==="AbortError";if(ab&&vis(raw))ai.text=vis(raw);else if(REG){const o=REG[REG.length-1];ai.text=o.t;if(o.mt)ai.mt=o.mt;else delete ai.mt;if(o.mx){ai.mx=o.mx;if(se.mem&&window.SFMemory)try{SFMemory.apply(se.mem,o.mx)}catch(x){}}if(o.s)se.stats=Object.assign({},o.s);ai.st2=o.s;if(REG.length>1){ai.vs=REG;ai.vi=REG.length-1}if(!ab)toast(errMsg(e)+" Your earlier version is kept.")}else{const k=se.turns.indexOf(ai);if(k>0)se.turns.splice(k-1,2);if(!hide&&!show&&view.id===se.id)view.draft=text;if(!ab)toast(errMsg(e))}}
   finally{busy=false;ctrl=null;se.updated=Date.now();save();if(view.n==="chat"&&view.id===se.id)rerender()}
   summarize(se);recAfter(se,st)}
@@ -1229,7 +1577,7 @@ async function regen(){const se=DB.sessions.find(s=>s.id===view.id);if(!se||busy
   if(a.ps)se.stats=a.ps;
   if(se.chaps&&se.chaps.length){const lk=se.chaps.length-1,lc=se.chaps[lk];if(lc.sum&&se.fprev&&se.fprev.k===lk)se.facts=se.fprev.f.slice();delete lc.sum;delete lc.conf;delete lc.try}if(a.pl&&se.life){se.life=a.pl;if(se.log)se.log.length=Math.min(se.log.length,a.ln||0)}
   if(a.mx&&se.mem&&window.SFMemory)try{SFMemory.undo(se.mem,a.mx)}catch(x){}REGV=a.vs?a.vs.slice():[{t:a.text,s:a.st2||null,sg:(se.sugg||[]).slice(),mx:a.mx,mt:a.mt}];se.turns.splice(i-1,2);se.ending=null;
-  try{await send(u.text,u.hide,u.show)}catch(e){console.warn(e);toast(errMsg(e)+" Your earlier reply is kept.")}finally{if(RBK&&RBK.sid===se.id)regenRollback(se)}}
+  try{await send(u.text,u.hide,u.show,u.worldDays||0)}catch(e){console.warn(e);toast(errMsg(e)+" Your earlier reply is kept.")}finally{if(RBK&&RBK.sid===se.id)regenRollback(se)}}
 const SIMF=[["world","World","WORLD"],["role","Your role","ROLE"],["start","Starting point","TIMELINE"],["genre","Genre and keywords","GENRE"],["len","Reply length","LENGTH"],["goal","Short-term goal","GOAL"],["rules","Additional rules","RULES"]];
 function simVal(se,k){return k==="len"?(se.lenSet?lenLabel(se.len):""):String(se[k]||"")}
 function simMsgs(se,st,text){const c=se.char,who=c.name||"the player",L=se.sim.log;
@@ -1240,6 +1588,7 @@ function simMsgs(se,st,text){const c=se.char,who=c.name||"the player",L=se.sim.l
     +"4. Never begin the actual story yourself. When the player confirms, reply with one short, excited line that the story is starting.\n"
     +"Format: plain text with a blank line between paragraphs and between numbered items. Use **bold** for labels. No headings with #, no tables. Keep each reply under 450 words, apart from the world overview, which can be longer. Never write sexual content involving anyone under 18.\n\n"
     +"Player character: "+who+(c.desc?" — "+c.desc:"")+(c.trait?" Personality trait: "+c.trait+".":"")+"\n\nWorld Status so far:\n"+SIMF.map(f=>"- "+f[1]+": "+(simVal(se,f[0])||"not set")).join("\n")+(se.sim.canon?"\n- Source work: "+se.sim.canon:"")
+    +(se.note?"\n\nPlayer’s notes for this story:\n"+se.note:"")
     +"\n\nAfter your reply, finish with this block exactly, each item on its own line. Write unknown for anything not yet decided, and keep values the player already chose unless they changed them:\n[[META]]\nWORLD: the world in one line, such as the source work and a few words on the setting, or the player’s own world\nCANON: the exact title and author of the source work, or none for an original world\nROLE: the player’s role in one or two sentences\nTIMELINE: the starting point in the story’s timeline\nGENRE: genre and mood keywords separated by commas\nLENGTH: the chosen number of words per reply\nGOAL: the player character’s first short-term goal\nRULES: additional rules the player asked for, separated by ;, or none\nREADY: yes if this reply contains the opening preview and nothing important is missing, otherwise no\nCONFIRMED: yes only if the player’s latest message accepts the preview and asks to begin, otherwise no";
   const msgs=[{role:"system",content:s}];L.forEach((t,i)=>{if(i===0)return;msgs.push({role:t.role==="user"?"user":"assistant",content:t.text})});msgs.push({role:"user",content:text+"\n\n(Reply as "+GUIDE+", then end with the [[META]] block.)"});return msgs}
 function applySim(se,raw){const i=metaAt(raw);if(i<0)return;const m=raw.slice(i),unk=/^(unknown|not set|none|n\/a|-+|tbd)\.?$/i;
@@ -1390,7 +1739,9 @@ function libTab(m){const books=DB.books||[],note=h("p",{class:"sub"});
   const reader=illustratedReader();
   if(reader)ap(m,h("section",{class:"reader-workspace-head"},h("h2",{text:"Library"}),importButton),file,note);
   else ap(m,h("h2",{text:"Library"}),h("p",{class:"sub",text:"Import EPUBs you own to read them, listen to them chapter by chapter, or start your own story inside them with your OC."}),file,h("div",{class:"row"},importButton),note);
+  if(DB.stories.length)ap(m,h("h2",{text:"My stories"}),h("div",{class:"grid"},DB.stories.map(card)));
   if(!books.length)ap(m,h("p",{class:"hint",text:"No books yet."}));
+  else if(DB.stories.length)ap(m,h("h2",{text:"Imported books"}));
   books.forEach(b=>ap(m,h("div",{class:reader?"reader-book-entry":"row tight"},h("button",{class:"sessbtn",onclick:()=>go({n:"book",id:b.id})},h("b",{text:b.title}),h("small",{text:[b.author,"Chapter "+(b.pos.c+1)+" of "+b.n,Math.round(b.w/1000)+"k words"].filter(Boolean).join(" · ")}),
     reader?h("progress",{max:b.n||1,value:(b.pos?.c||0)+1,"aria-label":"Chapter progress"}):null),
     confirmBtn("Delete",async()=>{DB.books=DB.books.filter(x=>x.id!==b.id);delete BOOKC[b.id];save();try{await idbDel("book:"+b.id)}catch(e){}render()}))))}
@@ -1482,6 +1833,206 @@ async function portrait(se,k,btn,style){if(style===undefined)return chooseImageS
   try{const v=visFor(se,k),refs=[];if(v){try{const u=await idbGet("img:"+v.id);if(u)refs.push(u)}catch(e){}}
     const url=await genImage("Create a character portrait, head and shoulders, of "+k+(st&&st.title?" from "+(se.sim&&se.sim.canon||st.title):"")+". Style: "+(DB.imgStyle||"detailed anime illustration")+". "+[c.r&&"Role: "+c.r,c.l&&"Looks: "+c.l,(c.t||[]).length&&"Personality: "+c.t.join(", ")].filter(Boolean).join(". ")+(v&&v.desc?". Reference description: "+v.desc:"")+"."+PICRULE,refs,se,style);
     c.pic=await shrinkURL(url,256,0.82);const id=uid();await idbSet("gen:"+id,url);c.picId=id;save();toast("Portrait made.")}catch(e){toast(errMsg(e))}btn.disabled=false;btn.textContent="Make a portrait"}
+const WORLD_SHARE_FIELDS="kind title canon follow starts setting storyDescription style lore charName charDesc greeting stats endings life entries desc tags guide prologue info info0 ctr cmds author cast0 coverT bannerT wiki ooc".split(" ");
+const WORLD_PLAY_FIELDS="id parent root bname start follow char turns chaps temp mems note stats upto len sugg ending ended people cast think wstyle wcustom goal life log sdefs edefs ctr status statusOn quests rules world role genre nmode lenSet dead facts saga mem memv2 memSnap relationshipLinks worldSchedule sceneReviews progression".split(" ");
+const sharedFields=(source,fields)=>Object.fromEntries(fields.filter(key=>Object.hasOwn(source,key)).map(key=>[key,source[key]]));
+const shareImage=value=>typeof value==="string"&&/^data:image\/(?:png|jpeg|webp|gif);base64,[a-z0-9+/=]+$/i.test(value)?value:undefined;
+function portableStory(source){
+  const st=sharedFields(source,WORLD_SHARE_FIELDS);
+  st.coverT=shareImage(st.coverT);st.bannerT=shareImage(st.bannerT);
+  st.cast0=(Array.isArray(st.cast0)?st.cast0:[]).filter(c=>c&&typeof c.n==="string").map(c=>({
+    ...sharedFields(c,["n","age","role","looks","hook","quote"]),th:shareImage(c.th)
+  }));
+  return st;
+}
+function portablePlaythrough(source){
+  const session=sharedFields(source,WORLD_PLAY_FIELDS);
+  if(source.sim&&["setup","play"].includes(source.sim.ph)){
+    session.sim=sharedFields(source.sim,["ph","canon","prev","ready"]);
+    session.sim.log=(Array.isArray(source.sim.log)?source.sim.log:[])
+      .filter(turn=>turn&&["user","ai"].includes(turn.role)&&typeof turn.text==="string")
+      .map(turn=>sharedFields(turn,["role","text","g"]));
+  }
+  session.turns=source.turns.map(turn=>sharedFields(turn,["role","text","show","hide","tid","worldDays","ps","pl","ln","st2","mx","mt","vs","vi","save","info"]));
+  if(session.cast)session.cast=Object.fromEntries(Object.entries(session.cast)
+    .filter(([,c])=>c&&typeof c==="object"&&!Array.isArray(c))
+    .map(([name,c])=>[name,{...sharedFields(c,["r","l","t","a","b","ch","u"]),pic:shareImage(c.pic)}]));
+  return session;
+}
+function importSharedWorld(data){
+  const source=data?.story, sessions=data?.playthroughs??[];
+  if(data?.format!=="story-forge-world"||data.version!==1||!source||
+    !["story","character"].includes(source.kind)||typeof source.title!=="string"||
+    !Array.isArray(sessions)||sessions.length>100||
+    sessions.some(session=>!session||typeof session.id!=="string"||!Array.isArray(session.turns)||
+      session.turns.some(turn=>!turn||!["user","ai"].includes(turn.role)||typeof turn.text!=="string"))||
+    new Set(sessions.map(session=>session.id)).size!==sessions.length)throw Error("Invalid Story Forge world package.");
+  for(const key of ["starts","stats","endings","entries","tags","ctr","cmds"]){
+    if(source[key]!=null&&!Array.isArray(source[key]))throw Error("Invalid story field: "+key);
+  }
+  const updated=Date.now(),story={...portableStory(source),id:uid(),updated};
+  const ids=new Map(sessions.map(session=>[session.id,uid()]));
+  const copies=sessions.map(sourceSession=>{
+    const session=portablePlaythrough(sourceSession);
+    const id=ids.get(session.id),parent=ids.get(session.parent),root=ids.get(session.root);
+    return {temp:"",mems:[],note:"",stats:{},upto:0,len:"300",sugg:[],ending:null,ended:[],...session,
+      char:{name:"",desc:"",trait:"",...session.char},id,parent,root,storyId:story.id,updated};
+  });
+  const presets=data.scenePresets;
+  const scenePresets=presets&&typeof presets==="object"&&!Array.isArray(presets)
+    ?Object.fromEntries([...ids].filter(([id])=>Object.hasOwn(presets,id)).map(([id,copyId])=>[copyId,presets[id]]))
+    :{};
+  return {story,copies,scenePresets};
+}
+function makeWorldPackage(st,sessions,includeSceneArtwork){
+  const data={format:"story-forge-world",version:1,story:portableStory(st),playthroughs:sessions.map(portablePlaythrough)};
+  if(includeSceneArtwork&&sessions.length){
+    const presets=window.SFScenesV54?.exportPresets(sessions,true);
+    if(presets&&Object.keys(presets).length)data.scenePresets=presets;
+  }
+  return data;
+}
+function worldSharingSheet(){
+  const box=h("div");
+  let id=DB.stories[0]?.id||"",include=false,includeArtwork=false;
+  const file=h("input",{type:"file",accept:".json,application/json",onchange:async e=>{
+    const input=e.target,selected=input.files[0];input.value="";
+    if(!selected)return;
+    input.disabled=true;
+    try{
+      if(selected.size>20*1024*1024)throw Error("World packages can be up to 20 MB.");
+      const data=JSON.parse(await selected.text(),(key,value)=>["__proto__","constructor","prototype"].includes(key)?undefined:value);
+      const {story,copies,scenePresets}=importSharedWorld(data);
+      if(!box.isConnected)return;
+      DB.stories.push(story);DB.sessions.push(...copies);save();
+      const artworkSaved=window.SFScenesV54?.importPresets(scenePresets,copies)!==false;
+      go({n:"story",id:story.id});
+      toast(artworkSaved?"World imported.":"World imported. Scene artwork could not be saved because browser storage is full.");
+    }catch(err){toast(err.message||"Could not import the world.")}
+    finally{input.disabled=false}
+  }});
+  const artwork=h("div",{hidden:true},chk("Include cinematic scene artwork",false,value=>includeArtwork=value));
+  ap(box,h("p",{class:"sub",text:"Share a playable copy with its story setup, cover, banner and available portrait thumbnails. Include playthroughs only if you want to share their text and memory."}),
+    DB.stories.length?[
+      fld("World",sel(id,DB.stories.map(st=>[st.id,st.title||st.charName||"Untitled"]),value=>id=value)),
+      chk("Include saved playthroughs",include,value=>{include=value;artwork.hidden=!value}),
+      artwork,
+      h("button",{class:"primary",text:"Export world",onclick:()=>{
+        const st=DB.stories.find(st=>st.id===id);if(!st)return;
+        const sessions=include?DB.sessions.filter(se=>se.storyId===id):[];
+        if(sessions.length>100){toast("This world has more than 100 playthroughs. Try exporting the setup only.");return}
+        const data=makeWorldPackage(st,sessions,includeArtwork);
+        if(new Blob([JSON.stringify(data,null,2)]).size>20*1024*1024){
+          toast("This world package exceeds 20 MB. Try exporting without cinematic artwork or playthroughs.");return
+        }
+        sfDownloadJSON("story-forge-world.json",data);
+      }})
+    ]:null,fld("Import world package",file));
+  sheet("Share a world",box);
+}
+const STORY_TEMPLATE_FIELDS="title canon follow starts setting storyDescription style lore stats endings life entries desc tags tag guide prologue info info0 ctr cmds author wiki ooc".split(" ");
+function storyTemplateData(st){
+  const data=sharedFields(st,STORY_TEMPLATE_FIELDS);
+  if(Array.isArray(st.cast0))data.cast0=st.cast0.filter(character=>character&&typeof character.n==="string")
+    .map(character=>sharedFields(character,["n","age","role","looks","hook","quote"]));
+  return JSON.parse(JSON.stringify(data));
+}
+function storyTemplateList(){
+  return (Array.isArray(DB.storyTemplates)?DB.storyTemplates:[]).filter(template=>
+    template&&typeof template.id==="string"&&typeof template.name==="string"&&template.story&&typeof template.story==="object");
+}
+function saveStoryTemplate(source,name){
+  const templates=storyTemplateList();
+  const title=name.trim().slice(0,80);
+  if(!title){toast("Give the template a name.");return false}
+  if(source.kind!=="story"||!DB.stories.includes(source)){toast("Choose a saved story.");return false}
+  if(templates.some(template=>template.name.toLowerCase()===title.toLowerCase())){
+    toast("That template name is already in use.");return false;
+  }
+  if(templates.length>=30){toast("Remove a template before adding another.");return false}
+  DB.storyTemplates=[{id:uid(),name:title,story:storyTemplateData(source)},...templates];
+  save();
+  return true;
+}
+function openStoryTemplate(template){
+  const story=storyTemplateData(template.story);
+  go({n:"edit",w:{...story,id:uid(),kind:"story",title:story.title||template.name}});
+}
+function storyTemplatesSheet(source){
+  const box=h("div");
+  let chosen=source?.id||"",name=source?.title||"";
+  const draw=()=>{
+    box.replaceChildren();
+    const stories=DB.stories.filter(st=>st.kind==="story");
+    const templates=storyTemplateList();
+    const selected=stories.find(st=>st.id===chosen);
+    ap(box,h("p",{class:"sub",text:"Reuse a story’s premise, canon, cast, rules and starting points in a new draft."}),
+      templates.length?templates.map(template=>h("div",{class:"item"},
+        h("b",{text:template.name}),
+        h("div",{class:"row"},
+          h("button",{class:"primary",text:"Use template",onclick:()=>openStoryTemplate(template)}),
+          confirmBtn("Remove template",()=>{
+            DB.storyTemplates=storyTemplateList().filter(item=>item.id!==template.id);
+            save();draw();
+          },"")))):h("p",{class:"sub",text:"No templates saved yet."}),
+      h("h3",{text:"Save a new template"}),
+      stories.length?[
+        fld("Source story",sel(chosen,[["","Choose a story"],...stories.map(st=>[st.id,st.title||"Untitled"])],id=>{
+          chosen=id;
+          name=stories.find(st=>st.id===id)?.title||"";
+          draw();
+        })),
+        fld("Template name",inp(name,value=>name=value,"E.g. Academy rivalry")),
+        h("button",{text:"Save as template",disabled:!selected,onclick:()=>{
+          if(selected&&saveStoryTemplate(selected,name)){chosen="";name="";draw();toast("Template saved.")}
+        }})
+      ]:h("p",{class:"sub",text:"Create and save a story to make your first template."}));
+  };
+  draw();
+  sheet("Story templates",box);
+}
+
+function storyBanner(st){
+  return h("img",{class:"story-banner",src:st.bannerT,alt:"",loading:"lazy"});
+}
+function storyArtworkPicker(){
+  sheet("Story artwork",h("div",{class:"story-art-picker"},DB.stories.length?
+    DB.stories.map(st=>h("button",{class:"sessbtn story-art-session",onclick:()=>storyArtworkSheet(st)},
+      readerCover(st),h("b",{text:st.title||st.charName||"Untitled"}))):
+    h("p",{class:"sub",text:"Create a story to add artwork."})));
+}
+function storyArtworkSheet(st){
+  const draft={cover:st.cover,coverT:st.coverT,bannerT:st.bannerT,title:st.title,charName:st.charName,hue:st.hue};
+  const box=h("div",{class:"story-art-editor"}),preview=h("div",{class:"story-art-preview"});
+  const saveButton=h("button",{class:"primary",text:"Save artwork",onclick:()=>{
+    if(getStory(st.id)!==st){toast("Reopen this story to edit its artwork.");return}
+    for(const key of ["cover","coverT","bannerT"]){
+      if(draft[key])st[key]=draft[key];else delete st[key];
+    }
+    st.updated=Date.now();save();closeSheet(true);soft();toast("Story artwork saved.");
+  }});
+  const draw=()=>preview.replaceChildren(
+    h("div",null,h("h3",{text:"Cover · 3:4 crop"}),readerCover(draft,true)),
+    h("div",null,h("h3",{text:"Banner · 16:9 crop"}),draft.bannerT?storyBanner(draft):h("p",{class:"sub",text:"The featured panel uses your cover until you add a banner."})));
+  const upload=(label,key,max)=>{
+    const field=h("input",{type:"file",accept:"image/*",onchange:async e=>{
+      const file=e.target.files[0];
+      if(!file)return;
+      for(const control of box.querySelectorAll("input, button"))control.disabled=true;
+      try{
+        draft[key]=await imgShrink(file,max,.82);
+        if(key==="coverT")delete draft.cover;
+        draw();
+      }catch(err){toast(err.message||"Could not open the image.")}
+      finally{for(const control of box.querySelectorAll("input, button"))control.disabled=false;e.target.value=""}
+    }});
+    return h("div",null,fld(label,field),h("button",{class:"ghost",text:"Remove "+(key==="coverT"?"cover":"banner"),onclick:()=>{
+      delete draft[key];if(key==="coverT")delete draft.cover;draw();
+    }}));
+  };
+  ap(box,preview,upload("Upload cover","coverT",720),upload("Upload banner","bannerT",1100),saveButton);
+  draw();sheet("Story artwork",box);
+}
 function pageSheet(st){const d={desc:st.desc||"",tags:(st.tags||[]).join(", "),guide:st.guide||"",pro:st.prologue||"",info:st.info||"",ctr:(st.ctr||[]).map(c=>c.n+"/"+c.max).join(", "),cmds:(st.cmds||[]).map(c=>c.c+(c.d?" = "+c.d:"")).join("\n")},cast=JSON.parse(JSON.stringify(st.cast0||[])),box=h("div");
   const pickImg=async cb=>{const f=h("input",{type:"file",accept:"image/*"});f.onchange=async()=>{const x=f.files[0];if(!x)return;try{const full=await imgShrink(x,1200,0.86),th=await imgShrink(x,360,0.8),id="img:"+uid();await idbSet(id,full);cb(id,th)}catch(e){toast(e.message)}};f.click()};
   const draw=()=>{box.textContent="";ap(box,h("div",{class:"row"},h("button",{text:st.cover?"Change cover":"Add a cover",onclick:()=>pickImg((id,th)=>{st.cover=id;st.coverT=th;save();toast("Cover saved.")})}),st.proImg||st.prologue?h("button",{text:"Change prologue picture",onclick:()=>pickImg(id=>{st.proImg=id;save();toast("Saved.")})}):null),
@@ -1639,6 +2190,12 @@ function branchAt(se,i,o){o=o||{};const n=JSON.parse(JSON.stringify(se)),root=se
   if(n.mem&&window.SFMemory)for(let j=se.turns.length-1;j>=cut;j--){const tt=se.turns[j];if(tt&&tt.mx)try{SFMemory.undo(n.mem,tt.mx)}catch(e){}}
   n.parent=se.id;n.root=root;n.bname="Branch "+DB.sessions.filter(x=>x.root===root).length+1;n.bname="Branch "+(DB.sessions.filter(x=>x.root===root).length+1);
   if(n.chaps){const before=n.chaps.length;n.chaps=n.chaps.filter(c=>c.i<cut);if(n.chaps.length<before){n.facts=[];delete n.saga;delete n.fprev}}
+  for(const link of Array.isArray(n.relationshipLinks)?n.relationshipLinks:[]){
+    if(Array.isArray(link?.history))link.history=link.history.filter(entry=>entry&&relationshipMilestoneAt(entry)<=cut);
+  }
+  if(Array.isArray(n.sceneReviews))n.sceneReviews=n.sceneReviews.filter(entry=>entry.turn<cut);
+  if(Array.isArray(n.worldSchedule))n.worldSchedule=branchWorldSchedule(n.worldSchedule,cut);
+  trimProgression(n,cut);
   if((se.upto||0)>cut){n.upto=0;n.temp="";n.mems=[]}
   const last=n.turns[cut-1];if(last&&last.st2)n.stats=Object.assign({},last.st2);
   if(se.life){const nx=se.turns.slice(cut).find(t=>t.pl);if(nx){n.life=Object.assign({},nx.pl);n.log=(se.log||[]).slice(0,nx.ln||0)}}
@@ -1682,15 +2239,14 @@ function menuSheet(se,st){closeSheet(true);const ends=ed(se,st),fo=foundOf(st),n
   const bg=h("div",{class:"drawerbg",id:"sheetbg",onclick:e=>{if(e.target===bg)closeSheet()}},h("div",{class:"drawer"},
     h("div",{class:"spent",text:"Spent on this story: "+costText(se.use)}),isOC()?h("div",{class:"spent",text:goText(ocPct())+" (estimated)"}):null,
     h("button",{class:"dhead","aria-label":"Open the story page",onclick:()=>go(st.builtin?{n:"story",id:st.id}:{n:"edit",id:st.id})},h("i",{style:grad(stHue(st)),text:String(name).split(/\s+/).map(w=>w[0]).join("").slice(0,3).toUpperCase()}),h("b",{text:name}),ic("edit")),
-    illustratedReader()?[
-      h("div",{class:"dsec",text:"Reading and artwork"}),
-      drow("Play presentation",()=>sheet("Play presentation",h("div",{class:"row"},
+    h("details",{class:"story-tools"},h("summary",{text:"Reading and artwork"}),
+      illustratedReader()?drow("Play presentation",()=>sheet("Play presentation",h("div",{class:"row"},
         [["reader","Illustrated Reader"],["cinematic","Cinematic Visual Novel"]].map(([value,label])=>
           h("button",{class:(DB.readerPresentation||"reader")===value?"primary":null,text:label,onclick:()=>{
             DB.readerPresentation=value;
             save();
             closeSheet();
-          }}))))),
+          }}))))):null,
       drow("Visual Suite",()=>sfVisualSuite(se)),
       drow("Appearance",()=>{closeSheet(true);window.SFVisualV48?.open()}),
       drow("Dashboard",()=>{closeSheet(true);window.SFCharacterV50?.open()}),
@@ -1699,7 +2255,7 @@ function menuSheet(se,st){closeSheet(true);const ends=ed(se,st),fo=foundOf(st),n
       drow("Map & Art",()=>{closeSheet(true);window.SFRelationshipV52?.open()}),
       drow("Scene & Portraits",()=>{closeSheet(true);window.SFScenesV54?.open()}),
       drow("Toggle cinematic dialogue",()=>{closeSheet(true);$(".sf53-tools button")?.click()})
-    ]:null,
+    ),
     drow("Story and saved sessions",()=>go({n:"story",id:st.id})),
     h("div",{class:"dsec",text:"Session settings"}),
     st.kind!=="character"?drow("World Status",()=>worldSheet(se,st),se.sim&&se.sim.ph==="setup"?"Setting up":""):null,
@@ -1710,6 +2266,9 @@ function menuSheet(se,st){closeSheet(true);const ends=ed(se,st),fo=foundOf(st),n
     st.kind!=="character"?drow("Characters",()=>castSheet(se),String(Object.keys(se.cast||{}).length)):null,
      st.kind!=="character"?drow("Social Links & Relationships",()=>relationshipSheet(se),String(Object.keys(se.relationships||{}).length)+" tracked"):null,
     st.kind!=="character"?drow("Story formats",()=>fmtSheet(se)):null,
+    st.kind!=="character"?drow("Review story changes",()=>reviewStoryChanges(se)):null,
+    st.kind!=="character"?drow("World schedule",()=>worldScheduleSheet(se)):null,
+    st.kind!=="character"?drow("Progression",()=>progressionSheet(se)):null,
     st.kind!=="character"?drow("Status and quests",()=>statusSheet(se,st),String((se.quests||[]).filter(q=>!q.done).length)+" open"):null,
     st.kind!=="character"?drow("Research",()=>rsSheet(se),String((se.rs||[]).length)):null,
     st.kind!=="character"?drow("Story controls",()=>ctlSheet(se),ctlText(se)?"Custom":""):null,
@@ -1858,6 +2417,80 @@ async function ensureRec(se){let n=0;const C=chapsOf(se);for(let k=0;k<C.length&
 function confNote(se,c,k){return h("button",{class:"cnote",id:"cn"+k,text:"Continuity check: "+c.conf.length+" possible slip"+(c.conf.length>1?"s":"")+". Review",onclick:()=>recSheet(se)})}
 function recAfter(se,st){if(st.kind==="character"||DB.rec===false)return;const C=chapsOf(se),k=C.length-1,c=C[k];if(c.sum||(c.try||0)>=2||!chDone(se,C,k))return;
   recP=digest(se,k).then(()=>{const e=document.getElementById("ch"+k);if(e&&c.conf&&c.conf.length&&!document.getElementById("cn"+k)&&view.n==="chat"&&view.id===se.id)e.after(confNote(se,c,k))}).catch(()=>{})}
+function canonRows(mem){
+  const events=mem.events||[], byId=new Map(events.map(event=>[event.id,event])), knownBy=new Map();
+  for(const [name,character] of Object.entries(mem.chars||{})){
+    for(const id of new Set(character.knows||[])){
+      if(!knownBy.has(id))knownBy.set(id,[]);
+      knownBy.get(id).push(name);
+    }
+  }
+  const facts=[...(mem.facts||[]),...(mem.secrets||[])].map(fact=>({
+    text:fact.text,people:(knownBy.get(fact.id)||[]).sort(),
+    sources:(fact.from||[]).map(id=>byId.get(id)).filter(Boolean),
+    tid:fact.tid,turn:fact.legacy?null:fact.since,label:fact.legacy?"Imported fact":"Recorded fact"
+  }));
+  return {facts:facts.reverse(),events:events.slice().reverse().map(event=>({
+    text:event.text,people:[...new Set([...(event.who||[]),...(event.wit||[])])],
+    sources:[],tid:event.tid,turn:event.t,label:event.kind||"Event"
+  }))};
+}
+function canonInspector(se){
+  const box=h("div"),results=h("div");
+  const rows=canonRows(se.mem||{});
+  rows.facts.unshift(...(se.sceneReviews||[]).filter(entry=>entry.fact&&se.turns[entry.turn]?.text===entry.source)
+    .map(entry=>({text:entry.fact,people:[],sources:[],turn:entry.turn,label:"Player-confirmed canon"})).reverse());
+  const turns=new Map(se.turns.flatMap((turn,index)=>turn.tid?[[turn.tid,index]]:[]));
+  const chapters=chapsOf(se);
+  const audit=se.mem&&window.SFMemory?.integrity(se.mem);
+  let kind="facts",person="",filter="",limit=30;
+  const chapterAt=turn=>chapters.reduce((chapter,c,index)=>c.i<=turn?index:chapter,0);
+  const sourceIndex=row=>row.tid?turns.get(row.tid):row.turn;
+  const draw=()=>{
+    results.replaceChildren();
+    const matches=rows[kind].filter(row=>(!person||row.people.includes(person))&&
+      [row.text,row.label,...row.people,...row.sources.map(source=>source.text)].some(text=>String(text||"").toLowerCase().includes(filter)));
+    ap(results,h("p",{class:"sub",text:matches.length+" matching "+kind}));
+    for(const row of matches.slice(0,limit)){
+      const index=sourceIndex(row),source=Number.isInteger(index)&&!se.turns[index]?.hide?se.turns[index]:null;
+      const chapter=source?chapterAt(index):null;
+      ap(results,h("article",{class:"item canon-entry"},
+        h("small",{class:"sub",text:row.label+(source?" · "+chName(chapters[chapter],chapter):"")}),
+        h("b",{text:row.text}),
+        h("p",{class:"sub",text:(kind==="facts"?"Recorded knowledge · ":"Participants and witnesses · ")+(row.people.join(", ")||"None recorded")}),
+        row.sources.length?h("ul",null,row.sources.map(event=>h("li",{text:event.text}))):null,
+        source?h("details",null,h("summary",{text:"Read source excerpt"}),h("blockquote",{text:String(source.show||source.text||"").slice(0,900)})):null));
+    }
+    if(matches.length>limit)ap(results,h("button",{text:"Show 30 more",onclick:()=>{limit+=30;draw()}}));
+  };
+  const update=()=>{limit=30;draw()};
+  const people=[...new Set([...rows.facts,...rows.events].flatMap(row=>row.people))].sort();
+  ap(box,h("button",{text:"Back to Story Record",onclick:()=>recSheet(se)}),
+    h("p",{class:"sub",text:"Browse memory recorded in this playthrough. Character knowledge is shown when the memory engine has recorded it."}),
+    audit?h("p",{class:"sub",text:audit.ok?"Memory integrity check passed.":audit.errors.join(" · ")}):h("p",{class:"sub",text:"This playthrough has no long-term memory yet."}),
+    fld("Show",sel(kind,[["facts","Facts and secrets"],["events","Events"]],v=>{kind=v;update()})),
+    fld("Character",sel(person,[["","Everyone"],...people.map(name=>[name,name])],v=>{person=v;update()})),
+    fld("Search memory",inp("",v=>{filter=v.trim().toLowerCase();update()},"Search facts, events or names")),results);
+  draw();sheet("Canon and character knowledge",box);
+}
+function storyConsequences(se){
+  const changes=[
+    ...recordedWorldOutcomes(worldSchedule(se),se.turns.length).map(({entry,state})=>({
+      label:entry.kind+" · "+state.status,
+      text:entry.text+(state.note?" — "+state.note:""),
+      after:state.after,effect:worldOutcomeEffect(entry,state)
+    })),
+    ...recordedRelationshipMilestones(se,se.turns).map(entry=>({
+      label:"Relationship · "+entry.a+" / "+entry.b,text:entry.note,after:entry.after
+    }))
+  ].sort((a,b)=>b.after-a.after);
+  if(!changes.length)return null;
+  return h("details",{class:"item"},h("summary",{text:"Consequences ("+changes.length+")"}),
+    changes.slice(0,30).map(change=>h("div",{class:"item"},
+      h("small",{class:"sub",text:change.label}),h("p",{text:change.text}),
+      change.effect?h("p",{class:"sub",text:"Effect on future scenes · "+change.effect}):null)),
+    changes.length>30?h("p",{class:"sub",text:"Showing the 30 newest changes."}):null);
+}
 function recSheet(se){const box=h("div");let running=false,halt=false;
   const rb=confirmBtn("Re-read the whole story and rebuild",async()=>{if(running){halt=true;return}running=true;halt=false;const C=chapsOf(se);se.saga="";se.facts=[];delete se.fprev;C.forEach(c=>{delete c.sum;delete c.conf;delete c.f;delete c.try});
     for(let k=0;k<C.length&&!halt;k++){if(!chDone(se,C,k))break;rb.textContent="Reading chapter "+(k+1)+" of "+C.length+" (tap twice to stop)";try{await digest(se,k,true)}catch(e){toast(errMsg(e));break}}
@@ -1865,6 +2498,8 @@ function recSheet(se){const box=h("div");let running=false,halt=false;
   const draw=()=>{box.textContent="";const C=chapsOf(se),done=C.filter(c=>c.sum).length,p=DB.price&&DB.price[cheapId()],chars=se.turns.reduce((a,t)=>a+t.text.length,0),cost=p?money((chars/4*1.2*p[0]+C.length*(2500*p[0]+1800*p[1]))/1e6):"";
     const lastAi=se.turns.length-1;
     ap(box,h("p",{class:"sub",text:"When a chapter is finished, the app reads it, updates this record, and checks it against what came before. The narrator is told never to contradict the record."}),
+      h("button",{text:"Browse canon and character knowledge",onclick:()=>canonInspector(se)}),
+      storyConsequences(se),
       chk("Review each finished chapter",DB.rec!==false,v=>{DB.rec=v;save()}));
     C.forEach((c,k)=>(c.conf||[]).forEach(x=>{const drop=()=>{c.conf=c.conf.filter(y=>y!==x);save();draw()},tell=()=>{se.note=(se.note?se.note.trim()+"\n":"")+"Continuity: "+x+" Keep to what was established.";drop()};
       const one=k===C.length-1&&se.turns[lastAi]&&se.turns[lastAi].role==="ai"&&lastAi-c.i<=1&&!busy;
@@ -1894,7 +2529,7 @@ function setFX(se,st){const f=fmtOf(se),pal=[];if(se&&st&&st.kind!=="character")
     ks.forEach(k=>{const ws=k.split(/\s+/);[ws[0],ws.length>1?ws[ws.length-1]:""].forEach(w=>{if(w&&w.length>=3)first[w]=(first[w]||0)+1})});
     ks.forEach(k=>{const col=nameCol(k),esc2=x=>x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");const alts=[k],ws=k.split(/\s+/);if(ws.length>1)[ws[0],ws[ws.length-1]].forEach(w=>{if(w.length>=3&&first[w]===1&&!alts.includes(w))alts.push(w)});pal.push({k,col,re:new RegExp("(^|[^\\p{L}])("+alts.map(esc2).join("|")+")(?![\\p{L}])","u")})})}
   FX={f,pal,me:((se&&se.char&&se.char.name)||"").toLowerCase()}}
-const TTS={on:false,paused:false,q:[],id:0,label:"",us:[],timeline:[],total:0,position:0,anchor:null,timer:null},ttsOK=()=>"speechSynthesis"in window&&"SpeechSynthesisUtterance"in window;
+const TTS={on:false,paused:false,q:[],id:0,label:"",utterance:null,startTimer:null,timeline:[],total:0,position:0,anchor:null,timer:null},ttsOK=()=>"speechSynthesis"in window&&"SpeechSynthesisUtterance"in window;
 function ttsParts(text){const out=[],two=!!DB.voice2&&DB.voice2!==DB.voice;
   const chunk=(p,pre)=>{let cur="";(p.match(/[^.!?…]+[.!?…]*["”’)\]]*\s*/g)||[p]).forEach(sn=>{if(cur&&cur.length+sn.length>220){out.push(pre+cur.trim());cur=""}cur+=sn});if(cur.trim())out.push(pre+cur.trim())};
   if(two){String(text||"").replace(/[*_]/g,"").replace(/[◆◇📱✉📩💬]/gu,"").replace(/^\s*\[([^\]]+)\]/gm,"$1.").split(/\n+/).forEach(p=>p.split(/("[^"\n]+"|“[^”\n]+”)/).forEach(seg=>{if(!seg.trim())return;const d=/^["“]/.test(seg);chunk(d?seg.replace(/^["“]|["”]$/g,""):seg,d?"\u0002":"")}));return out}
@@ -1935,34 +2570,71 @@ function ttsProgress(preview){
   slider.setAttribute("aria-valuetext",ttsClock(seconds)+" of "+ttsClock(TTS.total/ttsRate())+" estimated");
   label.textContent=ttsClock(seconds);
 }
-function ttsQueue(){
-  const id=++TTS.id,from=ttsLocate(TTS.position),rate=ttsRate(),voices=speechSynthesis.getVoices();
-  const v=voices.find(x=>x.voiceURI===DB.voice),v2=voices.find(x=>x.voiceURI===DB.voice2);
-  TTS.us=[];
-  for(let i=from.index;i<TTS.q.length;i++){
-    const part=TTS.timeline[i],offset=i===from.index?from.offset:0;
-    const u=new SpeechSynthesisUtterance(part.text.slice(offset));
-    const voice=TTS.q[i][0]==="\u0002"&&v2?v2:v;
-    u.rate=rate;
-    if(voice){u.voice=voice;u.lang=voice.lang}
-    const anchor=position=>{TTS.position=position;TTS.anchor={position,rate,end:part.end,at:performance.now()}};
-    u.onstart=()=>{if(TTS.id===id){anchor(i===from.index?from.position:part.start);ttsProgress()}};
-    u.onboundary=event=>{
-      if(TTS.id!==id||event.name!=="word")return;
-      const word=part.starts.findIndex(start=>start>=offset+event.charIndex);
-      if(word>=0)anchor(part.start+word*part.step);
-    };
-    u.onend=()=>{if(TTS.id===id&&i===TTS.q.length-1)ttsStop()};
-    u.onerror=ev=>{if(TTS.id===id&&ev.error!=="interrupted"&&ev.error!=="canceled"&&i===TTS.q.length-1)ttsStop()};
-    TTS.us.push(u);speechSynthesis.speak(u);
-  }
+function ttsCancelSpeech(){
+  ++TTS.id;
+  TTS.anchor=null;
+  TTS.utterance=null;
+  clearTimeout(TTS.startTimer);
+  TTS.startTimer=null;
+  if(ttsOK())speechSynthesis.cancel();
+}
+function ttsPause(){
+  TTS.position=ttsPosition();
+  TTS.paused=true;
+  ttsCancelSpeech();
+  spkOff();
+  ttsUI();
 }
 function ttsRestart(){
-  const was=speechSynthesis.speaking||speechSynthesis.pending,id=++TTS.id;
-  TTS.anchor=null;
-  speechSynthesis.cancel();
-  const resume=()=>{if(TTS.id===id&&TTS.on&&!TTS.paused)ttsQueue()};
-  if(was)setTimeout(resume,90);else resume();
+  ttsCancelSpeech();
+  const id=TTS.id,from=ttsLocate(TTS.position),rate=ttsRate(),voices=speechSynthesis.getVoices();
+  const voice=voices.find(x=>x.voiceURI===DB.voice),dialogue=voices.find(x=>x.voiceURI===DB.voice2);
+
+  const speak=(index,offset,position)=>{
+    const part=TTS.timeline[index],u=new SpeechSynthesisUtterance(part.text.slice(offset));
+    const selected=TTS.q[index][0]==="\u0002"&&dialogue?dialogue:voice;
+    const current=()=>TTS.id===id&&TTS.utterance===u;
+    const anchor=position=>{
+      TTS.position=position;
+      TTS.anchor={position,rate,end:part.end,at:performance.now()};
+    };
+    const started=()=>{
+      clearTimeout(TTS.startTimer);
+      TTS.startTimer=null;
+    };
+    const interrupted=()=>{
+      if(!current())return;
+      ttsPause();
+      toast("Narration paused. Tap Resume to continue from this spot.");
+    };
+    u.rate=rate;
+    if(selected){u.voice=selected;u.lang=selected.lang}
+    u.onstart=()=>{
+      if(!current())return;
+      started();anchor(position);ttsProgress();
+    };
+    u.onboundary=event=>{
+      if(!current()||event.name!=="word")return;
+      const word=part.starts.findIndex(start=>start>=offset+event.charIndex);
+      if(word>=0){started();anchor(part.start+word*part.step)}
+    };
+    u.onend=()=>{
+      if(!current())return;
+      started();
+      if(index+1===TTS.q.length){ttsStop();return}
+      TTS.anchor=null;
+      TTS.position=part.end;
+      speak(index+1,0,part.end);
+    };
+    u.onerror=interrupted;
+    TTS.utterance=u;
+    TTS.startTimer=setTimeout(interrupted,4000);
+    try{speechSynthesis.speak(u)}catch(e){interrupted()}
+  };
+
+  // Submit the first utterance in the same interaction as Seek or Resume.
+  // Deferring the restart with a timer can lose the browser’s playback gesture.
+  speak(from.index,from.offset,from.position);
 }
 function ttsSeek(position){
   TTS.position=ttsLocate(Math.max(0,Math.min(TTS.total,position))).position;
@@ -1984,7 +2656,7 @@ function ttsStart(texts,label){if(!ttsOK()){toast("This browser can’t read alo
   spkOn();TTS.q=q;TTS.timeline=ttsTimeline(q);TTS.total=TTS.timeline.at(-1).end;
   TTS.position=0;TTS.on=true;TTS.paused=false;TTS.label=label;
   clearInterval(TTS.timer);TTS.timer=setInterval(ttsProgress,250);ttsRestart();ttsUI()}
-function ttsStop(quiet){spkOff();TTS.id++;TTS.on=false;TTS.paused=false;TTS.anchor=null;TTS.us=[];clearInterval(TTS.timer);if(ttsOK())speechSynthesis.cancel();if(!quiet)ttsUI()}
+function ttsStop(quiet){spkOff();TTS.on=false;TTS.paused=false;ttsCancelSpeech();clearInterval(TTS.timer);if(!quiet)ttsUI()}
 function playerEl(){
   const rates=[0.8,1,1.2,1.5,1.8],r=ttsRate(),total=TTS.total/r,current=ttsPosition()/r;
   const slider=h("input",{id:"pseek",type:"range",min:0,max:total,step:"any",value:current,
@@ -2001,7 +2673,7 @@ function playerEl(){
       }}),
       h("button",{"aria-label":TTS.paused?"Resume reading":"Pause reading",onclick:()=>{
         if(TTS.paused){spkOn();TTS.paused=false;ttsRestart()}
-        else{TTS.position=ttsPosition();TTS.anchor=null;TTS.paused=true;TTS.id++;speechSynthesis.cancel();spkOff()}
+        else{ttsPause();return}
         ttsUI()
       }},ic(TTS.paused?"send":"pause")),
       h("button",{"aria-label":"Stop reading",onclick:()=>ttsStop()},ic("stop"))),
@@ -2248,7 +2920,7 @@ function relationshipMapSheet(se,mount){
   if(!Array.isArray(se.relationshipLinks))se.relationshipLinks=[];
   const root=h('div',{class:'sf-map-sheet'}), names=()=>Array.from(new Set([...Object.keys(se.cast||{}),...Object.keys(se.relationships||{}),...se.relationshipLinks.flatMap(x=>[x.a,x.b])].filter(Boolean))).sort();
   let editing=-1,filter='',typeFilter='All',focus='';
-  function draw(){root.textContent='';const ns=names();const links=se.relationshipLinks.filter(link=>(!focus||link.a===focus||link.b===focus)&&(typeFilter==='All'||link.type===typeFilter)&&(!filter||[link.a,link.b,link.type,link.note].some(v=>String(v||'').toLowerCase().includes(filter.toLowerCase()))));
+  function draw(){root.textContent='';const ns=names();const links=se.relationshipLinks.filter(link=>(!focus||link.a===focus||link.b===focus)&&(typeFilter==='All'||link.type===typeFilter)&&(!filter||[link.a,link.b,link.type,link.note,link.viewA,link.viewB].some(v=>String(v||'').toLowerCase().includes(filter.toLowerCase()))));
     ap(root,h('p',{class:'sub',text:'Select a character to focus on their connections, or choose a link to view its details and history.'}));
     const types=['All',...new Set(se.relationshipLinks.map(x=>x.type).filter(Boolean))];ap(root,h('div',{class:'row'},fld('Find character or link',h('input',{type:'search',placeholder:'Search connections',value:filter,'data-map-search':'',oninput:e=>{const caret=e.target.value.length;filter=e.target.value;draw();const field=root.querySelector('[data-map-search]');field.focus();field.setSelectionRange(caret,caret)}})),fld('Connection type',sel(typeFilter,types.map(x=>[x,x]),v=>{typeFilter=v;draw()})),fld('Focus character',sel(focus,[['','Everyone'],...ns.map(n=>[n,n])],v=>{focus=v;draw()}))));
     const visible=focus?[...new Set([focus,...links.flatMap(link=>[link.a,link.b])])]:ns;
@@ -2261,9 +2933,61 @@ function relationshipMapSheet(se,mount){
       visible.forEach(n=>{const pt=points[n],circle=node('circle',{cx:pt.x,cy:pt.y,r:ns.length>14?15:22,fill:'#51477e',stroke:'#d2c5ff','stroke-width':2});circle.style.cursor='pointer';circle.addEventListener('click',()=>{focus=focus===n?'':n;draw()});const label=node('text',{x:pt.x,y:pt.y+37,'text-anchor':'middle',fill:'currentColor','font-size':ns.length>12?10:13});label.textContent=n.length>17?n.slice(0,16)+'…':n;});
       graph.appendChild(svg);ap(root,graph);
     }else ap(root,h('p',{class:'sub',text:'Add characters in the Characters menu to start your map.'}));
-    if(editing>=0){const old=se.relationshipLinks[editing]||{},v={a:old.a||'',b:old.b||'',type:old.type||'Ally',strength:old.strength==null?50:old.strength,note:old.note||'',oneWay:!!old.oneWay,event:''};const choices=[['','Choose character'],...ns.map(n=>[n,n])];
-      ap(root,h('h3',{text:'Edit connection'}),fld('Character A',sel(v.a,choices,x=>v.a=x)),fld('Character B',sel(v.b,choices,x=>v.b=x)),fld('Connection type',inp(v.type,x=>v.type=x,'Friend, rival, family, mentor…')),fld('Strength (0–100)',inp(String(v.strength),x=>v.strength=x,'50','number')),fld('Shared history',area(v.note,x=>v.note=x,'How this connection developed',3)),chk('One-way link from A to B',v.oneWay,x=>v.oneWay=x),...(Array.isArray(old.history)?old.history:[]).filter(Boolean).map(entry=>h('p',{class:'sub',text:'Chapter '+entry.chapter+' · '+entry.note})),fld('Add a milestone to the latest chapter',inp('',x=>v.event=x,'What changed?')),h('div',{class:'row'},h('button',{class:'primary',text:'Save link',onclick:()=>{if(!v.a||!v.b||v.a===v.b){toast('Choose two different characters.');return}const history=Array.isArray(old.history)?old.history.slice():[];if(v.event.trim())history.push({chapter:chapsOf(se).length,note:v.event.trim().slice(0,500)});const rec={a:v.a,b:v.b,oneWay:v.oneWay,history,type:String(v.type).slice(0,80),strength:Math.max(0,Math.min(100,Number(v.strength)||0)),note:String(v.note).slice(0,2000)};const duplicate=se.relationshipLinks.findIndex((x,i)=>i!==editing&&((x.a===rec.a&&x.b===rec.b)||(x.a===rec.b&&x.b===rec.a)));if(duplicate>=0){toast('Those characters already have a connection.');return}if(editing===se.relationshipLinks.length)se.relationshipLinks.push(rec);else se.relationshipLinks[editing]=rec;save();editing=-1;draw()}}),h('button',{text:'Cancel',onclick:()=>{editing=-1;draw()}}),editing<se.relationshipLinks.length?h('button',{class:'ghost',text:'Delete link',onclick:()=>{if(!confirm('Delete this connection?'))return;se.relationshipLinks.splice(editing,1);save();editing=-1;draw()}}):null));return}
-    links.forEach(link=>{const i=se.relationshipLinks.indexOf(link);ap(root,h('button',{class:'sf-map-link',onclick:()=>{editing=i;draw()}},h('b',{text:link.a+(link.oneWay?' → ':' ↔ ')+link.b}),h('small',{text:link.type+' · '+link.strength+'/100'}),link.note?h('small',{text:link.note}):null))});
+    if(editing>=0){
+      const old=se.relationshipLinks[editing]||{};
+      const v={...old,a:old.a||'',b:old.b||'',type:old.type||'Ally',strength:old.strength??50,note:old.note||'',viewA:old.viewA||'',viewB:old.viewB||'',oneWay:!!old.oneWay,event:'',turn:''};
+      const choices=[['','Choose character'],...ns.map(n=>[n,n])];
+      const chapters=chapsOf(se);
+      const chapterAt=turn=>chapters.reduce((chapter,c,i)=>c.i<=turn?i+1:chapter,1);
+      const scenes=se.turns.map((t,i)=>({t,i})).filter(({t})=>t?.role==='ai'&&!t.hide).slice(-30).reverse();
+      const history=(Array.isArray(old.history)?old.history:[]).filter(Boolean);
+      const sourceText=t=>String(t?.show||t?.text||'').trim();
+      const historyRows=history.slice().reverse().map(entry=>{
+        const source=Number.isInteger(entry.turn)?se.turns[entry.turn]:null;
+        const label='Chapter '+(source?chapterAt(entry.turn):entry.chapter)+' · '+entry.note;
+        return source?h('details',{class:'relationship-milestone'},h('summary',{text:label}),h('blockquote',{text:sourceText(source).slice(0,750)})):h('p',{class:'sub',text:label});
+      });
+      const saveLink=()=>{
+        if(!v.a||!v.b||v.a===v.b){toast('Choose two different characters.');return}
+        if(se.relationshipLinks.some((x,i)=>i!==editing&&((x.a===v.a&&x.b===v.b)||(x.a===v.b&&x.b===v.a)))){toast('Those characters already have a connection.');return}
+        const {event,turn,...rec}=v;
+        rec.type=String(v.type).trim().slice(0,80);
+        rec.strength=Math.max(0,Math.min(100,Number(v.strength)||0));
+        rec.note=String(v.note).trim().slice(0,2000);
+        rec.viewA=String(v.viewA).trim().slice(0,1000);
+        rec.viewB=String(v.viewB).trim().slice(0,1000);
+        rec.history=history;
+        if(event.trim()){
+          const source=scenes.find(s=>String(s.i)===turn);
+          rec.history.push({chapter:source?chapterAt(source.i):chapters.length,note:event.trim().slice(0,500),recordedAfter:se.turns.length,...(source?{turn:source.i,source:source.t.text}:{recordedTurn:se.turns.length-1})});
+        }
+        se.relationshipLinks[editing]=rec;
+        se.updated=Date.now();save();editing=-1;draw();
+      };
+      ap(root,h('h3',{text:'Edit connection'}),
+        fld('Character A',sel(v.a,choices,x=>v.a=x)),fld('Character B',sel(v.b,choices,x=>v.b=x)),
+        fld('Connection type',inp(v.type,x=>v.type=x,'Friend, rival, family, mentor…')),
+        fld('Strength (0–100)',inp(String(v.strength),x=>v.strength=x,'50','number')),
+        chk('One-way link from A to B',v.oneWay,x=>v.oneWay=x),
+        fld('A’s view of B',area(v.viewA,x=>v.viewA=x,'Trust, doubts, obligations or goals',2)),
+        fld('B’s view of A',area(v.viewB,x=>v.viewB=x,'Trust, doubts, obligations or goals',2)),
+        fld('Shared history',area(v.note,x=>v.note=x,'How this connection developed',3)),
+        h('h3',{text:'Milestones'}),historyRows,
+        fld('Add a milestone',inp('',x=>v.event=x,'What changed?')),
+        fld('Source scene',sel('',[['','Latest chapter, no scene'],...scenes.map(({t,i})=>[String(i),'Chapter '+chapterAt(i)+' · '+sourceText(t).slice(0,80)])],x=>v.turn=x)),
+        h('div',{class:'row'},h('button',{class:'primary',text:'Save link',onclick:saveLink}),
+          h('button',{text:'Cancel',onclick:()=>{editing=-1;draw()}}),
+          editing<se.relationshipLinks.length?h('button',{class:'ghost',text:'Delete link',onclick:()=>{
+            if(!confirm('Delete this connection?'))return;
+            se.relationshipLinks.splice(editing,1);se.updated=Date.now();save();editing=-1;draw();
+          }}):null));
+      return;
+    }
+    links.forEach((link)=>ap(root,h('button',{class:'sf-map-link',onclick:()=>{editing=se.relationshipLinks.indexOf(link);draw()}},
+      h('b',{text:link.a+(link.oneWay?' → ':' ↔ ')+link.b}),h('small',{text:link.type+' · '+link.strength+'/100'}),
+      link.viewA?h('small',{text:link.a+' on '+link.b+' · '+link.viewA}):null,
+      link.viewB?h('small',{text:link.b+' on '+link.a+' · '+link.viewB}):null,
+      link.note?h('small',{text:link.note}):null)));
     ap(root,h('button',{class:'primary',text:'+ Add character connection',onclick:()=>{if(ns.length<2){toast('Add at least two characters first.');return}editing=se.relationshipLinks.length;draw()}}));
   }
   draw();if(mount)mount.append(root);else sheet('Relationship Map',root);
@@ -2277,7 +3001,7 @@ function guideSheet(se,st){const ends=ed(se,st),stats=sd(se,st);sheet("Play guid
   h("p",{class:"sub",text:"Put actions or thoughts between *asterisks* and speech in \"quotes\"."}),
   h("p",{class:"sub",text:"To steer the narrator directly, add a note like (OOC: skip to the next morning)."}),
   h("p",{class:"sub",text:"Suggested replies appear under each scene. The arrow sends one, and the pencil puts it in the box so you can change it."}),
-  se.life?h("p",{class:"sub",text:"The time buttons above the message box move your life on by a day, a month, a year, or to the next turning point."}):null,
+  se.life?h("p",{class:"sub",text:"Use Advance time above the message box to move by a day, a month, a year, or to the next turning point."}):null,
   stats.length?[h("h3",{text:"Stats"}),stats.map(x=>h("p",{class:"sub",text:x.n+(x.rule?": "+x.rule:"")}))]:null,
   ends.length?[h("h3",{text:"Endings"}),endChips(st,ends)]:null))}
 function avatarSheet(se){const box=h("div");
@@ -2391,8 +3115,8 @@ function ideaSheet(se,st){let type="oc",extra="";const out=area("",()=>{},"Resul
 function turnMenu(se,i){if(busy)return;const t=se.turns[i],ta=area(t.text,()=>{},"",8),fix=h("input",{placeholder:"e.g. her eyes are green, not blue"}),stt=getStory(se.storyId),chOK=!!stt&&stt.kind!=="character";
   const C=chOK?chapsOf(se):[],ci=i>0&&t.role==="ai"&&se.turns[i-1].role==="user"?i-1:i,isStart=C.some(c=>c.i===ci);
   sheet("Message",h("div",null,ta,h("div",{class:"row"},h("button",{class:"primary",text:"Save edit",onclick:()=>{const v=ta.value.trim();if(v){t.text=v;save()}closeSheet()}}),
-    confirmBtn("Delete message",()=>{memDrop(se,[i]);se.turns.splice(i,1);if(se.mem&&window.SFMemory)SFMemory.shiftTurns(se.mem,i,-1);if(i<se.upto)se.upto--;(se.chaps||[]).forEach(c=>{if(c.i>i)c.i--});if(chOK)fixCh(se);save();closeSheet()},""),
-    confirmBtn("Rewind to here",()=>{memDrop(se,se.turns.map((_,j)=>j).filter(j=>j>i));se.turns.splice(i+1);se.upto=Math.min(se.upto,se.turns.length);se.ending=null;se.sugg=[];if(chOK)fixCh(se);save();closeSheet()},"")),
+    confirmBtn("Delete message",()=>{memDrop(se,[i]);se.turns.splice(i,1);shiftProgressionAfterDeletion(se,i);if(se.mem&&window.SFMemory)SFMemory.shiftTurns(se.mem,i,-1);if(i<se.upto)se.upto--;(se.chaps||[]).forEach(c=>{if(c.i>i)c.i--});if(chOK)fixCh(se);save();closeSheet()},""),
+    confirmBtn("Rewind to here",()=>{memDrop(se,se.turns.map((_,j)=>j).filter(j=>j>i));se.turns.splice(i+1);trimProgression(se,se.turns.length);se.upto=Math.min(se.upto,se.turns.length);se.ending=null;se.sugg=[];if(chOK)fixCh(se);save();closeSheet()},"")),
     h("p",{class:"sub",text:"Edits and deletions change what the narrator remembers. Rewind removes everything after this message."}),
     chOK?h("div",{class:"row"},!isStart?h("button",{text:"Start a new chapter here",onclick:()=>{se.chaps.push({i:ci,t:""});fixCh(se);save();closeSheet()}}):ci>0?h("button",{text:"Join with the previous chapter",onclick:()=>{se.chaps=se.chaps.filter(c=>c.i!==ci);fixCh(se);save();closeSheet()}}):null):null,
     t.role==="ai"&&chOK?h("div",{class:"row"},h("button",{text:t.img?"Paint this scene again":"Picture this scene",onclick:()=>{closeSheet(true);scenePic(se,i)}}),t.img?confirmBtn("Remove picture",async()=>{try{if(t.img.indexOf(":")<0)await idbDel("gen:"+t.img)}catch(e){}delete t.img;save();closeSheet()},""):null):null,
@@ -2427,7 +3151,7 @@ function vSettings(){ap(app,h("header",null,back(()=>go({n:"home",tab:"discover"
         ?" Scene artwork could not be saved. Browser storage may be full.":"";
       if(merge){const n=norm(d),add=(a,b)=>{let c=0;(b||[]).forEach(x=>{if(x&&x.id&&!a.some(y=>y.id===x.id)){a.push(x);c++}});return c};
         const incomingSessions=new Set(n.sessions.filter(s=>s&&s.id).map(s=>s.id));
-        const c1=add(DB.stories,n.stories),c2=add(DB.sessions,n.sessions);add(DB.chars,n.chars);DB.found=DB.found||{};Object.keys(n.found||{}).forEach(k=>{DB.found[k]=Array.from(new Set((DB.found[k]||[]).concat(n.found[k]||[])))});
+        const c1=add(DB.stories,n.stories),c2=add(DB.sessions,n.sessions);add(DB.chars,n.chars);add(DB.storyTemplates??=[],Array.isArray(n.storyTemplates)?n.storyTemplates:[]);DB.found=DB.found||{};Object.keys(n.found||{}).forEach(k=>{DB.found[k]=Array.from(new Set((DB.found[k]||[]).concat(n.found[k]||[])))});
         save();const sceneNotice=restoreScenes(DB.sessions.filter(s=>incomingSessions.has(s.id)));
         render();toast("Added "+c2+" playthrough"+(c2===1?"":"s")+" and "+c1+" world"+(c1===1?"":"s")+"."+sceneNotice)}
       else{DB=norm(Object.assign({},d,{key:DB.key,ocKey:DB.ocKey,ocProxy:DB.ocProxy,prov:DB.prov,syncPass:DB.syncPass,syncKeys:DB.syncKeys,keysAt:DB.keysAt,refs:DB.refs||[],migrated:true}));save();const sceneNotice=restoreScenes(DB.sessions);applyFs();render();toast("Backup restored."+sceneNotice)}}catch(x){toast("That file is not a Story Forge backup.")}};rd.readAsText(fl)}});
@@ -2674,7 +3398,7 @@ function vBuild(){const b=view.b||(view.b={src:"",idea:"",ref:"",play:"story",de
     b.run=true;btn.disabled=true;btn.textContent="Building…";logEl.textContent="";extra.textContent="";
     try{const r=await buildWorld(b,say,force);
       if(r.unknown){say("The model says it does not know “"+r.title+"” well enough to be accurate. Turn on web lookup, paste reference text, or pick a stronger mode. You can also build anyway and fix the notes by hand.");ap(extra,h("button",{text:"Build anyway",onclick:()=>run(true)}))}
-      else{r.st.updated=Date.now();DB.stories.unshift(r.st);attachRefs(b.refs,r.st.id);save();view={n:"story",id:r.st.id};render();toast("World built with "+r.st.entries.length+" canon notes"+(b.refs.length?" and your imported text attached.":"."));return}}
+      else{r.st.updated=Date.now();r.st.storyDescription=b.storyDescription||"";DB.stories.unshift(r.st);attachRefs(b.refs,r.st.id);save();view={n:"story",id:r.st.id};render();toast("World built with "+r.st.entries.length+" canon notes"+(b.refs.length?" and your imported text attached.":"."));return}}
     catch(e){say(errMsg(e))}
     b.run=false;btn.disabled=false;btn.textContent="Build world"}
   if(!hasKey())ap(m,h("div",{class:"notice"},"Add your OpenRouter key before you build. ",h("div",{class:"row"},h("button",{class:"primary",text:"Open Settings",onclick:()=>go({n:"settings"})}))));
@@ -2682,6 +3406,7 @@ function vBuild(){const b=view.b||(view.b={src:"",idea:"",ref:"",play:"story",de
     h("div",{class:"fld"},h("span",{text:"Based on"}),workPicker(b.src,"Any anime, manga, novel, webnovel, game or show",v=>{b.src=v;b.work=null;b.rc=null;wc.textContent=""},w=>pickWork(w),()=>(DB.modes[b.mode]||DB.modes[0]).id),wc),
     wbx,
     fld("Your idea or twist (optional)",area(b.idea,v=>{b.idea=v},"For an original world, describe it here. For an existing story, add any changes you want.",3)),
+    storyDescriptionField(b.storyDescription,v=>{b.storyDescription=v}),
     fld("How you’ll play",sel(b.play,PLAYS,v=>{b.play=v})),
     fld("Depth",sel(b.depth,[["deep","Deep: full canon reference"],["quick","Quick: rules and main cast"]],v=>{b.depth=v})),
     fld("Build with",sel(String(b.mode),DB.modes.map((mo,i)=>[String(i),mo.n+" · "+mo.id]),v=>{b.mode=+v})),
@@ -2748,11 +3473,4 @@ addEventListener("pagehide",()=>{if(idb){clearTimeout(saveT);idbSet(KEY,JSON.str
   applyFs();save();render();if(DB.syncAuto&&DB.syncPass)setTimeout(()=>syncNow(false),1500)})();
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&DB.syncAuto&&DB.syncPass&&!busy)syncNow(false)});
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
-/* Test copies (Netlify previews and pinned deploy links) keep their own stories and keys. Say so, and link home. */
-(()=>{const HOME="celebrated-brigadeiros-580c41.netlify.app",hn=location.hostname;if(hn===HOME||!/(^|--)celebrated-brigadeiros-580c41\.netlify\.app$/.test(hn))return;
-  const b=document.createElement("div");b.id="testcopy";b.setAttribute("role","note");
-  b.style.cssText="position:sticky;top:0;z-index:9999;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 12px;background:#7a2e12;color:#fff;font:14px/1.35 system-ui,-apple-system,sans-serif";
-  const t=document.createElement("span");t.textContent="This is a separate test copy of Story Forge. It may not get updates, and its stories and keys aren’t shared with your app.";
-  const a=document.createElement("a");a.href="https://"+HOME+"/";a.textContent="Open my Story Forge";a.style.cssText="color:#fff;font-weight:600;text-decoration:underline";
-  b.append(t,a);document.body.prepend(b)})();
 </script><script src="visual-customization-v48.js"></script><script src="cinematic-ui-v49.js"></script><script src="character-ui-v50.js"></script><script src="character-studio-v51.js"></script><script src="relationship-map-v52.js"></script><script src="cinematic-profiles-v53.js"></script><script src="cinematic-scenes-v54.js"></script></body></html>

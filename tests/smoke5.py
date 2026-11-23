@@ -103,7 +103,10 @@ with sync_playwright() as p:
     # life sim regression
     pg.click("button.back");pg.click(".card:has-text('Saltglass')");pg.select_option("label.fld:has-text('How to play') select","life");pg.click("text=Begin life");pg.wait_for_selector(".sg")
     print("life:",sess(pg)["life"],"| skips:",pg.locator(".skips button").count(),"| askline:",pg.locator(".askline").count())
-    pg.click("text=Skip a year");pg.wait_for_function("document.querySelectorAll('.turn.user').length>=1 && document.querySelector('.sg')");pg.screenshot(path=SP+"/q-life.png")
+    pg.get_by_role("button", name="Advance time").click()
+    pg.locator(".sheet").get_by_role("button", name="Skip a year", exact=True).click()
+    pg.wait_for_function("DB.sessions.at(-1).turns.some(turn => turn.worldDays === 365) && !busy")
+    pg.screenshot(path=SP+"/q-life.png")
     pg.click("button[aria-label='Menu']");print("life drawer has timeline:",pg.locator(".drow:has-text('Life timeline')").count());pg.click(".drow:has-text('Life timeline')");pg.wait_for_selector(".tl");pg.click(".sheethead >> text=Done")
     # save money
     pg.click("button.pill:has-text('▾')");pg.click(".modebtn:has-text('Grand')")
