@@ -36,6 +36,7 @@ function drawSetup() {
     h("label", { text: "Reply length (words)" }), h("select", { onchange: e => opt.len = e.target.value }, ["150", "250", "300"].map(v => h("option", { value: v, text: v, selected: v === opt.len }))),
     h("label", { text: "Stop if this trial’s estimated share of your 5-hour Go limit reaches (%)" }), h("input", { type: "number", min: "1", max: "50", value: opt.cap, oninput: e => opt.cap = e.target.value }),
     h("label", { class: "chk" }, h("input", { id: "rp", type: "checkbox", autocomplete: "off" }), "Repair missing metadata (trial setting, one extra request per missed reply)"),
+    h("label", { class: "chk" }, h("input", { id: "p2", type: "checkbox", autocomplete: "off" }), "Memory Phase 2: the narrator uses story memory (who knows what)"),
     h("label", { class: "chk" }, h("input", { id: "dry", type: "checkbox", autocomplete: "off", checked: opt.dry, onchange: e => { opt.dry = e.target.checked; conf.hidden = opt.dry } }), "Dry run (no requests, free, checks the page works)"),
   );
   const conf = h("div", { hidden: opt.dry }, h("label", { text: "Type opencode to confirm real requests (uses your Go allowance, about 0.5–1% of the 5-hour window)" }), h("input", { id: "confirm", autocapitalize: "off", autocomplete: "off", spellcheck: "false" }));
@@ -44,7 +45,7 @@ function drawSetup() {
     opt.dry = $("#dry").checked;
     if (!opt.dry) { if (!have) { alertBox("Set up OpenCode in the app first."); return } if ($("#confirm").value.trim().toLowerCase() !== "opencode") { alertBox("Type opencode to confirm."); return } }
     window.__trialReport = null; localStorage.removeItem(PROG); start.disabled = true;
-    await resetTrial(); prog = { v: 1, k: -1, rows: [], ops: {}, hosts: {}, opts: { turns: Math.max(5, Math.min(scen.turns.length, +opt.turns || 40)), len: opt.len, cap: Math.max(1, +opt.cap || 10), dry: opt.dry, rp: $("#rp").checked, sc: curSc }, started: new Date().toISOString() }; saveProg(); run(true) } });
+    await resetTrial(); prog = { v: 1, k: -1, rows: [], ops: {}, hosts: {}, opts: { turns: Math.max(5, Math.min(scen.turns.length, +opt.turns || 40)), len: opt.len, cap: Math.max(1, +opt.cap || 10), dry: opt.dry, rp: $("#rp").checked, p2: !!($("#p2") && $("#p2").checked), sc: curSc }, started: new Date().toISOString() }; saveProg(); run(true) } });
   box.append(start);
   if (prog && !prog.done) box.append(h("button", { text: "Continue the unfinished trial (turn " + (Math.max(0, prog.k) + 1) + ")", onclick: () => run(false) }));
   if (prog && prog.done && !opt.dry) box.append(h("button", { text: "Replay repair on missed replies (paid, needs the opencode box)", onclick: () => { if ($("#confirm").value.trim().toLowerCase() !== "opencode") { alertBox("Type opencode to confirm."); return } replay() } }));
@@ -83,7 +84,7 @@ function seedDB() {
   return { migrated: true, memv2: false, metaRepair: !!o.rp, ocLite: o.rp ? "effort" : null, prov: "opencode", ocKey: o.dry ? "dry-run" : OC.key, ocProxy: o.dry ? "dry-run.invalid" : OC.proxy, ocMon: OC.mon, ocDay: OC.day, ocScale: OC.scale,
     modes: [{ n: "Trial", id: "deepseek/deepseek-v4.1-flash", d: "", p: "", t: 0.8 }], mode: 0, saver: 0, sugg: true, syncAuto: false,
     stories: [{ id: "trial-story", kind: "story", title: scen.title, setting: st.setting, style: st.style, lore: st.lore, entries: st.entries, stats: [], endings: [], starts: [], follow: "strict" }],
-    sessions: [{ id: "trial", storyId: "trial-story", memv2: true, memDev: true, start: "", follow: "strict", char: { name: scen.player.name, desc: scen.player.desc, trait: "" }, turns: [], temp: "", mems: [], note: "", stats: {}, upto: 0, len: o.len, sugg: [], ending: null, ended: [], people: {}, think: 0, wstyle: "default", wcustom: "", goal: "", updated: Date.now() }] };
+    sessions: [{ id: "trial", storyId: "trial-story", memv2: true, memDev: true, memPrompt: !!o.p2, start: "", follow: "strict", char: { name: scen.player.name, desc: scen.player.desc, trait: "" }, turns: [], temp: "", mems: [], note: "", stats: {}, upto: 0, len: o.len, sugg: [], ending: null, ended: [], people: {}, think: 0, wstyle: "default", wcustom: "", goal: "", updated: Date.now() }] };
 }
 
 /* ---------- dry-run stand-in model ---------- */
@@ -110,6 +111,23 @@ const S = () => JSON.parse(E("JSON.stringify(" + SE + ")"));
 const low = x => String(x || "").toLowerCase(), first = n => low(n).split(/\s+/)[0] || "";
 const hasKw = (t, kws) => kws.some(k => low(t).includes(low(k)));
 const NEG = /\b(doesn['’]t know|does not know|did not know|didn['’]t know|not aware|unaware|no idea|has not learned|hasn['’]t learned)\b/i;
+/* Narrator-text secrets check (heuristic): a character who doesn't yet know a secret should not say it or react to it.
+   Window: from the first turn the scenario lists them in mustNotKnow until the turn they are scripted to learn it. */
+function SECRETS() {
+  const out = [];
+  scen.turns.forEach((T, i) => (T.mustNotKnow || []).forEach(L => { const o = out.find(x => x.who === L.who && x.kw === L.kw); if (!o) out.push({ who: L.who, kw: L.kw, from: i, until: scen.turns.length }) }));
+  out.forEach(o => { const j = scen.turns.findIndex((T, i) => i > o.from && (T.learn || []).some(L => first(L.who) === first(o.who))); if (j >= 0) o.until = j });
+  return out;
+}
+function proseLeak(text, who, kw) {
+  const f = first(who), k = String(kw).toLowerCase(), paras = String(text || "").split(/\n+/);
+  for (const p of paras) {
+    const pl = p.toLowerCase();
+    if (pl.startsWith(f + " |") && pl.includes(k)) return p.trim().slice(0, 200);
+    for (const sen of p.split(/(?<=[.!?"”])\s+/)) { const sl = sen.toLowerCase(); if (sl.includes(k) && new RegExp("\\b" + f + "\\b").test(sl) && !/\b(doesn'?t|does not|didn'?t|did not|never) (know|learn|hear|realize|suspect)/.test(sl)) return sen.trim().slice(0, 200) }
+  }
+  return "";
+}
 function knowsAlt(mem, who, L) { const ch = Object.entries(mem.chars || {}).find(([n]) => first(n) === first(who)); if (!ch) return false; const pool = {}; (mem.facts || []).concat(mem.secrets || []).forEach(f => pool[f.id] = f.text); return (ch[1].knows || []).some(i => { const t = low(pool[i]); return !NEG.test(t) && [L.kw].concat(L.alt || []).some(k => t.includes(low(k))) }) }
 function knows(mem, who, kw) { const ch = Object.entries(mem.chars || {}).find(([n]) => first(n) === first(who)); if (!ch) return false; const pool = {}; (mem.facts || []).concat(mem.secrets || []).forEach(f => pool[f.id] = f.text); return (ch[1].knows || []).some(i => low(pool[i]).includes(low(kw))) }
 function overlap(a, b) { const t = x => new Set(low(x).replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter(w => w.length > 2)); const A = t(a), B = t(b); if (!A.size || !B.size) return 0; let n = 0; A.forEach(w => { if (B.has(w)) n++ }); return n / Math.min(A.size, B.size) }
@@ -148,6 +166,7 @@ async function run(fresh) {
       if (T.event) row.checks.event_recorded = evs.some(e => hasKw(e.text + " " + e.kind, T.event));
       (T.learn || []).forEach(L => { row.checks["learned:" + L.who] = knows(mem, L.who, L.kw); row.checks["paraphrase:" + L.who] = knowsAlt(mem, L.who, L) });
       (T.mustNotKnow || []).forEach(L => row.checks["no_leak:" + L.who] = !knows(mem, L.who, L.kw));
+      SECRETS().forEach(L => { if (k < L.from || k >= L.until) return; const hit = proseLeak(s.turns[ai].text, L.who, L.kw); row.checks["prose_ok:" + L.who] = !hit; if (hit) (row.proseLeaks = row.proseLeaks || []).push(L.who + ": " + hit) });
       if (T.op === "regen") {
         const pick = m => JSON.stringify(["events", "facts", "chars", "scene"].map(x => m[x]));
         const base = pick(mem);
@@ -200,7 +219,7 @@ function summarize() {
   return [["META block present", rate(r => r.diag.block)], ["EVENTS key present", rate(r => (r.diag.keys || {}).EVENTS)], ["LEARNED key present", rate(r => (r.diag.keys || {}).LEARNED)], ["SCENE key present", rate(r => (r.diag.keys || {}).SCENE)],
     ["SCENE well-formed", rate(r => r.diag.sc)], ["EVENT entries well-formed", [sum("ev", "valid"), sum("ev", "total")]], ["LEARNED entries well-formed", [sum("ln", "valid"), sum("ln", "total")]],
     ["Lists split over several lines (recovered)", rate(r => r.diag.multi)], ["Missing blocks repaired (extra request)", [R.filter(r => r.diag.rp && r.diag.rp.ok).length, R.filter(r => r.diag.rp).length]], ["Scene location correct", chk("scene_location")], ["Expected characters present", chk("scene_present")],
-    ["Expected event recorded", chk("event_recorded")], ["Expected knowledge recorded (exact keyword)", chk("learned:")], ["Expected knowledge recorded (accepted paraphrases)", chk("paraphrase:")], ["No knowledge leaks", chk("no_leak:")]];
+    ["Expected event recorded", chk("event_recorded")], ["Expected knowledge recorded (exact keyword)", chk("learned:")], ["Expected knowledge recorded (accepted paraphrases)", chk("paraphrase:")], ["No knowledge leaks", chk("no_leak:")], ["Narrator kept secrets (text check)", chk("prose_ok:")]];
 }
 function reportMd() {
   const live = !prog.opts.dry, S2 = summarize(), pct = ([a, b]) => b ? `${a}/${b} (${Math.round(100 * a / b)}%)` : "—";
@@ -212,6 +231,7 @@ function reportMd() {
     "Your real stories unchanged: " + (prog.realUnchanged ? "yes (verified)" : "NO — check your app") + " · memory stayed off globally: " + (prog.globalOff ? "yes" : "NO"), "",
     "| Check | Result |", "|---|---|", ...S2.map(([k, v]) => `| ${k} | ${pct(v)} |`), "", "| Operation | Result |", "|---|---|", ...Object.entries(prog.ops).map(([k, v]) => `| ${k} | ${v} |`), "",
     `Possible duplicate events (same 6 turns, ≥60% word overlap): **${(prog.dups || []).length}** · replies that failed: **${prog.fail || 0}** · parser exceptions: **${prog.rows.filter(r => r.diag && r.diag.err).length}** · memory integrity: **${prog.integrity && prog.integrity.ok}**`, ""];
+  const pl = prog.rows.flatMap(r => (r.proseLeaks || []).map(x => `- turn ${r.turn}: ${x}`)); L.push("Memory Phase 2: " + (prog.opts.p2 ? "**ON**" : "off"), ""); if (pl.length) L.push("## Possible secret leaks in the narrator's text (heuristic; check by hand)", "", ...pl, "");
   const iss = prog.rows.flatMap(r => ((r.diag || {}).issues || []).map(i => `- turn ${r.turn}: ${i}`)); if (iss.length) L.push("## Malformed or missing metadata (first 20)", "", ...iss.slice(0, 20), "");
   const miss = prog.rows.flatMap(r => Object.entries(r.checks || {}).filter(([, v]) => !v).map(([c]) => `- turn ${r.turn}: ${c}`)); if (miss.length) L.push("## Missed expectations (first 25)", "", ...miss.slice(0, 25), "");
   const samples = prog.rows.filter(r => r.meta).slice(0, 3).map(r => "Turn " + r.turn + ":\n```\n" + r.meta + "\n```"); if (samples.length) L.push("## Sample META (first 3 turns)", "", ...samples, "");
