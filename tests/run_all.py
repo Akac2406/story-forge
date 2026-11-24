@@ -15,7 +15,7 @@ NEEDS_BOOK = {"imp21", "lib29"}
 NEEDS_SHOTS = {"imp30", "crop30"}
 import shutil
 failed = []
-node_tests = ("memory_phase1_unit", "scene_backup_v55", "story_setup_and_deadlines", "unknown_v43", "chapter_audio_seek")
+node_tests = sorted(f[:-4] for f in os.listdir(HERE) if f.endswith(".mjs"))  # every Node test in this folder
 for name in node_tests:
     if not shutil.which("node"):
         print(f"-- {name}: skipped (install Node.js to run it)")

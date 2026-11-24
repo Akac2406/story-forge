@@ -59,6 +59,8 @@ const context = vm.createContext({
   GUIDE: "Quill",
   SIMHI: "Welcome",
 });
+// v87: the prompt builder uses the canon engine (site/canon-engine.js).
+vm.runInContext(readFileSync(new URL("../site/canon-engine.js", import.meta.url), "utf8"), context);
 vm.runInContext([
   section("function avatarSetup(", "function vStory("),
   section("function play(", "function begin("),
