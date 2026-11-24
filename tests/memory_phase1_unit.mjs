@@ -130,4 +130,29 @@ t("importance written as a word is understood (v36)", () => {
   const d = M.validateMeta("x\n[[META]]\nEVENTS: high | reveal | Tamsin | cellar | Tamsin learns the truth | none\nLEARNED: none\nSCENE: a | b | c");
   assert(!d.issues.length && d.recovered === 1, JSON.stringify(d));
 });
+t("EVENTS with the separator mistakes seen in the DeepSeek trial are split correctly (v88)", () => {
+  const ev = s => M.parseMeta("x\n[[META]]\nEVENTS: " + s + "\nSCENE: a | b | c").events;
+  // ";" before the witnesses
+  let e = ev("2 | secret | Tamsin, Ilse | hall | Tamsin warned Ilse about the water; Corwin Hale; 2 | action | Corwin, Ilse | hall | Corwin set her to the ledger; Tamsin Reed (leaving)");
+  assert(e.length === 2 && eq(e[0].wit, ["Corwin Hale"]) && eq(e[1].wit, ["Tamsin Reed"]) && e[1].kind === "action", JSON.stringify(e));
+  // witness "none" glued to the next event, whose importance is missing
+  e = ev("2 | reveal | Aled, Ilse | chapel | Aled said Corwin borrowed the tithe book; none | mystery | Aled, Ilse | chapel | The sealed chest cannot be opened without leave");
+  assert(e.length === 2 && e[1].kind === "mystery" && e[1].imp === 3 && e[1].text.startsWith("The sealed chest"), JSON.stringify(e));
+  // events chained with "|" and no ";" at all
+  e = ev("4 | decision | Ilse, Tamsin | cellar | They agreed to keep it secret | none | threat | Corwin, Tamsin, Ilse | cellar stair | Corwin caught them below | none");
+  assert(e.length === 2 && e[1].kind === "threat" && e[1].text === "Corwin caught them below" && eq(e[0].wit, []), JSON.stringify(e));
+  e = ev("4 | reveal | Ilse, Vey | dock | Vey admitted he holds the paper | a dock boy | mystery | Vey, Ilse | dock | Vey hinted the channel is worth more | a dock boy | threat | Vey | dock | Vey gave her a choice | none");
+  assert(e.length === 3 && e.map(x => x.kind).join() === "reveal,mystery,threat" && eq(e[0].wit, ["a dock boy"]), JSON.stringify(e));
+  // extra note after ";" in the description, then "|" witnesses
+  e = ev("5 | reveal | Ilse, Tamsin | cellar | Ilse showed Tamsin the deed; Tamsin saw the crates | none | bond | Ilse, Tamsin | cellar | Tamsin pledged to help | none");
+  assert(e.length === 2 && e[0].text === "Ilse showed Tamsin the deed; Tamsin saw the crates" && e[1].kind === "bond", JSON.stringify(e));
+  // ";" inside the description must not cut it
+  e = ev("3 | reveal | Aled | chapel | The chest has two locks; the second key is with the town lawyer | Ilse Varn; 3 | action | Aled, Ilse | chapel | Aled kept vigil | none");
+  assert(e.length === 2 && e[0].text.includes("second key is with the town lawyer") && eq(e[0].wit, ["Ilse Varn"]), JSON.stringify(e));
+  // unknown kinds map to the nearest known kind; witness lists split by ";" stay witnesses
+  e = ev("3 | clue | Ilse | channel | The channel had no salt | Corwin; Tamsin; 2 | travel | Ilse | road | Ilse rode out | none");
+  assert(e.length === 2 && e[0].kind === "reveal" && eq(e[0].wit, ["Corwin", "Tamsin"]), JSON.stringify(e));
+  const d = M.validateMeta("x\n[[META]]\nEVENTS: 2 | reveal | Aled, Ilse | chapel | Aled said a thing; none | mystery | Aled, Ilse | chapel | The chest is sealed\nLEARNED: none\nSCENE: a | b | c");
+  assert(d.events.total === 2 && d.events.valid === 2 && !d.issues.length && d.recovered >= 1, JSON.stringify(d));
+});
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

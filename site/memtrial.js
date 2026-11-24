@@ -119,7 +119,9 @@ async function dryFetch(o) {
 /* ---------- helpers ---------- */
 const SE = 'DB.sessions.find(s=>s.id==="trial")';
 const S = () => JSON.parse(E("JSON.stringify(" + SE + ")"));
-const low = x => String(x || "").toLowerCase(), first = n => low(n).split(/\s+/)[0] || "";
+/* First name for matching, skipping titles, so "Brother Aled" matches "Aled" and "Lady Orla Brannock" matches "Orla". */
+const TITLES = /^(?:the|brother|sister|father|mother|lady|lord|sir|dame|mr|mrs|ms|miss|mx|dr|doctor|master|mistress|madam|captain|capt|sergeant|sgt|officer|old|young|prince|princess|king|queen|duke|duchess|count|countess|baron|baroness)\.?$/;
+const low = x => String(x || "").toLowerCase(), first = n => { const w = low(n).replace(/[^a-z0-9'\s-]/g, " ").split(/\s+/).filter(Boolean); while (w.length > 1 && TITLES.test(w[0])) w.shift(); return w[0] || "" };
 const hasKw = (t, kws) => kws.some(k => low(t).includes(low(k)));
 const NEG = /\b(doesn['’]t know|does not know|did not know|didn['’]t know|not aware|unaware|no idea|has not learned|hasn['’]t learned)\b/i;
 /* Narrator-text secrets check (heuristic): a character who doesn't yet know a secret should not say it or react to it.
