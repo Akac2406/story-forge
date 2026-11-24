@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+const html=fs.readFileSync(new URL('../site/index.html',import.meta.url),'utf8');
+const c=vm.createContext({});
+vm.runInContext(html.slice(html.indexOf('const ERA_PRESETS='),html.indexOf('function eraEditor(')),c);
+assert.equal(c.eraPrompt({}), '');
+const modern={worldEra:{era:'Modern',date:'2026-01-01',genre:'Fantasy',visual:'Luxury cars',useVisual:true}};
+assert.match(c.eraPrompt(modern,[{role:'user',worldDays:2}],3),/2026-01-06/);
+assert.match(c.eraPrompt(modern),/fantasy does not imply medieval/);
+assert.match(c.eraPrompt(modern),/Luxury cars/);
+assert.doesNotMatch(c.eraPrompt({worldEra:{...modern.worldEra,useVisual:false}}),/Luxury cars/);
+assert.equal(c.eraWarnings({worldEra:{era:'Medieval'}},'A smartphone appeared.').length,1);
+assert.equal(c.eraWarnings({worldEra:{era:'Medieval',rules:'Magic phones allowed'}},'A smartphone appeared.').length,0);
+assert.equal(c.eraWarnings(modern,'A smartphone appeared.').length,0);
+assert.equal(c.eraProfile({worldEra:{era:'invalid'}}).era,'Unspecified');
+assert.equal(c.eraDate('2026-02-30',0),'');
+console.log('PASS: era defaults, modern fantasy, visual opt-in, elapsed days, calendar, mismatch hints, custom exceptions');

@@ -66,6 +66,7 @@ vm.runInContext([
   section("function worldDay(", "function worldScheduleSheet("),
   section("const SIMF=", "function applySim("),
   section("function branchAt(", "function saveSheet("),
+  section("const ERA_PRESETS=", "function buildMsgs("),
   section("function buildMsgs(", "function applyMeta("),
   section("const WORLD_SHARE_FIELDS=", "function worldSharingSheet("),
   section("const STORY_TEMPLATE_FIELDS=", "function storyBanner("),
