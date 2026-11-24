@@ -108,5 +108,12 @@ const tl = C.lore({entries: [{k: "Sasuke", t: "Sasuke is in the Leaf.", before: 
 ok(tl.text.includes("[until: he defects]") && tl.locked.includes("[applies from: the Kyuubi attack]"), "timeline markers shown with canon entries");
 const sug = C.suggestEntries(["Kakashi Hatake raised his hand. The Hokage watched.", "Kakashi Hatake smiled at the Hokage of the Leaf.", "Later Kakashi Hatake left. The Hokage sighed.", "Kakashi Hatake returned."], [{k: "Hokage"}]);
 ok(sug.length && sug[0].k === "Kakashi Hatake" && sug[0].src === "source" && !sug.some(x => x.k === "Hokage") && !sug.some(x => x.k === "The"), "extraction suggests recurring names not already in the Bible");
+// style samples
+ok(C.styleBlock({}) === "", "no samples, no section");
+const sb = C.styleBlock({styleSamples: [{text: "A".repeat(3000)}, {text: "B"}, {text: "C"}, {text: "D"}]});
+ok(sb.includes("STYLE SAMPLES") && sb.includes("never copy") && sb.includes("sample 3") && !sb.includes("sample 4") && !sb.includes("A".repeat(1501)), "up to 3 samples, each capped");
+const book = ["Copyright 2020. All rights reserved. ISBN 123".padEnd(500, " x"), ...Array.from({length: 9}, (_, i) => ("She walked in. " + '"Hello," he said. "Sit." ' + "The rain kept on. ".repeat(40)).slice(0, 900 + i))];
+const ss = C.suggestStyleSamples(book, {n: 3});
+ok(ss.length === 3 && !ss.some(x => x.i === 0) && new Set(ss.map(x => Math.floor(x.i / 4))).size >= 2, "style suggestions skip front matter and spread across the book");
 console.log(`${n} passed, 0 failed`);
 console.log("ERRORS: []");

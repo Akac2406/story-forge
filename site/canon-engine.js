@@ -111,6 +111,28 @@ function suggestEntries(chunks,entries,opts){
     .map(([n,c])=>({k:n,t:best.get(n)||"",kind:"term",src:"source",count:c}));
 }
 
+/* ---------- style samples ---------- */
+/* st.styleSamples = [{id, text, src?}] chosen by the player (up to 3). Sent every turn as voice examples. */
+function styleBlock(st,opts){
+  opts=opts||{};const max=opts.max||3,each=opts.each||1500;
+  const xs=(Array.isArray(st&&st.styleSamples)?st.styleSamples:[]).map(x=>str(x&&x.text,each)).filter(Boolean).slice(0,max);
+  if(!xs.length)return "";
+  return "\n\nSTYLE SAMPLES from the source the player chose. Write your narration and dialogue in this same voice: point of view, tense, sentence rhythm and length, vocabulary, tone, how much is described versus said, and how characters speak. They are examples of HOW to write, not WHAT happens: never copy their sentences, names or events, and never quote them.\n"+xs.map((x,i)=>"--- sample "+(i+1)+" ---\n"+x).join("\n");
+}
+/* Suggests passages that show the author's voice well: medium length, a mix of narration and dialogue,
+   spread across the book. chunks: array of passages (e.g. a reference text's chunks). Returns [{i, text, score}]. */
+function suggestStyleSamples(chunks,opts){
+  opts=opts||{};const n=opts.n||3,arr=(chunks||[]).map((c,i)=>({i,text:String(c||"").trim()})).filter(x=>x.text.length>=400);
+  const scored=arr.map(x=>{const t=x.text,len=t.length,q=(t.match(/["“”]/g)||[]).length,sent=t.split(/(?<=[.!?])\s+/).length;
+    let sc=0;sc+=len>=600&&len<=1600?3:len<=2200?1:-2;sc+=q>=2&&q<=14?2:q===0?0:-1;sc+=sent>=5?1:0;
+    if(/^(chapter|contents|copyright|acknowledg|table of)/i.test(t)||/isbn|all rights reserved/i.test(t))sc-=10;
+    return {i:x.i,text:t.slice(0,1500),score:sc}}).filter(x=>x.score>0);
+  if(!scored.length)return [];
+  const N=arr.length?arr[arr.length-1].i+1:1,out=[];
+  for(let k=0;k<n;k++){const lo=Math.floor(k*N/n),hi=Math.floor((k+1)*N/n);const part=scored.filter(x=>x.i>=lo&&x.i<hi).sort((a,b)=>b.score-a.score);if(part[0])out.push(part[0])}
+  return out;
+}
+
 /* ---------- notes ---------- */
 function allNotes(DB,se){
   const n=[];
@@ -253,6 +275,6 @@ function assemble(sections,cap){
 }
 
 const API=Object.freeze({MODES,mode,hasKey,keysOf,lore,allNotes,notes,detectStandingOoc,standingOoc,precedence,mandatoryBlock,echo,
-  knowledge,metaLine,parseDivergence,localChecks,record,trimForBranch,dropTurn,assemble,suggestEntries});
+  knowledge,metaLine,parseDivergence,localChecks,record,trimForBranch,dropTurn,assemble,suggestEntries,styleBlock,suggestStyleSamples});
 root.SFCanon=API;if(typeof globalThis!=='undefined'&&globalThis!==root)globalThis.SFCanon=API;
 })(typeof window!=='undefined'?window:globalThis);

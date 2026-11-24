@@ -26,7 +26,7 @@ SEED = {"key": "sk-or-test", "migrated": True, "modes": [{"n": "Swift", "id": "a
         "globalNote": "Keep dialogue natural.",
         "notes": [{"id": "g-must", "text": "Never let anyone heal instantly.", "pri": "must", "scope": {"type": "always"}},
                   {"id": "g-kw", "text": "Sakura carries a red scarf.", "pri": "should", "scope": {"type": "keyword", "value": "Sakura"}}],
-        "stories": [{"id": "s1", "kind": "story", "title": "Leaf", "canon": "Naruto", "follow": "strict", "setting": "Konoha.", "starts": [], "stats": [], "endings": [], "entries": ENTRIES}],
+        "stories": [{"id": "s1", "kind": "story", "title": "Leaf", "canon": "Naruto", "follow": "strict", "setting": "Konoha.", "starts": [], "stats": [], "endings": [], "entries": ENTRIES, "styleSamples": [{"id": "ss1", "text": "Rain. Always rain. He counted the drops and lost count."}]}],
         "sessions": [{"id": "e1", "storyId": "s1", "char": {"name": "Ren"}, "note": "Itachi must stay mysterious.", "dead": ["Shisui"],
                       "turns": [{"role": "user", "text": "Begin", "hide": True}, {"role": "ai", "text": "Leaves fall."}] + filler,
                       "stats": {}, "mems": [], "sugg": [], "ended": [], "updated": 1}]}
@@ -51,6 +51,8 @@ with sync_playwright() as p:
     ok("PRIORITY when instructions or facts conflict" in S and S.find("PRIORITY") < blk, "precedence statement before the block")
     ok("re-check" in U and "Never let anyone heal instantly." in U, "must notes echoed in the final message")
     ok("CANON:" in S[S.find("[[META]]"):], "CANON line requested in the reply format")
+    si = S.find("STYLE SAMPLES")
+    ok(si > 0 and si < S.find("PRIORITY") and "He counted the drops" in S and "never copy" in S[si:si+600], "style samples sent every turn, with the writing rules, marked never-copy")
     ci = S.find("Canon notes (relevant to this scene)")
     ok(ci > 0 and S.find("Itachi is secretly loyal") > ci and "Anna is the innkeeper" not in S, "relevant canon retrieved by score; unrelated entry left out")
     R = pg.evaluate("promptReport(DB.sessions[0])")

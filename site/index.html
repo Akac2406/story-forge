@@ -1480,6 +1480,7 @@ function buildMsgs(se,st,hist,action,days=0){if(se.sim)st=Object.assign({},st,{t
   s+=fmtPrompt(se);
   if(typeof paceAgencyPrompt==="function"){const pa=paceAgencyPrompt(se);if(pa)s+="\n"+String(pa).trim()}
   add("rules",s,1);s="";
+  add("style samples",SFCanon.styleBlock(st),1);
   add("priority",SFCanon.precedence(CM),1);
   const mand=SFCanon.mandatoryBlock(NT,LO.locked,confirmedL,OOC);add("player instructions",mand,1);
   add("era",eraPrompt(st,hist,days),1);

@@ -60,6 +60,23 @@ Branch `v87-canon`, based on v86 (`0a931cc`). Development build: not deployed, n
 - **Not yet done:** a paid comparison run with real DeepSeek replies (Cedar Ridge with and without the switch, scoring knowledge leaks). It needs Anna's approval.
 - **`memory-engine.js` is unchanged.**
 
+## Live trial results (real DeepSeek V4.1 Flash via OpenCode, Nov 24, run on Anna's phone, repair off in all runs)
+| | Cedar Ridge off | Cedar Ridge on | Glass Orchard off | Glass Orchard on |
+|---|---|---|---|---|
+| Metadata block present | 24/30 | 21/30 | 29/40 | 36/40 |
+| Who-learned-what recorded (paraphrase) | 2/4 | 2/4 | 1/6 | 4/6 |
+| Expected events recorded | 15/19 | 13/19 | 11/15 | 13/15 |
+| Narrator kept secrets (text check) | 25/25 | 25/25 | 30/30 | 30/30 |
+| Go 5-hour window used | 0.74% | 0.95% | 1.35% | 1.51% |
+
+- **Combined:** metadata block 53/70 off vs 57/70 on; knowledge recorded 3/10 vs 6/10; no secret leaks in any run.
+- **Verdict:** Phase 2 helps on secret-heavy stories. It stays an opt-in per-story switch for now.
+- **Open issue:** with Phase 2 off, metadata blocks drop more often after about turn 20. The per-story fill-in, on whenever memory is on, covers it in real use.
+
+## Style samples
+- `st.styleSamples = [{id, text, src?}]`: up to 3 samples, about 1,500 characters each. They are sent every turn right after the writing rules as voice examples, marked never-copy (`SFCanon.styleBlock`). They are never trimmed.
+- `SFCanon.suggestStyleSamples(chunks, {n:3})` suggests passages from an attached book: medium length, a mix of narration and dialogue, spread across the book, skipping front matter. It only suggests; the player picks.
+
 ## Left to the UI side (ChatGPT)
 - Notes editor (`DB.notes` / `se.notes`);
 - Canon Bible editor (extends `st.entries`, assigns `id`);
@@ -69,4 +86,4 @@ Branch `v87-canon`, based on v86 (`0a931cc`). Development build: not deployed, n
 - divergence review UI;
 - "Pin as note" (from `detectStandingOoc`);
 - safe chapter regeneration;
-- the version bump to 87.
+- the style samples picker (suggest from an attached book, edit, remove; max 3).
