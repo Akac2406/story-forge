@@ -182,19 +182,25 @@ function echo(n,lockedIds){
 /* ---------- character knowledge and timeline (Memory Phase 2, opt-in) ---------- */
 function knowledge(se,M,opts){
   opts=opts||{};const mem=se&&se.mem;if(!mem||!M||typeof M.charView!=="function")return "";
-  const sc=mem.scene||{},who=(sc.who||[]).slice(0,8),lines=[];
-  if(sc.where||sc.when||who.length)lines.push("Current scene: "+[sc.where,sc.when].filter(Boolean).join(", ")+(who.length?"; present: "+who.join(", "):""));
-  const all=(mem.facts||[]).concat(mem.secrets||[]);
+  const sc=mem.scene||{},lastEv=(mem.events||[]).slice(-1)[0];
+  let who=(sc.who||[]).slice(0,8);if(!who.length&&lastEv)who=(lastEv.who||[]).concat(lastEv.wit||[]).slice(0,8);
+  const live=f=>f&&f.until==null;
+  const all=(mem.facts||[]).concat(mem.secrets||[]).filter(live),lines=[];
+  if(sc.where||sc.when||who.length)lines.push("Current scene: "+([sc.where,sc.when].filter(Boolean).join(", ")||"unknown place")+(who.length?"; present: "+who.join(", "):""));
+  const knownBy=id=>Object.values(mem.chars||{}).some(c=>(c.knows||[]).includes(id));
   for(const n of who){
     const v=M.charView(se,n);if(!v)continue;
-    const knows=(v.knows||[]).slice(-6);
-    const knownIds=new Set((mem.chars[n]&&mem.chars[n].knows)||[]);
-    const notKnow=all.filter(f=>!knownIds.has(f.id)&&Object.values(mem.chars||{}).some(c=>(c.knows||[]).includes(f.id))).slice(-4).map(f=>f.text);
-    if(knows.length||notKnow.length)lines.push("- "+n+(knows.length?" knows: "+knows.join("; "):"")+(notKnow.length?(knows.length?". ":" ")+"Does NOT know: "+notKnow.join("; "):""));
+    const mine=new Set(((mem.chars[n]||{}).knows)||[]);
+    const knows=all.filter(f=>mine.has(f.id)).slice(-6).map(f=>f.text);
+    const notKnow=all.filter(f=>!mine.has(f.id)&&knownBy(f.id)).slice(-4).map(f=>f.text);
+    const believes=(v.beliefs||[]).slice(-3).map(b=>typeof b==="string"?b:(b&&b.text)||"").filter(Boolean);
+    const bits=[];if(knows.length)bits.push("knows: "+knows.join("; "));if(notKnow.length)bits.push("does NOT know: "+notKnow.join("; "));if(believes.length)bits.push("believes (may be wrong): "+believes.join("; "));
+    if(bits.length)lines.push("- "+n+" "+bits.join(". "));
   }
   const ev=(mem.events||[]).filter(e=>(e.imp||0)>=3).slice(-(opts.events||6));
-  if(ev.length)lines.push("Recent key events, in order:\n"+ev.map(e=>"- "+e.text).join("\n"));
-  return lines.length?"\n\nWho knows what, and where the story stands (from the story memory; characters act only on what they know):\n"+lines.join("\n"):"";
+  if(ev.length)lines.push("Recent key events, oldest first:\n"+ev.map(e=>"- "+e.text).join("\n"));
+  let out=lines.join("\n");const cap=opts.cap||3000;if(out.length>cap)out=out.slice(0,cap).replace(/\n[^\n]*$/,"");
+  return out?"\n\nWho knows what, and where the story stands (from the story memory). Characters act and speak only on what they know; someone who does NOT know a fact must not mention it or react to it, unless they learn it in this reply:\n"+out:"";
 }
 
 /* ---------- divergence tracking ---------- */

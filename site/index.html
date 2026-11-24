@@ -3118,6 +3118,8 @@ function memBetaSheet(se,st){const box=h("div"),m=se.mem,nEv=m?(m.events||[]).fi
   else{
     ap(box,h("p",{text:"On for this playthrough."+(m?" Remembered so far: "+nEv+" events, "+nFa+" facts.":" It starts with your next message.")}),
       chk("Fill in memory when a reply leaves it out (a small extra request, about 3 seconds, in the background)",se.metaRepair!==false,v=>{se.metaRepair=v;save()}),
+       chk("Let the narrator use story memory: who knows what, where the scene is, and recent key events (in testing)",!!se.memPrompt,v=>{se.memPrompt=v;save()}),
+       h("p",{class:"sub",text:"When this is on, characters only act on what the memory says they know. No extra requests; it adds a short section to each message."}),
       rp.length?h("p",{class:"sub",text:"Filled in "+rpOk+" of "+rp.length+" replies that left it out."}):null,
       h("div",{class:"row"},h("button",{text:"Turn story memory off",onclick:()=>{se.memv2=false;save();closeSheet(true);rerender();toast("Story memory is off. What it remembered is kept if you turn it back on.")}})))}
   sheet("Story memory (beta)",box)}

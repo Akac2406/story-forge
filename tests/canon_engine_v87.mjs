@@ -97,7 +97,11 @@ const M = {charView: (s, n) => n === "Rae" ? {knows: ["The ledger is forged"]} :
 const sk = {mem: {scene: {where: "dock", who: ["Rae", "Dale"], when: "night"}, facts: [{id: "f1", text: "The ledger is forged"}],
   chars: {Rae: {knows: ["f1"]}, Dale: {knows: []}}, events: [{imp: 4, text: "Rae found the ledger"}]}};
 const K = C.knowledge(sk, M);
-ok(K.includes("Rae knows: The ledger is forged") && K.includes("Dale Does NOT know: The ledger is forged") && K.includes("Rae found the ledger"), "knowledge lists who knows and who does not");
+ok(K.includes("Rae knows: The ledger is forged") && K.includes("Dale does NOT know: The ledger is forged") && K.includes("Rae found the ledger"), "knowledge lists who knows and who does not");
+sk.mem.facts.push({id: "f2", text: "The storm passed", until: 5}); sk.mem.chars.Rae.knows.push("f2");
+ok(!C.knowledge(sk, M).includes("storm passed"), "expired facts are left out");
+const sk2 = {mem: {scene: {}, facts: [], chars: {}, events: [{imp: 4, text: "x", who: ["Mira"], wit: []}]}};
+ok(C.knowledge(sk2, {charView: () => ({knows: []})}).includes("present: Mira"), "falls back to the latest event's people");
 
 // timeline markers and extraction
 const tl = C.lore({entries: [{k: "Sasuke", t: "Sasuke is in the Leaf.", before: "he defects", id: "s"}, {k: "Seal", t: "The seal holds.", lock: true, after: "the Kyuubi attack"}]}, {}, [], "Sasuke waits", {});

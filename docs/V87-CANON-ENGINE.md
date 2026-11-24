@@ -47,14 +47,18 @@ Branch `v87-canon`, based on v86 (`0a931cc`). Development build: not deployed, n
 - **Shared helpers** for the UI: `promptReport(se)` (null before the first build), `activeNotes(se, st, hist, action)`, `detectStandingOoc(text)`, `canonEntryId(st, entry, index)`.
 - **Tests:** `tests/canon_engine_v87.mjs` (38 unit checks) and `tests/canon_v87_browser.py` (27 checks against the real app, with simulated replies). `run_all.py` now runs every Node test in the folder; two of ChatGPT's (`v85_sw_scope`, `world_era_v86`) weren't being run before.
 
-## Memory Phase 2 review
-- **Status:** built, **off**. `SFCanon.knowledge()` produces "Current scene", "X knows / Does NOT know" and "Recent key events" from the memory engine, read-only. It is used only when `se.memPrompt` is true **and** story memory is on for that story. Nothing sets `memPrompt`.
-- **Why it's gated:** it changes what the narrator sees, so it needs Anna's approval and a paid comparison run.
-- **Proposed test:** a Cedar Ridge replay with and without it, scoring knowledge leaks.
-- **Risks to check in that run:**
-  - stale `scene.who` after a scene change;
-  - "Does NOT know" lists naming secrets the narrator would otherwise not have mentioned. They are labelled as constraints, but this needs watching.
-- **The memory engine (`memory-engine.js`) is unchanged.**
+## Memory Phase 2
+- **Status:** built, with a per-story switch. In Story memory (beta), it reads "Let the narrator use story memory: who knows what, where the scene is, and recent key events (in testing)". It sets `se.memPrompt`, is off by default, and only shows once story memory is on for that story.
+- **What the narrator gets** (from `SFCanon.knowledge()`, read-only, capped at about 3,000 characters):
+  - the current scene: place, time, who's present (if no scene is recorded yet, the people in the latest event);
+  - for each person present: what they know, what they do NOT know (facts other characters know), and what they mistakenly believe;
+  - the last 6 important events;
+  - an instruction that a character must not mention or react to facts they don't know.
+
+  Expired facts are left out.
+- **Tests:** `tests/memory_phase2_v87.py` (15 checks in the real app, simulated replies) and unit checks in `canon_engine_v87.mjs`.
+- **Not yet done:** a paid comparison run with real DeepSeek replies (Cedar Ridge with and without the switch, scoring knowledge leaks). It needs Anna's approval.
+- **`memory-engine.js` is unchanged.**
 
 ## Left to the UI side (ChatGPT)
 - Notes editor (`DB.notes` / `se.notes`);
