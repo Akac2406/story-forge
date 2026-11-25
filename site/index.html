@@ -2361,6 +2361,14 @@ const ffSetRule=(se,k,v)=>ffMut(se,c=>SFFan.setRule(c,k,v)),ffLock=(se,kind,id,o
 const ffSetRomance=(se,p)=>ffMut(se,c=>SFFan.setRomance(c,p)),ffRomanceAllowed=(se,a,b)=>{const u=ffU(se);return u?SFFan.romanceAllowed(u,se.canon,a,b):{ok:false,reason:"universe missing"}},
   ffAgeAt=(se,id)=>{const u=ffU(se);return u?SFFan.ageAt(u,se.canon,id):null},ffRank=(entries,config,seed)=>SFFan.rank(entries,config,seed),
   ffRecordCompetition=(se,id,result,o)=>ffMut(se,c=>SFFan.recordCompetition(c,id,result,o));
+/* Phase 8: persistent universes and crossovers (docs/FANFIC-CONTRACT.md). Upgrading a playthrough to a newer source revision is always explicit and undoable (ffUndo). */
+const ffUpgradePreview=se=>{const u=ffU(se);return u?SFFan.upgradePreview(u,se.canon,ffWorldState(se)):null},
+  ffUpgrade=se=>{const u=ffU(se);return u?ffMut(se,c=>SFFan.upgrade(c,u)):{ok:false,applied:false,reason:"universe missing"}},
+  ffPromote=(se,rec,o)=>{const u=ffU(se);if(!u)return{ok:false,applied:false,reason:"universe missing"};const r=SFFan.promote(u,rec,Object.assign({session:se.id},o||{}));if(r.applied){DB.universes[u.id]=r.universe;save()}return{ok:r.ok,applied:r.applied,reason:r.reason}},
+  ffDemote=(uid,id)=>{const u=ffUniverse(uid);if(!u)return{ok:false,applied:false,reason:"universe missing"};const r=SFFan.demote(u,id);if(r.applied){DB.universes[uid]=r.universe;save()}return{ok:r.ok,applied:r.applied,reason:r.reason}},
+  ffCrossover=ids=>{const L=(ids||[]).map(ffUniverse);return L.length>1&&L.every(Boolean)?SFFan.crossover(L):null},
+  ffPowerRule=(se,from,to)=>SFFan.powerRule(se&&se.canon,from,to),
+  ffKnowsX=(se,id)=>{const c=se&&se.canon,L=(c&&c.universes||[]).map(x=>ffUniverse(x.id)).filter(Boolean);const u=L.length>1?SFFan.crossover(L):ffU(se);return u?SFFan.knowsX(u,c,id):[]};
 /* Living characters (phase 6) adapter. Relationships evolve from recorded memory events (idempotent); fanfiction stories use se.canon.relationships with stable ids, others se.rel2 by name. */
 function chRelationships(se){return se&&se.canon?(se.canon.relationships||[]):(se&&se.rel2||[])}
 function chEvolve(se){if(!se||!window.SFChar||!se.mem)return{ok:false,applied:0};const u=se.canon?ffU(se):null,idOf=u?(n=>ffCharId(u,n)||(String(n).toLowerCase()===String(se.char&&se.char.name||"").toLowerCase()?"player":null)):(n=>n);

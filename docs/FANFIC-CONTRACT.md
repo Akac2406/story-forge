@@ -227,3 +227,11 @@ Prompt block adds the alternate-reality framing for non-fictional universes, and
 `ffCheck` adds `real-person-romance` and `minor-romance`. Fixture: `tests/fixtures/fanfic-idol.json` (invented names only, including placeholder "public figures";
 eligible and ineligible pairs, a reproducible competition). Tests: `tests/fanfic_realworld_unit.mjs` (28 checks).
 Universe records for people: `universe.people[personId] = PublicFigure`; aliases may point at person ids.
+
+### Status: section 8 (persistent universes and crossovers), engine + adapters
+
+Engine (SFFan): `upgradePreview(u, canon, state)` -> `{from, to, newRecords, newEvents, statusChanges}` (read-only); `upgrade(canon, u)` (explicit, recorded as field `rev`, undoable); `promote(u, record, {session, canon?})` -> record `fanon:<universe>:<slug>` with `canon:'fanon'` and `from:{session, record}`, never character knowledge; `demote(u, id)` removes fanon only; `crossover([u...])` combined read-only view (ids stay namespaced, world rules prefixed `[Universe name]`, powers tagged with `universe`); `powerRule(canon, from, to)` -> `{rule, scale, note}`, default `separate`/`original`; `knowsX(u, canon, charId)` in a crossover restricts common facts to the character's home universe (from the id prefix).
+
+Playthrough canon for crossovers: `canon.universes: [{id, role: 'primary'|'secondary'}]`, `canon.powers: [{from, to, rule, scale?, note?}]`.
+
+App adapters: `ffUpgradePreview(se)`, `ffUpgrade(se)` (undo with `ffUndo`), `ffPromote(se, record, o)`, `ffDemote(universeId, id)`, `ffCrossover([ids])` (null if any is missing), `ffPowerRule(se, from, to)`, `ffKnowsX(se, charId)`. Tests: `tests/fanfic_universe_unit.mjs`, `tests/fanfic_universe_browser.py`.
