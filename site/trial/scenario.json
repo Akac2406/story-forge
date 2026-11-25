@@ -435,6 +435,16 @@
     "Tamsin",
     "Aled",
     "Corwin"
+   ],
+   "learn": [
+    {
+     "who": "Corwin",
+     "kw": "copy",
+     "alt": [
+      "copy",
+      "deed"
+     ]
+    }
    ]
   },
   {

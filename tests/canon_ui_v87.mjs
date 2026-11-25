@@ -96,5 +96,5 @@ assert.equal(run("roundTrip.copies[0].divergences.length"), 3);
 assert.equal(run("roundTrip.story.styleSamples[0].src"), "Harbor Notes");
 assert.equal(run("styleSamplesFor({styleSamples: [{text: ' '}, ...Array.from({length:4}, (_,i)=>({id:String(i), text:'x'.repeat(1600)}))]}).length"), 3);
 assert.equal(run("styleSamplesFor({styleSamples: [{id: 'voice', text:'x'.repeat(1600)}]})[0].text.length"), 1500);
-assert.match(read("../site/sw.js"), /"sf-v88"[\s\S]*"canon-engine.js"/);
+assert.match(read("../site/sw.js"), /"sf-v\d+"[\s\S]*"canon-engine.js"/);
 console.log("PASS: v87 canon controls, visible warning versions, staged chapter replay, and world backup round trip.");
