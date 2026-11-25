@@ -42,8 +42,22 @@ Mutations never throw. `applied:false` means nothing was stored; `reason` is `lo
 - Player edits: `se.memEdits = {v:1, ops:[{op, id, at, patch|on|record}]}`. Separate from per-reply deltas, so regeneration and rollback can't erase them.
 - Nothing in contract 2 writes to `se.mem`. Backups must include `se.memEdits` alongside the fields listed in MEMORY-CONTRACT.md section 4.
 
+## Engine functions added (pure, `SFMem2`)
+
+| Function | Returns | Notes |
+|---|---|---|
+| `supersede(edits, oldId, newId, t)` | edits | The newer fact replaces the old from turn `t`; the old one stays (history) with `until`, `expiredAt`, `expiredBy`. |
+| `query(view, {current:true})` | records | Only facts still true (no `until`). |
+| `retrieve(view, {text, present[], where, t, layers?, limit?, max?})` | `[{record, score, why}]` | Fused recall; skips deleted and not-yet/no-longer-true; deterministic; within `max` characters. |
+| `render(hits)` | text | Grouped by layer with `[turn N]` tags (what the narrator sees). |
+| `contradictions(view)` | `[{kind, ids[], text}]` | `dead-acts`, `fact`, `canon`. Rule-based, no AI request. Show in Conflict Center next to `memConflicts`. |
+| `npcState(view, day)` | `[{name, goals[], where, doing, since}]` | NPC schedule position for a story day. Source: `src.npcs = {Name: {goals[], schedule:[{day, where, doing}]}}`. |
+
+Semantic records also carry `storyFrom`, `storyTo`, `seenAt`, `expiredAt`.
+Per-story switch `se.memRecall` (Story memory sheet): adds recalled memories to each prompt. Off by default.
+
 ## Coming next (engine side, same API)
 
-- Temporal fields on semantic records: `storyFrom`, `storyTo`, `seenAt`, `expiredAt`, `source` (Graphiti-style; see OSS-EVALUATION.md). `asOf` already works on `t`, `since` and `until`.
-- Fused retrieval for prompts (BM25 + entity + temporal + importance + pin).
-- NPC goals and schedules on character records, advanced by story time.
+- Memory operating modes (Light / Balanced / Maximum) grouping the switches.
+- Real-model A/B of recall on long scenarios.
+- Storage for NPC plans (`se.npcs`) editable in the UI.
