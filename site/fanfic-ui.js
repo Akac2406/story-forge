@@ -149,3 +149,65 @@ function director(se){open(se,"Story Director",(b,apply)=>{
 })}
 Object.assign(window.SFFanUI,{web,journal,agenda,memory,director});
 })();
+
+(function(){
+"use strict";
+const button=(text,onclick)=>h("button",{text,onclick}), dump=x=>h("pre",{text:JSON.stringify(x,null,2)}), panel=(...kids)=>h("div",{class:"ff-panel"},...kids);
+function studio(se,title,build){
+ const body=h("div",{class:"ff-ui"}),status=h("p",{role:"status","aria-live":"polite"}),content=h("div",{class:"ff-ui"});
+ function refresh(){content.replaceChildren();build(content,apply)}
+ function apply(fn){try{const r=fn();status.textContent=(r.applied??r.ok)?"Saved"+(r.fired?.length?" · Consequences: "+JSON.stringify(r.fired):""):r.reason||"No change";if(r.applied??r.ok)refresh()}catch(e){status.textContent=String(e.message||e)}}
+ body.append(status,content);refresh();sheet(title,body);
+}
+function universe(se){studio(se,"Universe Studio",(b,apply)=>{
+ const list=ffListUniverses(),u=ffU(se),p=ffUpgradePreview(se);
+ b.append(h("p",{text:"Shared universe library · Playthroughs retain their own outcomes."}),...list.map(x=>panel(h("b",{text:x.name}),h("p",{text:"Revision "+x.rev+" · "+x.chapters+" chapters · "+x.events+" events"}))),button("Import sources",()=>window.SFFanUI.library(se)));
+ if(!u)return;
+ b.append(panel(h("b",{text:u.name+" · pinned revision "+se.canon.rev}),dump(p),button("Apply previewed revision upgrade",()=>{if(p&&p.to!==p.from&&confirm("Upgrade this playthrough to revision "+p.to+"?"))apply(()=>ffUpgrade(se))}),button("Undo canon change",()=>apply(()=>ffUndo(se)))));
+ const records=memQuery(se,{limit:100}).filter(r=>!r.deleted),pick=sel("",[["","Choose a fact"],...records.map(r=>[r.id,r.text.slice(0,100)])],()=>{});
+ b.append(panel(h("b",{text:"Share selected lore as fanon"}),h("p",{text:"Author action: do not share private character knowledge or secrets."}),pick,button("Promote selected fact",()=>{const r=records.find(x=>x.id===pick.value);if(r&&confirm("Share this fact across the universe?"))apply(()=>ffPromote(se,r,{canon:"fanon"}))})));
+ const fanon=(u.records||[]).filter(r=>r.canon==="fanon");b.append(h("h3",{text:"Shared fanon"}),...fanon.slice(0,100).map(r=>panel(h("p",{text:r.text}),button("Remove shared fanon",()=>{if(confirm("Remove this shared fanon record?"))apply(()=>ffDemote(u.id,r.id))}))));
+ const ids=(se.canon.universes||[]).map(x=>x.id);if(!ids.includes(u.id))ids.unshift(u.id);
+ const combined=ffCrossover(ids);b.append(panel(h("b",{text:"Crossover inspection"}),h("p",{text:ids.join(" · ")}),...ids.flatMap(a=>ids.filter(c=>c!==a).map(c=>panel(h("b",{text:a+" → "+c}),dump(ffPowerRule(se,a,c))))),h("details",{},h("summary",{text:"Combined world rules"}),dump(combined?.rules||{}))));
+ const chars=Object.entries(combined?.chars||u.chars||{}),cp=sel("",[["","Choose character"],...chars.map(([id,c])=>[id,c.name||id])],()=>{knowledge.replaceChildren(dump(cp.value?ffKnowsX(se,cp.value):[]))}),knowledge=h("div",{});
+ b.append(panel(h("b",{text:"Character knowledge (author view)"}),cp,knowledge));
+})}
+Object.assign(window.SFFanUI,{universe,studioShell:studio});
+})();
+
+(function(){
+"use strict";
+const button=(text,onclick)=>h("button",{text,onclick}), dump=x=>h("pre",{text:JSON.stringify(x,null,2)}), panel=(...kids)=>h("div",{class:"ff-panel"},...kids), field=(v="",type="text")=>{const e=h("input",{type});e.value=v;return e};
+function gameplay(se){window.SFFanUI.studioShell(se,"Gameplay Studio",(b,apply)=>{
+ const g=gmState(se),num=e=>Number(e.value),id=field(),name=field(),min=field(0,"number"),max=field(100,"number"),start=field(0,"number"),hidden=h("input",{type:"checkbox"});
+ b.append(chk("Enable gameplay",g.enabled,v=>apply(()=>gmEnable(se,v))),h("p",{text:"Level "+g.level+" · XP "+g.xp+" · Day "+g.day}),button("Undo last gameplay change",()=>apply(()=>gmUndo(se))));
+ const xp=field(10,"number"),base=field(g.curve?.base??100,"number"),growth=field(g.curve?.growth??1.5,"number"),cap=field(g.curve?.max??50,"number");
+ b.append(panel(h("b",{text:"Progression"}),fld("XP change",xp),button("Apply XP",()=>apply(()=>gmXp(se,num(xp),"Player adjustment"))),fld("Base XP",base),fld("Growth",growth),fld("Maximum level",cap),button("Save curve",()=>apply(()=>gmSet(se,{curve:{base:num(base),growth:num(growth),max:num(cap)}})))));
+ b.append(h("h3",{text:"Stats"}),...Object.entries(g.stats||{}).map(([key,s])=>{const delta=field(1,"number");return panel(h("b",{text:s.name||key}),dump(s),fld("Change",delta),button("Apply change",()=>apply(()=>gmChange(se,key,num(delta),"Player adjustment"))))}),panel(h("b",{text:"Define stat"}),fld("ID",id),fld("Name",name),fld("Minimum",min),fld("Maximum",max),fld("Starting value",start),h("label",{},hidden," Hidden from narrator"),button("Add stat",()=>apply(()=>gmDefineStat(se,{id:id.value.trim(),name:name.value.trim(),min:num(min),max:num(max),start:num(start),hidden:hidden.checked})))));
+ const qi=field(),qt=field(),steps=h("textarea",{rows:3}),reward=field(0,"number");
+ b.append(h("h3",{text:"Quests"}),...g.quests.map(q=>panel(h("b",{text:q.title}),dump(q),button("Advance",()=>apply(()=>gmAdvanceQuest(se,q.id))),button("Fail quest",()=>{if(confirm("Mark quest failed?"))apply(()=>gmFailQuest(se,q.id,"Player decision"))}))),panel(fld("Quest ID",qi),fld("Title",qt),fld("Objectives (one per line)",steps),fld("XP reward",reward),button("Add quest",()=>apply(()=>gmAddQuest(se,{id:qi.value.trim(),title:qt.value.trim(),steps:steps.value.split("\n").map(x=>x.trim()).filter(Boolean),reward:{xp:num(reward)}})))));
+ const ri=field(),stat=sel("level",["level","day",...Object.keys(g.stats||{})].map(x=>[x,x]),()=>{}),op=sel(">=",["<","<=",">",">=","=="].map(x=>[x,x]),()=>{}),threshold=field(1,"number"),effect=h("textarea",{rows:3}),note=field(),repeat=h("input",{type:"checkbox"});effect.value="{}";
+ b.append(h("h3",{text:"Consequence rules"}),dump(g.rules),panel(fld("Rule ID",ri),fld("Condition",stat),op,threshold,fld("Effect JSON (stats, fail, unlock)",effect),fld("Note",note),h("label",{},repeat," Repeat when re-armed"),button("Add rule",()=>apply(()=>gmAddRule(se,{id:ri.value.trim(),when:{stat:stat.value,op:op.value,value:num(threshold)},effect:JSON.parse(effect.value),note:note.value,repeat:repeat.checked})))));
+ const careers=gmCareers(),custom=h("textarea",{rows:6});b.append(h("h3",{text:"Careers"}),dump(g.career));
+ if(!g.career)b.append(...careers.map(c=>panel(h("b",{text:c.name}),button("Start career",()=>apply(()=>gmStartCareer(se,c.id,{}))))),panel(fld("Custom career module JSON",custom),button("Start custom career",()=>apply(()=>{const c=JSON.parse(custom.value);return gmStartCareer(se,c.id,{custom:c})}))));
+ else {const c=careers.find(x=>x.id===g.career.id)||careers.find(x=>x.id===g.career.module?.id);const acts=c?.activities||Object.entries(g.career.module?.activities||{}).map(([id,a])=>({id,...a}));b.append(...acts.map(a=>button(a.name+(a.needRank?" · requires "+a.needRank:""),()=>{if(confirm("Advance one career week?"))apply(()=>gmActivity(se,a.id))})))}
+ b.append(h("h3",{text:"Gameplay history"}),dump(gmLog(se,50)));
+})}
+Object.assign(window.SFFanUI,{gameplay});
+})();
+
+(function(){
+"use strict";
+const button=(text,onclick)=>h("button",{text,onclick}),dump=x=>h("pre",{text:JSON.stringify(x,null,2)}),panel=(...kids)=>h("div",{class:"ff-panel"},...kids);
+function creator(se){
+ const st=getStory(se.storyId),body=h("div",{class:"ff-ui"}),status=h("p",{role:"status","aria-live":"polite"}),report=h("div",{}),importReport=h("div",{}),name=h("input",{}),note=h("textarea",{rows:3}),art=h("input",{type:"checkbox",disabled:!!st?.ooc}),templates=sfTemplates().map(t=>({name:t.name,box:h("input",{type:"checkbox"})}));
+ let pending=null,epoch=0;
+ function options(){return {sessionId:se.id,templates:templates.filter(t=>t.box.checked).map(t=>t.name),art:art.checked&&!st?.ooc,creator:{name:name.value,note:note.value}}}
+ function run(download){try{const r=download?crDownload(se.storyId,options()):crBuild(se.storyId,options());status.textContent=r.ok?(download?"Package prepared for download":"Preview ready"):r.reason||"Export failed";report.replaceChildren(dump({size:r.size,artBlocked:r.artBlocked,removed:r.removed,preview:r.ok?crPreview(r.package):null}))}catch(e){status.textContent=String(e.message||e)}}
+ const file=h("input",{type:"file",accept:".json,.sfcreator.json"}),openButton=button("Create new story from package",()=>{if(!pending||!confirm("Create a new story from this blueprint?"))return;try{const r=crOpen(pending);status.textContent=r.applied?"New story created: "+r.storyId:r.reason||"No change";if(r.applied){pending=null;openButton.disabled=true}importReport.append(dump(r))}catch(e){status.textContent=String(e.message||e)}});openButton.disabled=true;
+ file.addEventListener("change",()=>{epoch++;pending=null;openButton.disabled=true;importReport.replaceChildren()});
+ const preview=button("Preview import",async()=>{const ticket=++epoch;pending=null;openButton.disabled=true;importReport.replaceChildren();try{const f=file.files[0];if(!f)throw Error("Choose a package first");if(f.size>8*1024*1024)throw Error("Package exceeds 8 MB");const p=JSON.parse(await f.text());if(ticket!==epoch||!body.isConnected)return;const r=crPreview(p);importReport.append(dump(r));if(r.ok){pending=p;openButton.disabled=false}status.textContent=r.ok?"Validated. Nothing imported yet.":"Package validation failed"}catch(e){if(ticket===epoch)status.textContent=String(e.message||e)}});
+ body.append(status,panel(h("h3",{text:"Export reusable blueprint"}),h("p",{text:"Excludes playthroughs, memories, credentials and gameplay progress."}),fld("Creator name",name),fld("Creator notes",note),h("label",{},art," Include images"),st?.ooc?h("p",{text:"Images cannot be exported from OOC-imported stories."}):null,h("b",{text:"Character templates"}),...templates.map(t=>h("label",{},t.box," "+t.name)),button("Preview export",()=>run(false)),button("Download package",()=>run(true)),report),panel(h("h3",{text:"Import creator package"}),file,preview,importReport,openButton));sheet("Creator Studio",body);
+}
+Object.assign(window.SFFanUI,{creator});
+})();
