@@ -933,7 +933,9 @@ function play(st,d){if(!hasKey()){toast("Add your OpenRouter key in Settings fir
   sd(se,st).forEach(s=>{se.stats[s.n]=num(s.v,0)});
   if(st.cast0&&st.cast0.length){se.cast={};st.cast0.forEach(c=>{se.cast[c.n]={r:c.role||"",l:[c.age?"age "+c.age:"",c.looks].filter(Boolean).join(", "),t:[],a:c.hook||"",ch:0,u:Date.now(),pic:c.th||undefined}})}
   if(st.ctr&&st.ctr.length){se.ctr={};st.ctr.forEach(c=>{se.ctr[c.n]=0})}if(st.ooc)se.fmt=Object.assign(fmtOf(se),{tag:1});
-  if(st.fanfic&&st.fanfic.setup)try{const x=st.fanfic.setup;if(x.memoryRecall)se.memRecall=true;if(x.layout)se.cv={settings:{layout:x.layout},scene:{},cast:{},preset:null}}catch(e){}
+  if(st.fanfic&&st.fanfic.setup)try{const x=st.fanfic.setup;if(x.memoryMode==="on"||x.memoryRecall)se.memv2=true;if(x.memoryRecall)se.memRecall=true;
+    if(x.cv)se.cv=JSON.parse(JSON.stringify(x.cv));else if(x.layout)se.cv={settings:{layout:x.layout},scene:{},cast:{},preset:null};
+    if(window.SFMem2&&Array.isArray(x.memoryNotes)&&x.memoryNotes.length){let E=se.memEdits||SFMem2.emptyEdits();x.memoryNotes.slice(0,10).forEach((n,i)=>{E=SFMem2.add(E,{id:"qcnote"+i,layer:"permanent",kind:"fact",text:String(n.text||"").slice(0,300),who:(n.who||[]).slice(0,6),pin:true,lock:true,src:"player",t:0})});se.memEdits=E}}catch(e){console.warn("quick create setup failed",e)}
   if(st.fanfic&&st.fanfic.canon&&window.SFFan)try{se.canon=JSON.parse(JSON.stringify(st.fanfic.canon));if(se.canon.mode&&se.canon.mode.player&&se.canon.mode.player.name&&!(d.name||"").trim())se.char.name=se.canon.mode.player.name}catch(e){}
   if(st.blueprint&&window.SFCreator)try{if(st.blueprint.game)se.game=SFCreator.gameSetup(st.blueprint.game);if(st.blueprint.director)se.director=JSON.parse(JSON.stringify(st.blueprint.director))}catch(e){}
   DB.sessions.push(se);save();view={n:"chat",id:se.id};begin(se,st)}
@@ -1632,7 +1634,7 @@ function buildMsgs(se,st,hist,action,days=0){if(se.sim)st=Object.assign({},st,{t
   if(se.director&&se.director.enabled&&window.SFDirector&&!isC)try{const db=dirBlock(se);if(db)add("story director","\n\n"+db,0,2)}catch(e){console.warn("director failed",e)}
   if(se.game&&se.game.enabled&&window.SFGame&&!isC)try{const gb=SFGame.block(se.game);if(gb)add("gameplay","\n\n"+gb,0,2)}catch(e){console.warn("gameplay failed",e)}
   if(se.canon&&window.SFFan&&!isC)try{const fb=ffCanonFor(se);if(fb)add("fanfiction canon","\n\n"+fb,0,2)}catch(e){console.warn("fanfiction canon failed",e)}
-  {const sp=se.styleProfile||(st&&st.fanfic&&st.fanfic.styleProfile);if(sp&&!isC){const L=[];if(sp.tense)L.push(sp.tense+" tense");if(sp.pacing)L.push(sp.pacing+" pacing");if(sp.dialogue)L.push(sp.dialogue+" dialogue");if(sp.description)L.push(sp.description+" description");if(sp.tone)L.push("tone: "+String(sp.tone).slice(0,120));if(sp.structure)L.push("structure: "+String(sp.structure).slice(0,160));
+  {const sp=se.styleProfile||(st&&st.fanfic&&st.fanfic.styleProfile);if(sp&&!isC){const L=[];if(sp.tense)L.push(sp.tense+" tense");if(sp.pacing)L.push(sp.pacing+" pacing");if(sp.dialogue)L.push(sp.dialogue+" dialogue");if(sp.description)L.push(sp.description+" description");if(sp.tone)L.push("tone: "+String(sp.tone).slice(0,120));if(sp.balance)L.push(sp.balance==="balanced"?"balanced narration and dialogue":sp.balance+"-led");if(sp.innerMonologue)L.push(sp.innerMonologue+" inner monologue");if(sp.humor)L.push((sp.humor==="none"?"no":sp.humor)+" humor");if(sp.suspense)L.push(sp.suspense+" suspense");if(sp.rhythm)L.push(sp.rhythm+" sentence rhythm");if(sp.structure)L.push("structure: "+String(sp.structure).slice(0,160));
     if(L.length)add("source style","\n\nSOURCE STYLE (match these choices in your own words; never copy text from the source): "+L.join("; ")+".",0,3)}}
   if(se.memRecall&&memOn(se)&&!isC&&window.SFMem2)try{const rt=se.turns.slice(-3).map(x=>x.text||"").join(" "),sc=(se.mem&&se.mem.scene)||{},hits=SFMem2.retrieve(memView(se),{text:rt,present:sc.who||[],where:sc.where||"",t:se.turns.length,max:[6000,4000,2500][DB.saver||0]});
     if(hits.length)add("recalled memories","\n\nRelevant memories from earlier in this story (most useful first). Stay consistent with them; facts listed are true as of now:\n"+SFMem2.render(hits),0,3)}catch(e){console.warn("memory recall failed",e)}
@@ -2555,10 +2557,13 @@ async function qcResearch(query,o){o=o||{};const q=String(query||"").trim().slic
 /* A temporary universe from research facts, so canon choices can be validated before anything is saved. */
 function qcResearchUniverse(title,facts){const us=qcSlug(title),chars={};(facts||[]).forEach(f=>{if(f.charId&&!chars[f.charId])chars[f.charId]={id:f.charId,name:f.charName||f.charId.split(":").pop(),desc:String(f.text||"").slice(0,300)}});
   return{v:1,id:us,name:String(title||us),rev:1,created:Date.now(),updated:Date.now(),revisions:[],sources:[],aliases:{},chars,events:[],records:(facts||[]).map(f=>({id:"fact:"+us+":"+f.id,layer:"universe",kind:"fact",text:f.text,who:[],canon:f.confidence==="confirmed"?"source":"uncertain",source:f.source,rev:1,spoilerAt:null})),conflicts:[],rules:{powers:[],world:[]},research:true}}
-function qcCtx(u,facts){return{universe:u,facts,fan:SFFan,director:window.SFDirector,game:window.SFGame,cinema:window.SFCinema}}
+function qcCtx(u,facts){return{universe:u,facts,fan:SFFan,director:window.SFDirector,game:window.SFGame,cinema:window.SFCinema,appearance:window.SFAppearance,apCatalog:window.SFAppearance?apCatalog():null}}
+/* Allowed values the model may choose from, straight from the engines. */
+function qcPromptOpts(u){const C=window.SFCinema,cin={};if(C)for(const k of ["lighting","overlay","transition","dialogueBox","narration","textReveal"])if(Array.isArray(C.SPEC.settings[k]))cin[k]=C.SPEC.settings[k];
+  return{modes:SFFan.MODES,careers:window.SFGame?SFGame.careerList().map(c=>c.id):[],universe:u,layouts:C?C.LAYOUTS.map(l=>l.id):[],presets:C?C.PRESETS.map(p=>p.id):[],cinematic:cin,themes:window.SFVisualV48&&SFVisualV48.themes?SFVisualV48.themes.map(t=>typeof t==="string"?t:t&&t.id).filter(Boolean):[]}}
 async function qcPreview(input,o){o=o||{};input=input||{};try{qcAbort(o.signal);
     const u=o.universeId?ffUniverse(o.universeId):qcResearchUniverse(input.sourceTitle||"Untitled",o.facts||[]);if(o.universeId&&!u)return{ok:false,reason:"universe missing"};
-    const facts=o.facts||(o.universeId?SFQuick.factsFromUniverse(u):[]),msgs=SFQuick.prompt(input,facts,{modes:SFFan.MODES,careers:window.SFGame?SFGame.careerList().map(c=>c.id):[],universe:u}),est=SFQuick.estimate(msgs,SFQuick.MAX_OUT.preview);
+    const facts=o.facts||(o.universeId?SFQuick.factsFromUniverse(u):[]),msgs=SFQuick.prompt(input,facts,qcPromptOpts(u)),est=SFQuick.estimate(msgs,SFQuick.MAX_OUT.preview);
     const r=await ask(msgs,{max:SFQuick.MAX_OUT.preview,temp:0.4,signal:o.signal,lite:true});qcAbort(o.signal);const p=SFQuick.parse(r.text);if(!p.ok)return{ok:false,reason:p.reason,estimate:est,usage:r.usage||null};
     const raw=Object.assign({},p.value,{id:"qc"+Date.now().toString(36)+"-"+(++QC.seq)});delete raw.locked;
     const v=SFQuick.validate(raw,qcCtx(u,facts));QC.ctx={universe:u,facts,imported:!!o.universeId,input:Object.assign({},input)};QC.cur=raw.id;QC.prop=null;qcH(raw.id).now=v.blueprint;
@@ -2588,22 +2593,26 @@ function qcUndo(id){if(QC.prop){const P=QC.prop;QC.prop=null;return{ok:true,reas
 function qcRedo(id){const H=QC.hist[id||QC.cur];const b=H&&H.redo.pop();if(!b)return{ok:false,reason:"nothing to redo"};H.undo.push(H.now);H.now=b;return{ok:true,reason:null,blueprint:b}}
 /* Preflight estimates: build the exact request, send nothing. */
 function qcEstimatePreview(input,o){o=o||{};input=input||{};const u=o.universeId?ffUniverse(o.universeId):qcResearchUniverse(input.sourceTitle||"Untitled",o.facts||[]);if(o.universeId&&!u)return{ok:false,reason:"universe missing"};
-  const facts=o.facts||(o.universeId?SFQuick.factsFromUniverse(u):[]);return Object.assign({ok:true,reason:null,requests:1},SFQuick.estimate(SFQuick.prompt(input,facts,{modes:SFFan.MODES,careers:window.SFGame?SFGame.careerList().map(c=>c.id):[],universe:u}),SFQuick.MAX_OUT.preview))}
+  const facts=o.facts||(o.universeId?SFQuick.factsFromUniverse(u):[]);return Object.assign({ok:true,reason:null,requests:1},SFQuick.estimate(SFQuick.prompt(input,facts,qcPromptOpts(u)),SFQuick.MAX_OUT.preview))}
 function qcEstimateEdit(bp,instruction){return Object.assign({ok:true,reason:null,requests:1},SFQuick.estimate(SFQuick.editPrompt(bp,instruction||""),SFQuick.MAX_OUT.edit))}
 function qcEstimateRegenerate(bp,section,o){o=o||{};if(!QC.ctx)return{ok:false,reason:"preview first"};const c=SFQuick.canRegenerate(bp,section);if(!c.ok)return c;return Object.assign({ok:true,reason:null,requests:1},SFQuick.estimate(SFQuick.regeneratePrompt(bp,section,QC.ctx.input,QC.ctx.facts,{instruction:o.instruction}),SFQuick.MAX_OUT.regenerate))}
 /* Atomic: everything or nothing. */
 function qcCommit(bp){if(!QC.ctx)return{ok:false,applied:false,reason:"preview first"};qcSettle(bp);const ctx=qcCtx(QC.ctx.universe,QC.ctx.facts),v=SFQuick.validate(bp,ctx);if(!v.ok)return{ok:false,applied:false,reason:v.issues[0]||"invalid setup"};
-  const B=v.blueprint,u=QC.ctx.universe,snap=JSON.stringify({stories:DB.stories,universes:DB.universes||{}});
+  const B=v.blueprint,u=QC.ctx.universe,snap=JSON.stringify({stories:DB.stories,universes:DB.universes||{}});let apSnap=null,apTouched=false;try{apSnap=localStorage.getItem(apKey())}catch(e){}
   let uid0=u.id;try{if(!QC.ctx.imported){DB.universes=DB.universes||{};let n=2;while(DB.universes[uid0])uid0=u.id+"-"+n++;DB.universes[uid0]=Object.assign({},u,{id:uid0})}
     const o={};for(const k of ["modes","takeover","start","pov","romance","rules","locks","exceptions","fates","foreknowledge"])if(B[k]!==undefined)o[k]=B[k];if(B.player)o.player={name:B.player.name,desc:B.player.desc};if(B.player&&B.player.age!=null)o.startAge=B.player.age;
     const r=ffCreateStory(uid0,Object.assign(o,{title:B.title,setting:[B.premise,B.opening].filter(Boolean).join("\n\n")}));if(!r.applied)throw new Error(r.reason);
-    const st=getStory(r.storyId);let game=null;if(B.gameplay&&B.gameplay.career&&window.SFGame){const g=SFGame.startCareer(SFGame.defaults(),B.gameplay.career);if(g.applied)game=g.game}
+    const st=getStory(r.storyId);let game=null;if(window.SFGame){const gb=SFQuick.buildGame(B.gameplay,SFGame);if(gb.issues.length)throw new Error(gb.issues[0]);game=gb.game}
     let director=null;if(B.director&&window.SFDirector){const d=SFDirector.set(SFDirector.defaults(),B.director);if(d.applied===false&&d.reason)throw new Error("director: "+d.reason);director={enabled:true,settings:d.settings}}
-    if(game||director)st.blueprint={game,director};st.fanfic.setup={memoryRecall:!!(B.memory&&B.memory.recall),layout:B.appearance&&B.appearance.layout||null};if(B.styleProfile&&Object.keys(B.styleProfile).length)st.fanfic.styleProfile=B.styleProfile;
+    if(game||director)st.blueprint={game,director};const M=B.memory||{},cb=SFQuick.buildCinema(B.appearance,window.SFCinema);if(cb.issues.length)throw new Error(cb.issues[0]);
+    st.fanfic.setup={memoryRecall:!!M.recall,memoryMode:M.mode||"app",memoryNotes:M.notes||[],layout:B.appearance&&B.appearance.layout||null,cv:cb.cv||null};if(B.styleProfile&&Object.keys(B.styleProfile).length)st.fanfic.styleProfile=B.styleProfile;
     st.fanfic.quick={characters:B.characters,notes:B.notes,sources:(QC.ctx.facts||[]).filter(f=>B.sources.includes(f.id)).map(f=>f.source),uncertain:B.uncertain};
     if(window.__qcFailAfterStory)throw new Error("simulated failure");
+    const P=SFQuick.appearancePatch(B.appearance);if(Object.keys(P).length&&window.SFAppearance){const a=SFAppearance.set(apCfg(),P,"story:"+r.storyId,apCatalog());if(!a.applied)throw new Error("appearance: "+a.reason);apTouched=true;if(!apWrite(a.cfg))throw new Error("storage full")}
+    if(window.__qcFailAfterAppearance)throw new Error("simulated failure");
     save();QC.ctx=null;QC.prop=null;QC.hist={};QC.cur=null;return{ok:true,applied:true,reason:null,storyId:r.storyId}}
-  catch(e){const p=JSON.parse(snap);DB.stories=p.stories;DB.universes=p.universes;save();return{ok:false,applied:false,reason:String(e&&e.message||e)}}}
+  catch(e){const p=JSON.parse(snap);DB.stories=p.stories;DB.universes=p.universes;save();if(apTouched)try{if(apSnap==null)localStorage.removeItem(apKey());else localStorage.setItem(apKey(),apSnap);window.SFVisualV48&&SFVisualV48.reload&&SFVisualV48.reload()}catch(x){}
+    return{ok:false,applied:false,reason:String(e&&e.message||e)}}}
 const AP_PRESETS="sf.appearance.presets";
 function apKey(){return(window.SFVisualV48&&SFVisualV48.KEY)||"sf.visual.v48"}
 function apCfg(){try{const d=JSON.parse(localStorage.getItem(apKey())||"null");return d&&d.version===1?d:SFAppearance.empty()}catch(e){return SFAppearance.empty()}}
