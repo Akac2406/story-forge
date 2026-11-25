@@ -326,7 +326,7 @@ const KEY="story-forge-v2",app=document.getElementById("app"),$=s=>document.quer
 function ap(p,...k){for(const c of k.flat(4)){if(c==null||c===false)continue;p.appendChild(c.nodeType?c:document.createTextNode(String(c)))}}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const num=(v,d)=>{const n=parseFloat(v);return isFinite(n)?n:d};
-const VER=98,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
+const VER=99,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
 function fixCh(se){const c=(se.chaps||[]).filter(x=>x&&x.i>=0&&x.i<Math.max(1,se.turns.length)).sort((a,b)=>a.i-b.i),out=[];c.forEach(x=>{if(!out.length||x.i>out[out.length-1].i)out.push(x)});if(!out.length||out[0].i!==0)out.unshift({i:0,t:""});se.chaps=out;return out}
 function autoCh(se){const N=se.chapN==null?1500:se.chapN,out=[{i:0,t:""}];if(N>0){let acc=0;se.turns.forEach((t,i)=>{if(t.role==="user"&&i>0&&(N===1?acc>0:acc>=N)){out.push({i,t:""});acc=0}if(t.role==="ai")acc+=words(t.text)})}return out}
 function chapsOf(se){if(!se.chaps)se.chaps=autoCh(se);return fixCh(se)}
@@ -2446,6 +2446,13 @@ const ffNewCanonPreview=(uid,o)=>{const u=ffUniverse(uid);if(!u)return{ok:false,
 function ffCreateStory(univId,o){o=o||{};const r=ffNewCanonPreview(univId,o);if(!r.ok)return{ok:false,applied:false,reason:r.reason};const u=ffUniverse(univId),title=String(o.title||"").trim().slice(0,120)||(u.name+": "+r.summary.player);
   const st={id:uid(),kind:"story",title,setting:String(o.setting||"").slice(0,4000)||("Fanfiction set in "+u.name+"."),starts:[],stats:[],endings:[],entries:[],fanfic:{universe:univId,canon:r.canon},created:Date.now()};
   DB.stories.push(st);save();return{ok:true,applied:true,reason:null,storyId:st.id,summary:r.summary}}
+/* Creation drafts (save/resume, reusable blueprints): DB.ffDrafts {id: {id, name, universe, options, updated}}. Options are validated only when previewing or creating. */
+function ffDrafts(){return Object.values(DB.ffDrafts||{}).sort((a,b)=>b.updated-a.updated).map(d=>JSON.parse(JSON.stringify(d)))}
+function ffSaveDraft(draft){const d=draft||{};const name=String(d.name||"").trim().slice(0,80);if(!name)return{ok:false,applied:false,reason:"needs a name"};if(d.universe&&!ffUniverse(d.universe))return{ok:false,applied:false,reason:"universe missing"};
+  let o;try{o=JSON.parse(JSON.stringify(d.options||{}))}catch(e){return{ok:false,applied:false,reason:"options must be plain data"}}const unk=Object.keys(o).find(k=>!["modes","start","takeover","player","startAge","pov","romance","rules","crossover","locks","exceptions","fates","foreknowledge","title","setting"].includes(k));if(unk)return{ok:false,applied:false,reason:"unsupported option "+unk};
+  DB.ffDrafts=DB.ffDrafts||{};const id=d.id&&DB.ffDrafts[d.id]?d.id:"fd"+uid();DB.ffDrafts[id]={id,name,universe:d.universe||"",options:o,updated:Date.now()};save();return{ok:true,applied:true,reason:null,id}}
+function ffLoadDraft(id){const d=(DB.ffDrafts||{})[id];return d?JSON.parse(JSON.stringify(d)):null}
+function ffDeleteDraft(id){if(!(DB.ffDrafts||{})[id])return{ok:false,applied:false,reason:"not found"};delete DB.ffDrafts[id];save();return{ok:true,applied:true,reason:null}}
 const AP_PRESETS="sf.appearance.presets";
 function apKey(){return(window.SFVisualV48&&SFVisualV48.KEY)||"sf.visual.v48"}
 function apCfg(){try{const d=JSON.parse(localStorage.getItem(apKey())||"null");return d&&d.version===1?d:SFAppearance.empty()}catch(e){return SFAppearance.empty()}}

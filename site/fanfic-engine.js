@@ -246,7 +246,8 @@ function knowsX(u,canon,charId){const multi=arr(canon&&canon.universes).length>1
    o: {modes:[...], start:{ch}, takeover?:charId, player?:{name, desc}, startAge?, pov?:{mode, who?}, romance?:{pref, pacing?},
        rules?:{key:'locked'|'adaptive'|'free'}, crossover?:{with:[universeIds], link?, powers?:[...]}} */
 const RULE_VALUES=['locked','adaptive','free'],NEEDS_BODY=['takeover','transmigration','regression','reincarnation'];
-function newCanon(u,o){o=o||{};if(!u||!u.id)return{ok:false,reason:'universe missing'};const modes=arr(o.modes).filter(Boolean);
+const NEW_KEYS=['modes','start','takeover','player','startAge','pov','romance','rules','crossover','locks','exceptions','fates','foreknowledge','title','setting'];
+function newCanon(u,o){o=o||{};if(!u||!u.id)return{ok:false,reason:'universe missing'};const unk=Object.keys(o).find(k=>!NEW_KEYS.includes(k));if(unk)return{ok:false,reason:'unsupported option '+unk};const modes=arr(o.modes).filter(Boolean);
   if(!modes.length)return{ok:false,reason:'choose at least one mode'};const bad=modes.find(m=>!Object.prototype.hasOwnProperty.call(MODE_PRESETS,m));if(bad)return{ok:false,reason:'unknown mode '+bad};
   const body=modes.find(m=>NEEDS_BODY.includes(m)&&m!=='reincarnation');if(body&&!o.takeover)return{ok:false,reason:body+' needs a canon character to become'};
   if(o.takeover&&!(u.chars||{})[o.takeover])return{ok:false,reason:'unknown character '+o.takeover};
@@ -259,8 +260,14 @@ function newCanon(u,o){o=o||{};if(!u||!u.id)return{ok:false,reason:'universe mis
   const canon={universe:u.id,rev:u.rev||0,mode:{types:modes,start:{ch,order:0},takeover:who,player,startAge:o.startAge==null?null:+o.startAge},pov:who&&!pov.who?Object.assign(pov,{who}):pov,
     position:{ch,order:0},rules,locks:[],exceptions:[],events:{},fates:{},relationships:[],hist:[]};
   if(rom)canon.romance=Object.assign({pref:'any',pacing:'natural'},rom);
+  /* Initial locks, approved exceptions, fates and foreknowledge, all checked against the universe. */
+  const evIds=new Set(arr(u.events).map(e=>e.id)),recIds=new Set(arr(u.records).map(r=>r.id)),chIds=new Set(Object.keys(u.chars||{}));
+  for(const l of arr(o.locks)){if(!l||!['char','event'].includes(l.kind))return{ok:false,reason:'locks need kind char or event'};if(!(l.kind==='char'?chIds:evIds).has(l.id))return{ok:false,reason:'unknown '+l.kind+' '+l.id};canon.locks.push({kind:l.kind,id:l.id})}
+  let xi=0;for(const x of arr(o.exceptions)){if(!x||!evIds.has(x.target)||!String(x.text||'').trim())return{ok:false,reason:'exceptions need a known event target and text'};canon.exceptions.push({id:'x'+(++xi),target:x.target,text:String(x.text).trim().slice(0,500),approved:true,t:0})}
+  for(const [cid,t] of Object.entries(o.fates||{})){if(!chIds.has(cid))return{ok:false,reason:'unknown character '+cid};if(!['preserve','adapt','protected','free'].includes(t))return{ok:false,reason:'fate for '+cid+' must be preserve, adapt, protected or free'};canon.fates[cid]={target:t}}
+  const fk=arr(o.foreknowledge);for(const id of fk)if(!evIds.has(id)&&!recIds.has(id))return{ok:false,reason:'unknown foreknowledge '+id};if(fk.length)canon.mode.inherit={memories:'canon-up-to-start',foreknowledge:fk.slice()};
   const X=o.crossover;if(X&&arr(X.with).length){canon.universes=[{id:u.id,role:'primary'}].concat(arr(X.with).filter(id=>id&&id!==u.id).map(id=>({id,role:'secondary'})));canon.link=X.link||'merged';canon.powers=arr(X.powers);if(!modes.includes('crossover'))canon.mode.types=modes.concat(['crossover'])}
-  return{ok:true,reason:null,canon,summary:{universe:u.name||u.id,modes:canon.mode.types,start:ch,player:player.name,takeover:who?((u.chars[who]||{}).name||who):null,pov:canon.pov.mode,crossover:canon.universes?canon.universes.map(x=>x.id):null,locked:Object.keys(rules).filter(k=>rules[k]==='locked')}}}
+  return{ok:true,reason:null,canon,summary:{locks:canon.locks.length,exceptions:canon.exceptions.length,fates:Object.keys(canon.fates).length,foreknowledge:fk.length,universe:u.name||u.id,modes:canon.mode.types,start:ch,player:player.name,takeover:who?((u.chars[who]||{}).name||who):null,pov:canon.pov.mode,crossover:canon.universes?canon.universes.map(x=>x.id):null,locked:Object.keys(rules).filter(k=>rules[k]==='locked')}}}
 
 root.SFFan=Object.freeze({slug,hash,ids,splitChapters,candidateNames,indexSource,emptyUniverse,mergeImport,RULE_KEYS,defaults,need,evaluate,impact,cycles,ruleFor,search,
   knows,identity,relationships,relVisibleTo,isReal,ageAt,romanceAllowed,rank,recordCompetition,setRomance,upgradePreview,upgrade,promote,demote,crossover,powerRule,knowsX,uOfId,newCanon,MODES:Object.freeze(Object.keys(MODE_PRESETS)),setRule,lock,exception,setFate,eventStatus,setMode,setPosition,setPOV,setRelationship,undo,canonFor,check,validate,exportStory,restorePreview});

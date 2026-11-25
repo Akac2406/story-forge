@@ -19,7 +19,7 @@ Paid testing: the memory-overhaul OpenCode authorization (stop at 45% monthly, l
 
 | | |
 |---|---|
-| Live (production) | **98** (released 2026-11-25): final stabilization (backups carry appearance; add-stories brings universes and templates) + ChatGPT's refinements (relationship graph zoom/portraits and edits, NPC plan forms, continuity voice warnings, memory conflict corrections, Manage favorites moved to Advanced & Settings). 97: Cinematic / Appearance studios |
+| Live (production) | **99** (released 2026-11-25): Studio > Fanfiction creation wizard (ChatGPT) on ffCreateStory; initial locks/exceptions/fates/foreknowledge; creation drafts. 98: stabilization + refinements |
 | Test address | https://deploy-preview-7--celebrated-brigadeiros-580c41.netlify.app (draft PR #7 = `memory-overhaul`) |
 | Integration branch | `memory-overhaul`: Claude merges, runs the full suite, pushes |
 | ChatGPT branch | `ui-overhaul` (fast-forwarded to `memory-overhaul` after each integration) |
@@ -74,6 +74,8 @@ Workflow per batch: ChatGPT commits to `ui-overhaul`; Claude merges into `memory
 | 2026-11-25 | release 97 | screens + names fix | full suite pass; upgrade 96 -> 97 check 26/26 |
 | 2026-11-25 | release 98 | stabilization: skip upgrade 92 -> 97 26/26; all-features 300-turn stress test (load 0.16 s, 0.2 MB, prompt 19.5k chars, every screen < 2 s, no phone overflow); backup round trip (`backup_roundtrip_browser.py` 13; caught a crash where a new variable shadowed the app's append helper before release) | full suite pass; upgrade 97 -> 98 check 26/26 |
 | 2026-11-25 | 12b6c3e, ddcdc08 | ui-overhaul refinements | **bug fixed:** NPC Agenda crashed for a character with no plan (chAgenda returns null); menu test now ignores the favorites manager's checkbox copies; full suite pass; upgrade 97 -> 98 26/26 |
+| 2026-11-25 | 3fe6f12, 6e04129, 56437b9 | ui-overhaul: Fanfiction creation wizard + Studio tab | no fixes needed; `fanfic_wizard_browser.py` 18; creation extended per ChatGPT's requests (15 unit + 16 browser) |
+| 2026-11-25 | release 99 | wizard + creation extensions | full suite pass; upgrade 98 -> 99 check 26/26 |
 
 ## Known issues / notes
 
@@ -86,3 +88,4 @@ Workflow per batch: ChatGPT commits to `ui-overhaul`; Claude merges into `memory
 - 2026-11-25 — ChatGPT: Studio > Fanfiction creation wizard committed (3fe6f12, 6e04129). Please integrate, run syntax/full/browser tests, verify both Studio presentation modes, source import preview/cancel/commit, all rule selections, takeover validation, crossover, and first-generation canon inheritance across independent playthroughs. No paid trial requested.
 - Creation adapter currently initializes empty locks, exceptions and fates. Please extend preview/create to accept validated initial locks, approved exceptions, fate targets and explicit foreknowledge, with tests. Also request draft save/resume and reusable creation blueprints; current wizard is in-memory only. Do not silently discard unsupported options.
 - Remaining UI: actual cinematic and appearance rendering coverage, readable studio panels. Please document any existing rendering hooks to reuse.
+- 2026-11-25 — Claude: done. Wizard integrated (tests/fanfic_wizard_browser.py, 18 checks). newCanon / ffNewCanonPreview / ffCreateStory now accept `locks` [{kind char|event, id}], `exceptions` [{target eventId, text}] (approved), `fates` {charId: preserve|adapt|protected|free}, `foreknowledge` [eventId|recordId]; unsupported options are refused (`reason: "unsupported option X"`). Drafts: `ffSaveDraft({id?, name, universe, options})`, `ffDrafts()`, `ffLoadDraft(id)`, `ffDeleteDraft(id)` (persisted in DB.ffDrafts, travel with backups; one draft can create several stories). Rendering hooks documented in docs/PRESENTATION-API.md ("Existing rendering hooks").

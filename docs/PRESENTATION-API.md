@@ -34,3 +34,19 @@ Scopes: `"global"`, `"mobile"`, `"desktop"`, `"story"` (this playthrough's story
 | `apExportPreset(id)` → `{format:"story-forge-appearance", version:1, name, settings}`; `apImportPreview(data)` → `{ok, issues, name, settings}` (unknown keys ignored and reported); `apImport(data)` saves it as a preset |
 
 Tests: `tests/presentation_engine_unit.mjs` (26), `tests/presentation_app_browser.py` (24).
+
+## Existing rendering hooks to reuse (for the rendering work)
+
+These already exist; extend them rather than adding parallel renderers.
+
+| Hook | Where | What it does |
+|---|---|---|
+| `SFVisualV48.apply()` | visual-customization-v48.js | Resolves global → story → device settings and writes CSS custom properties on `<html>`: `--bg --card --card2 --accent --accent2 --border --hdr --grad --text --muted --onacc --dlg --ub --ubb --ubt --em` and `color-scheme`; sets `document.documentElement.dataset.sfDesign`, `sfLayout`, `sfFormat`, `sfMotion`, `sfThemeTreatment`, `sfPlay`. Style new appearance keys (icons, spacing, radius, borders, nav, panel, transparency, contrast) through more custom properties / `data-sf-*` attributes set in the same place, so every screen picks them up. Call `SFVisualV48.reload()` after `ap*` writes (the adapters already do). |
+| `applyLook()` | index.html | Applies the Settings look (font, line spacing, `DB.theme`, `DB.uiLayout`); runs before v48. |
+| `SFCinematicV49.decorate()` | cinematic-ui-v49.js | Adds cinematic framing to the open story; sets `dataset.sfMotion`. The natural place to read `cvState(se)` (layout, lighting, overlay, transition, dialogue box, reveal, reduced motion). |
+| `SFScenesV54.readerPreset(se)` | cinematic-scenes-v54.js | Scene background, caption and portrait for a playthrough (the source `cvScene` falls back to). `exportPresets/importPresets` already travel with backups. |
+| `SFCinematicV53.open()` | cinematic-profiles-v53.js | Visual-novel profile preferences (`sf-v53-vn-preferences`). |
+| `paintLast(se, text)` | index.html | Repaints the reply being streamed; hook text reveal (typewriter / fade-in) here so it works while streaming. |
+| `illustratedReader()` | index.html | True when the illustrated reader layout is on; gates the illustrated story view. |
+
+Reduced motion: honour both `apState(se).reducedMotion` / `motion:'none'` and `cvState(se).settings.reducedMotion` (the engine already turns transitions and moving overlays off) as well as the system `prefers-reduced-motion`.
