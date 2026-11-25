@@ -78,3 +78,5 @@ html[data-sf-cv-overlay=embers] #log .turn.ai{background-image:radial-gradient(#
 html[data-sf-cv-overlay=petals] #log .turn.ai{background-image:radial-gradient(ellipse at center,#ff99bb55 1px,transparent 4px);background-size:33px 43px}
 @keyframes sf-cv-fade{from{opacity:.65}to{opacity:1}}
 html[data-sf-cv-reveal=fade-in] #log .sf-cv-stream{animation:sf-cv-fade .2s ease-out}
+
+.sf-readable{display:grid;gap:6px;min-width:0;overflow-wrap:anywhere}.sf-readable-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:8px;padding:5px 0;border-bottom:1px solid var(--border)}.sf-readable-row strong{font-size:.85em;color:var(--muted)}.sf-readable details{padding:6px;border:1px solid var(--border);border-radius:6px}.sf-readable details>.sf-readable{margin-top:8px}.sf-readable summary{overflow-wrap:anywhere}
