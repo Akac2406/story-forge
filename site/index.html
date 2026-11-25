@@ -2555,7 +2555,8 @@ function menuSheet(se,st){closeSheet(true);const ends=ed(se,st),fo=foundOf(st),n
       drow("Save money",()=>saverSheet(se,st),SAVER[DB.saver||0][0]),
       chk("Show what each reply cost",DB.cost!==false,v=>{DB.cost=v;save()})
     )));
-  ap(document.body,bg)}
+  ap(document.body,bg);window.SFFanUI?.polishMenu?.(bg,se)}
+
 const SAVER=[["Full detail","Sends the most canon notes, memories and past turns."],["Recommended","Leaner prompts with little loss: fewer old turns, notes and memories each turn."],["Maximum","The leanest prompts. Also stops tracking people and goals."]];
 function cheapId(){if(isOC())return OC_MODEL;let best="",bc=Infinity;DB.modes.forEach(m=>{const p=DB.price&&DB.price[m.id];if(m.id&&p){const c=4500*p[0]+650*p[1];if(c<bc){bc=c;best=m.id}}});return best||DB.modes[0].id||(DB.modes[DB.mode]||DB.modes[0]).id}
 function tokEst(se,st){const mid=(DB.modes[DB.mode]||DB.modes[0]).id,k=/^anthropic\//.test(mid)?1.35:1,p=DB.price&&DB.price[mid];
