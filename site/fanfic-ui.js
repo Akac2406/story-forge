@@ -211,3 +211,26 @@ function creator(se){
 }
 Object.assign(window.SFFanUI,{creator});
 })();
+
+(function(){
+"use strict";
+const btn=(text,onclick)=>h("button",{text,onclick}),panel=(...kids)=>h("div",{class:"ff-panel"},...kids);
+function cinema(se){window.SFFanUI.studioShell(se,"Cinematic / Visual Novel",(b,apply)=>{
+ const v=cvState(se),s=v.settings,scene=cvScene(se),cast=cvCast(se);
+ const choose=(key,values)=>fld(key,sel(s[key],values.map(x=>typeof x==="string"?[x,x]:[x.id,x.name]),x=>apply(()=>cvSet(se,{[key]:x}))));
+ const number=(key,min,max)=>fld(key,h("input",{type:"number",min,max,value:s[key],onchange:e=>apply(()=>cvSet(se,{[key]:Number(e.target.value)}))}));
+ const toggle=k=>chk(k,!!s[k],x=>apply(()=>cvSet(se,{[k]:x})));
+ b.append(panel(h("h3",{text:"Reader presentation"}),choose("layout",cvLayouts()),...["nameplate","autoAdvance","fullscreen","hideUI","reducedMotion"].map(toggle),choose("dialogueBox",["classic","minimal","parchment","glass","comic","terminal"]),choose("narration",["plain","italic","boxed","centered"]),choose("textReveal",["instant","typewriter","fade-in"]),number("revealSpeed",5,120),number("autoDelay",1,30)));
+ b.append(panel(h("h3",{text:"Scene presets"}),...cvPresets().map(p=>btn(p.name,()=>apply(()=>cvApplyPreset(se,p.id))))));
+ const lighting=["neutral","dawn","day","dusk","night","candle","storm","neon","underwater"],overlay=["none","rain","snow","fog","embers","petals","film-grain","vignette","scanlines"],transition=["none","fade","dissolve","slide","wipe","flash"];
+ const bg=h("input",{value:scene.background||"",placeholder:"Artwork reference"}),caption=h("textarea",{value:scene.caption||"",rows:2});
+ const url=cvArt(se,scene.background);
+ b.append(panel(h("h3",{text:"Scene artwork"}),url?h("img",{src:url,alt:"Current scene",style:"width:100%;max-height:220px;object-fit:contain"}):null,fld("Background reference",bg),fld("Caption",caption),btn("Save scene artwork",()=>apply(()=>cvSetScene(se,{background:bg.value||null,caption:caption.value}))),...Object.entries({lighting,overlay,transition}).map(([k,values])=>fld(k,sel(scene[k]||s[k],values.map(x=>[x,x]),x=>apply(()=>cvSetScene(se,{[k]:x})))))));
+ b.append(h("h3",{text:"Cast presentation"}),...Object.entries(cast||{}).map(([name,c])=>{
+ const n=c.name||name,ref=c.portrait||"cast:"+n,src=cvArt(se,ref),portrait=h("input",{value:ref}),scale=h("input",{type:"number",min:0.5,max:1.5,step:0.1,value:c.scale??1});
+ return panel(h("b",{text:n}),src?h("img",{src,alt:n,style:"width:96px;height:120px;object-fit:contain"}):null,chk("Visible",c.visible!==false,x=>apply(()=>cvSetCharacter(se,n,{visible:x}))),fld("Expression",sel(c.expression||"neutral",["neutral","happy","sad","angry","surprised","afraid","thoughtful","smug","tired","determined"].map(x=>[x,x]),x=>apply(()=>cvSetCharacter(se,n,{expression:x})))),fld("Position",sel(c.position||"center",["far-left","left","center","right","far-right","offscreen"].map(x=>[x,x]),x=>apply(()=>cvSetCharacter(se,n,{position:x})))),fld("Scale",scale),fld("Portrait reference",portrait),btn("Save portrait and scale",()=>apply(()=>cvSetCharacter(se,n,{portrait:portrait.value,scale:Number(scale.value)}))));
+ }));
+ b.append(btn("Reset presentation only",()=>{if(confirm("Reset cinematic presentation? Story content is unchanged."))apply(()=>cvReset(se))}));
+})}
+Object.assign(window.SFFanUI,{cinema});
+})();
