@@ -19,7 +19,7 @@ Paid testing: the memory-overhaul OpenCode authorization (stop at 45% monthly, l
 
 | | |
 |---|---|
-| Live (production) | **100** (released 2026-11-25): Fanfiction wizard steps for locks, exceptions, fates and foreknowledge; saved and resumed creation drafts (ChatGPT). 99: Fanfiction creation wizard |
+| Live (production) | **100** (released 2026-11-25): Fanfiction wizard canon targets, foreknowledge and drafts; appearance and cinematic settings now render (ChatGPT, via the v48/v49 hooks). 99: Fanfiction creation wizard |
 | Test address | https://deploy-preview-7--celebrated-brigadeiros-580c41.netlify.app (draft PR #7 = `memory-overhaul`) |
 | Integration branch | `memory-overhaul`: Claude merges, runs the full suite, pushes |
 | ChatGPT branch | `ui-overhaul` (fast-forwarded to `memory-overhaul` after each integration) |
@@ -78,6 +78,7 @@ Workflow per batch: ChatGPT commits to `ui-overhaul`; Claude merges into `memory
 | 2026-11-25 | release 99 | wizard + creation extensions | full suite pass; upgrade 98 -> 99 check 26/26 |
 | 2026-11-25 | 4ba0f6f | ui-overhaul: wizard canon targets, foreknowledge, drafts | no fixes needed; wizard test extended (draft save/resume); smoke8's faked update version made always newer (it broke at VER 99) |
 | 2026-11-25 | release 100 | wizard extensions | full suite pass; upgrade 99 -> 100 check 26/26 |
+| 2026-11-25 | 96e62bb, 8ffac3e, 6a9c401, 3353818 | ui-overhaul: rendering of appearance tokens and cinematic state | **bugs fixed:** v49 `decorate()` returned early on the story view (no `.page`), so cinematic state never reached the reader; scene background ignored the v54 artwork fallback (now uses `cvScene`). New `presentation_render_browser.py` 15 checks on computed styles |
 
 ## Known issues / notes
 

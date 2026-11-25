@@ -3,8 +3,8 @@
 const h=(tag,cls,txt)=>{const x=document.createElement(tag);if(cls)x.className=cls;if(txt)x.textContent=txt;return x};
 function decorate(){
  const page=document.querySelector('#app>.page'),tabs=document.querySelector('#app>.tabs');
- if(!page)return;
- if(tabs&&tabs.querySelector('button.on')?.textContent.trim()==='Discover'&&!page.querySelector('.sf49-hero')){
+ /* The Discover hero needs the home page; the reader part below runs on the story view, which has no .page. */
+ if(page&&tabs&&tabs.querySelector('button.on')?.textContent.trim()==='Discover'&&!page.querySelector('.sf49-hero')){
   const hero=h('section','sf49-hero');hero.setAttribute('aria-label','Story Forge featured');
   hero.append(h('span','sf49-kicker','YOUR UNIVERSE · YOUR STORY'),h('h2','','Infinite worlds. One imagination.'),h('p','','Explore original adventures, create your own worlds, and return to the stories that matter to you.'));
   const actions=h('div','sf49-hero-actions'),start=h('button','sf49-primary','Create a world'),browse=h('button','','Browse stories');
@@ -15,7 +15,7 @@ function decorate(){
  if(typeof view!=='undefined'&&view.n==='chat'){
   const se=DB.sessions.find(s=>s.id===view.id),root=document.documentElement;
   if(se&&typeof cvState==='function'){
-   const cv=cvState(se),c=cv.settings,scene=cv.scene||{},reduced=c.reducedMotion||root.dataset.sfReducedMotion==='true'||matchMedia('(prefers-reduced-motion: reduce)').matches;
+   const cv=cvState(se),c=cv.settings,scene=(typeof cvScene==='function'?cvScene(se):cv.scene)||{},reduced=c.reducedMotion||root.dataset.sfReducedMotion==='true'||matchMedia('(prefers-reduced-motion: reduce)').matches;
    for(const [k,v] of Object.entries({layout:c.layout,lighting:scene.lighting||c.lighting,overlay:scene.overlay||c.overlay,dialogue:c.dialogueBox,narration:c.narration,reveal:reduced&&c.textReveal==='typewriter'?'fade-in':c.textReveal,transition:reduced?'none':scene.transition||c.transition}))root.dataset['sfCv'+k[0].toUpperCase()+k.slice(1)]=v||'none';
    root.dataset.sfCvReduced=String(!!reduced);
    const log0=document.querySelector('#log'),ref=scene.background,src=ref&&typeof cvArt==='function'?cvArt(se,ref):null;
