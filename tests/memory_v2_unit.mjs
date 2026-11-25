@@ -51,4 +51,32 @@ const before = JSON.stringify(store); M.apply(store, ed); ok(JSON.stringify(stor
 ok(M.query(store, { asOf: 3, layer: 'episodic' }).map(r => r.id).join() === 'e1', 'asOf: only events up to that turn');
 ok(M.query(store, { asOf: 2, layer: 'semantic' }).every(r => r.id !== 'f1'), 'asOf: a fact learned at turn 3 is not known at turn 2');
 ok(M.history(ed, 'e1').length === 1 && M.history(ed, 'e1')[0].op === 'edit', 'history lists operations per record');
+
+// ---- temporal: supersede keeps history, current vs asOf
+{ const f2 = JSON.parse(JSON.stringify(fx)); f2.mem.facts.push({ id: 'f2', text: 'Ledger entry 12 was corrected by the clerk', since: 6 });
+  const st2 = M.build(f2); const ed2 = M.supersede(M.emptyEdits(), 'f1', 'f2', 6); const v5 = M.apply(st2, ed2);
+  const old = v5.records.find(r => r.id === 'f1'), nw = v5.records.find(r => r.id === 'f2');
+  ok(old.until === 6 && old.expiredBy === 'f2' && !old.deleted && nw.supersedes.includes('f1'), 'supersede closes the old fact at turn 6, keeps it, links the new one');
+  ok(M.query(v5, { layer: 'semantic', current: true }).every(r => r.id !== 'f1'), 'current-only query drops the superseded fact');
+  ok(M.query(v5, { layer: 'semantic', asOf: 4 }).some(r => r.id === 'f1') && !M.query(v5, { layer: 'semantic', asOf: 4 }).some(r => r.id === 'f2'), 'asOf 4 shows the old fact, not the new one');
+  ok(v5.records.find(r => r.id === 'f1').storyFrom === 3, 'facts carry storyFrom'); }
+// ---- retrieval
+{ const hits = M.retrieve(store, { text: 'Who forged the ledger entry?', present: ['Rae'], where: 'harbor office', t: 6 });
+  ok(hits.length > 0 && hits.slice(0, 3).some(h => h.record.id === 'f1' || h.record.id === 'e1'), 'retrieval ranks ledger memories first for a ledger question');
+  ok(hits.every(h => !h.record.deleted), 'retrieval skips deleted');
+  ok(M.retrieve(store, { text: 'ledger', t: 2 }).every(h => h.record.id !== 'f1'), 'retrieval respects time: fact learned at turn 3 not used at turn 2');
+  const small = M.retrieve(store, { text: 'ledger', max: 120 }); ok(small.reduce((a, h) => a + h.record.text.length + 20, 0) <= 120, 'retrieval stays within the character budget');
+  ok(JSON.stringify(M.retrieve(store, { text: 'ledger safe', present: ['Dale'] })) === JSON.stringify(M.retrieve(store, { text: 'ledger safe', present: ['Dale'] })), 'retrieval is deterministic');
+  const txt = M.render(hits); ok(/Known facts:|Past events:/.test(txt) && txt.includes('[turn 3]'), 'render groups by layer with turn tags'); }
+// ---- contradictions
+{ const f3 = JSON.parse(JSON.stringify(fx)); f3.dead = ['Dale']; f3.mem.facts.push({ id: 'f3', text: 'Ledger entry 12 is not forged', since: 5 });
+  const c = M.contradictions(M.build(f3));
+  ok(c.some(x => x.kind === 'dead-acts' && x.ids.includes('e2')), 'flags a dead character acting');
+  ok(c.some(x => x.kind === 'fact' && x.ids.includes('f1') && x.ids.includes('f3')), 'flags two current facts that say opposite things');
+  ok(M.contradictions(store).length === 0, 'no false alarms on the clean fixture'); }
+// ---- NPC goals and schedules
+{ const f4 = JSON.parse(JSON.stringify(fx)); f4.npcs = { Dale: { goals: ['Hide the debt'], schedule: [{ day: 0, where: 'harbor office', doing: 'working' }, { day: 3, where: 'smugglers cove', doing: 'paying the smugglers' }] } };
+  const v6 = M.build(f4);
+  ok(M.npcState(v6, 1)[0].where === 'harbor office' && M.npcState(v6, 3)[0].doing === 'paying the smugglers', 'NPC schedule advances with story days only');
+  ok(M.npcState(v6, 5)[0].goals[0] === 'Hide the debt', 'NPC goals carried on the character'); }
 console.log(`memory v2: ${n} checks passed`);

@@ -7,12 +7,12 @@ fails = []; errs = []
 def ok(c, m):
     print(("PASS " if c else "FAIL ") + m)
     if not c: fails.append(m)
-N = {"n": 0}
+N = {"n": 0}; LAST = {"sys": ""}
 def model(route):
     b = json.loads(route.request.post_data)
     if not b.get("stream"):
         return route.fulfill(status=200, content_type="application/json", body=json.dumps({"choices": [{"message": {"content": "- ok"}, "finish_reason": "stop"}]}))
-    N["n"] += 1
+    N["n"] += 1; LAST["sys"] = b["messages"][0]["content"] if isinstance(b["messages"][0]["content"], str) else ""
     txt = ('Rae | "Reply %d."\n\n[[META]]\nEVENTS: 3 | reveal | Rae | harbor office | Rae finds clue %d | none\nLEARNED: Rae: clue %d matters (she saw it)\nSCENE: harbor office | Rae | night\nENDING: none') % (N["n"], N["n"], N["n"])
     route.fulfill(status=200, content_type="text/event-stream", body="data: " + json.dumps({"choices": [{"delta": {"content": txt}}]}) + "\n\ndata: " + json.dumps({"choices": [{"delta": {}, "finish_reason": "stop"}]}) + "\n\ndata: [DONE]\n\n")
 SEED = {"key": "sk-or-test", "migrated": True, "modes": [{"n": "Swift", "id": "a/b", "d": ""}], "mode": 0, "chars": [], "found": {},
@@ -65,6 +65,15 @@ try:
     ok(h[:1] == ["edit"] and "delete" in h and h[-1] == "restore", f"memHistory gives the full edit history: {h}")
     turns = pg.evaluate("memQuery(DB.sessions[0],{layer:'episodic'}).map(r=>r.t)")
     lo = min(turns); ok(all(r <= lo for r in pg.evaluate(f"memQuery(DB.sessions[0],{{layer:'episodic',asOf:{lo}}}).map(r=>r.t)")), "asOf hides memories from later turns")
+    # recall section in the prompt: off by default, on when chosen
+    import re as _re
+    n0 = N["n"]; pg.fill("#input", "I wait."); pg.click("button[aria-label='Send']"); pg.wait_for_selector(f"text=Reply {n0+1}."); pg.wait_for_timeout(300)
+    ok("Relevant memories from earlier" not in LAST["sys"], "recall is off by default (no change for existing stories)")
+    pg.evaluate("DB.sessions[0].memRecall=true;save()")
+    calls_before = N["n"]
+    pg.fill("#input", "Where is the clue?"); pg.click("button[aria-label='Send']"); pg.wait_for_selector(f"text=Reply {calls_before+1}."); pg.wait_for_timeout(300)
+    ok(LAST["sys"] and "Relevant memories from earlier" in LAST["sys"] and "clue" in LAST["sys"].split("Relevant memories from earlier",1)[1][:1500], "with recall on, the prompt includes relevant past memories")
+    pg.evaluate("DB.sessions[0].memRecall=false;save()")
     # conflicts list + resolve
     pg.evaluate("DB.sessions[0].memDiag=(DB.sessions[0].memDiag||[]).concat([{t:3,rp:{ok:true,conflicts:['scene: narrator said kitchen, step said harbor office']}}])")
     c = pg.evaluate("memConflicts(DB.sessions[0])")

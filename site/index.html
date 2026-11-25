@@ -1590,6 +1590,8 @@ function buildMsgs(se,st,hist,action,days=0){if(se.sim)st=Object.assign({},st,{t
   const cn=Object.keys(se.cast||{}).sort((a,b)=>(se.cast[a].u||0)-(se.cast[b].u||0)).slice(-[40,25,12][DB.saver||0]);if(cn.length)s+="\n\nCharacters in this story (keep them consistent):\n"+cn.map(k=>{const c=se.cast[k];return"- "+k+": "+[c.r,c.l,(c.t||[]).join(", "),c.a?"with the player: "+c.a:"",c.b!=null?"bond with the player "+c.b+"/100":""].filter(Boolean).join("; ")}).join("\n");
   add("characters",s,0,4);s="";
   if(se.memPrompt&&memOn(se)&&!isC)add("who knows what",SFCanon.knowledge(se,window.SFMemory),0,3);
+  if(se.memRecall&&memOn(se)&&!isC&&window.SFMem2)try{const rt=se.turns.slice(-3).map(x=>x.text||"").join(" "),sc=(se.mem&&se.mem.scene)||{},hits=SFMem2.retrieve(memView(se),{text:rt,present:sc.who||[],where:sc.where||"",t:se.turns.length,max:[6000,4000,2500][DB.saver||0]});
+    if(hits.length)add("recalled memories","\n\nRelevant memories from earlier in this story (most useful first). Stay consistent with them; facts listed are true as of now:\n"+SFMem2.render(hits),0,3)}catch(e){console.warn("memory recall failed",e)}
   if(se.wn)s+="\n\nFan wiki notes on people, places and terms in this scene. Treat them as accurate canon for names, looks, personalities, abilities and relationships. Wiki pages also describe events from later in the story, so never reveal or act on anything that has not happened yet at the current point of the timeline:\n"+se.wn;
   add("wiki notes",s,0,6);s="";
   if(se.rp)s+="\n\nPassages from the source text, picked because they relate to this scene. The number shows how far through the text each one comes. Use them for facts, names, places and how people speak. Do not copy them out word for word, and do not reveal events from later in the text before the story reaches them:\n"+se.rp;
@@ -3312,6 +3314,7 @@ function memBetaSheet(se,st){const box=h("div"),m=se.mem,nEv=m?(m.events||[]).fi
        fld("Memory notes",sel(se.memExtract===true?"step":se.memExtract==="hybrid"?"hybrid":"off",[["off","Narrator writes them (default)"],["hybrid","Narrator writes them, a quick check fills gaps"],["step","A separate quick step writes them"]],v=>{se.memExtract=v==="step"?true:v==="hybrid"?"hybrid":false;save()})),
        h("p",{class:"sub",text:"The quick check and the separate step each add one small request per reply, in the background (about 3 seconds)."}),
        chk("Let the narrator use story memory: who knows what, where the scene is, and recent key events (in testing)",!!se.memPrompt,v=>{se.memPrompt=v;save()}),
+       chk("Recall relevant memories in each message: past events, facts and relationships that fit the scene (in testing; no extra requests)",!!se.memRecall,v=>{se.memRecall=v;save()}),
        h("p",{class:"sub",text:"When this is on, characters only act on what the memory says they know. No extra requests; it adds a short section to each message."}),
       rp.length?h("p",{class:"sub",text:"Filled in "+rpOk+" of "+rp.length+" replies that left it out."}):null,
       h("div",{class:"row"},h("button",{text:"Turn story memory off",onclick:()=>{se.memv2=false;save();closeSheet(true);rerender();toast("Story memory is off. What it remembered is kept if you turn it back on.")}})))}
