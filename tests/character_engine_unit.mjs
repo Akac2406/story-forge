@@ -9,7 +9,7 @@ const ev = [
   { id: 'e3', t: 6, kind: 'betrayal', who: ['Dale', 'Rae'], text: 'Dale betrays Rae to the smugglers' },
   { id: 'e4', t: 7, kind: 'action', who: ['Rae'], text: 'Rae walks home alone' },
   { id: 'e5', t: 8, kind: 'action', who: ['June', 'Rae'], text: 'June helps Rae bandage her arm and thanks her' }];
-let r = C.evolve([], ev);
+let r = C.evolve([], ev);  // evolve = rebuild
 const get = (a, b) => r.rels.find(x => x.id === 'rel:' + a + '>' + b) || {};
 ok(get('Dale', 'Rae').trust > 0 && get('Dale', 'Rae').history[0].why.includes('saved'), 'being saved raises the rescued character\'s trust, with evidence');
 ok(get('Rae', 'Dale').trust < 0 && get('Rae', 'Dale').history.some(h => h.why.includes('betrayal')), 'lies and betrayal lower the victim\'s trust in the actor');
@@ -39,4 +39,30 @@ ok(C.checkVoice(mira, 'Mira | "Yeah, gonna be fine, dude."').some(x => x.text.in
 ok(C.checkVoice(mira, '"STOP! NOW! GET OUT!" Mira shouted.').some(x => x.text.includes('shouting')), 'flags shouting from a patient character');
 ok(C.checkVoice(mira, 'Mira | "Stand straighter, Kael. Again."').length === 0, 'in-character line passes');
 ok(C.checkVoice(mira, 'Kael | "Yeah, gonna be fine, dude."').length === 0, 'other characters\' lines are not attributed to her');
+
+// ---- refinements (ChatGPT review): regeneration safety, player base, familiarity/rivalry, journals, agendas, growth/mood
+const FX = JSON.parse(fs.readFileSync(path.join(here, 'fixtures/characters.json'), 'utf8'));
+let A = C.rebuild([], FX.events); const g = (x, a, b) => x.rels.find(r => r.id === 'rel:' + a + '>' + b) || {};
+const before = g(A, 'Rae', 'Dale').trust;
+const B = C.rebuild(A.rels, FX.events.filter(e => e.id !== FX.regenerate.removeEvent));
+ok(B.removed > 0 && g(B, 'Rae', 'Dale').trust === before + 15 && !g(B, 'Rae', 'Dale').history.some(h => h.event === 'e3'), 'regenerated-away event leaves no trace (trust rises back by the betrayal amount)');
+ok(g(A, 'Rae', 'Dale').familiarity > 0 && g(A, 'Dale', 'Rae').familiarity === g(A, 'Rae', 'Dale').familiarity, 'shared events build familiarity both ways');
+ok(C.rebuild([], [{ id: 'c1', t: 1, kind: 'action', who: ['Ari', 'Seo'], text: 'Ari outperforms Seo in the evaluation' }]).rels.find(r => r.id === 'rel:Seo>Ari').rivalry > 0, 'competition builds rivalry');
+const P = FX.playerBase, sb = C.setBase(A.rels, P.a, P.b, P.patch);
+ok(sb.applied && g(sb, 'Rae', 'June').trust === 70 && g(sb, 'Rae', 'June').kinds.includes('friend') && sb.prev.id === 'rel:Rae>June', 'player-set value applied, previous kept for undo');
+const sb2 = C.rebuild(sb.rels, FX.events); ok(g(sb2, 'Rae', 'June').trust === 70, 'player base survives a rebuild');
+ok(!C.setBase(A.rels, 'Rae', 'Rae', {}).applied && C.setBase(A.rels, 'Rae', 'June', { mood: 1 }).reason === 'unknown field mood', 'invalid player changes rejected');
+ok(C.label(g(A, 'Rae', 'Dale')) === 'hostile' || C.label(g(A, 'Rae', 'Dale')) === 'wary', 'labels reflect feelings: ' + C.label(g(A, 'Rae', 'Dale')));
+const V = M.build(FX.memory);
+const jj = C.journal(V, 'June', { player: 'Rae', rels: A.rels, npc: null }), roles = r => jj.filter(x => x.role === r);
+ok(roles('witnessed').length === 1 && roles('learned').some(x => x.text.includes('forged')) && roles('rumor').some(x => x.text.includes('leaving')) && roles('believes').some(x => x.text.includes('honest')), 'journal separates witnessed, learned, rumor and believes');
+ok(roles('feels').length >= 1 && roles('witnessed')[0].playerKnows === true && roles('rumor')[0].playerKnows === false, 'journal shows feelings and whether the player character knows each item');
+const ag2 = C.agenda(FX.npc, 0, 7);
+ok(ag2.goals[0].text === 'Hide the debt' && ag2.tensions.length === 1 && ag2.commitments[0].day === 9, 'agenda: goals by priority, competing goals, upcoming commitments');
+ok(C.journal(V, 'Dale', { npc: FX.npc }).some(x => x.role === 'intends'), 'journal includes intentions from the agenda');
+const id = FX.identity;
+ok(C.checkVoice(id, 'Mira | "Yeah, gonna be fine."', { developments: FX.developments })[0].kind === 'growth', 'recorded development turns a warning into growth');
+ok(C.checkVoice(id, '"STOP! NOW! GET OUT!" Mira shouted.', { mood: 'furious after the betrayal' })[0].kind === 'mood', 'a current mood explains shouting');
+ok(C.checkVoice(id, '"STOP! NOW! GET OUT!" Mira shouted.', {})[0].kind === 'voice', 'without explanation it stays an advisory voice warning');
 console.log(`character engine: ${n} checks passed`);
+

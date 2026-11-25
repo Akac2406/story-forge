@@ -1,0 +1,22 @@
+// Story Director engine (phase 12). Run: node tests/director_engine_unit.mjs
+import assert from 'node:assert/strict'; import fs from 'node:fs'; import vm from 'node:vm'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
+const here = path.dirname(fileURLToPath(import.meta.url)); const ctx = {}; ctx.globalThis = ctx; vm.createContext(ctx);
+vm.runInContext(fs.readFileSync(path.join(here, '../site/director-engine.js'), 'utf8'), ctx); const D = ctx.SFDirector; let n = 0; const ok = (c, m) => { assert.ok(c, m); n++; };
+const d = D.defaults(); ok(d.focus.mainPlot === 'high' && d.timeSkips === 'ask', 'defaults');
+const s1 = D.set(d, { dialogue: 'high', focus: { mystery: 'high' } }); ok(s1.applied && s1.settings.dialogue === 'high' && s1.settings.focus.mystery === 'high', 'set changes values');
+ok(!D.set(d, { dialogue: 'loud' }).applied && D.set(d, { focus: { romance: 'high' } }).reason === 'unknown focus romance' && D.set(d, {}).reason === 'unchanged', 'invalid or empty changes rejected');
+const narr = 'The fog rolled over the harbor and the lamps flickered. Ships creaked against the pier while gulls circled overhead in the cold air.';
+const talk = 'Rae | "We need to move." \nDale | "Not yet. Wait for the bell." \nRae | "Fine."';
+const ev = [{ t: 2, imp: 5, who: ['Rae'], kind: 'reveal' }, { t: 4, imp: 2, who: ['Dale'] }, { t: 6, imp: 2, who: ['Rae'], open: true }, { t: 8, imp: 1, who: ['Rae'], open: true }, { t: 9, imp: 1, who: ['Rae'], open: true }, { t: 10, imp: 1, who: ['Rae'], open: true }];
+const a1 = D.analyze({ replies: [narr, narr, narr, narr], events: ev, t: 20, important: ['Rae', 'June'] });
+ok(a1.dialogueShare < 10 && a1.turnsSincePlot === 9 && a1.neglected.join() === 'June' && a1.openThreads === 4, 'analysis: dialogue share, plot gap, neglected characters, open threads');
+const a2 = D.analyze({ replies: [talk, talk], events: ev, t: 3 }); ok(a2.dialogueShare > 60 && a2.turnsSincePlot === 1, 'analysis of a dialogue-heavy, recent-plot stretch');
+const g1 = D.guidance(s1.settings, a1);
+ok(g1.some(x => /main plot has not moved for 9 turns/.test(x)) && g1.some(x => /June/.test(x)) && g1.some(x => /more spoken dialogue/.test(x)) && g1.some(x => /Several threads are open/.test(x)), 'guidance closes the gaps: plot, neglected character, dialogue, threads');
+ok(g1.some(x => /Never skip time unless the player asks/.test(x)) && g1.length <= 6, 'time-skip rule always present; at most 6 lines');
+const quiet = D.set(d, { dialogue: 'low', humor: 'off', focus: { mainPlot: 'low' } }).settings;
+const g2 = D.guidance(quiet, Object.assign({}, a2, { humorShare: 50 }));
+ok(g2.some(x => /less dialogue/.test(x)) && g2.some(x => /avoid jokes/.test(x)) && g2.some(x => /main plot in the background/.test(x)), 'opposite settings give opposite guidance');
+ok(!D.guidance(d, { turnsSincePlot: 1, dialogueShare: 40, neglected: [], openThreads: 0, humorShare: 0, tensionShare: 40 }).some(x => /main plot|dialogue|attention/.test(x)), 'no nagging when the story already matches the settings');
+ok(D.block(d, a1).startsWith('STORY DIRECTOR (guidance, never override'), 'prompt block wording keeps the player in charge');
+console.log(`director engine: ${n} checks passed`);

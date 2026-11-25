@@ -1,0 +1,196 @@
+{
+ "note": "Living characters fixture (invented names). Used by tests/character_engine_unit.mjs; for UI development.",
+ "events": [
+  {
+   "id": "e1",
+   "t": 2,
+   "kind": "action",
+   "who": [
+    "Rae",
+    "Dale"
+   ],
+   "text": "Rae saves Dale from the falling crates"
+  },
+  {
+   "id": "e2",
+   "t": 4,
+   "kind": "action",
+   "who": [
+    "Dale",
+    "Rae"
+   ],
+   "text": "Dale lies to Rae about the ledger"
+  },
+  {
+   "id": "e3",
+   "t": 6,
+   "kind": "betrayal",
+   "who": [
+    "Dale",
+    "Rae"
+   ],
+   "text": "Dale betrays Rae to the smugglers"
+  },
+  {
+   "id": "e5",
+   "t": 8,
+   "kind": "action",
+   "who": [
+    "June",
+    "Rae"
+   ],
+   "text": "June helps Rae bandage her arm and thanks her"
+  },
+  {
+   "id": "e6",
+   "t": 9,
+   "kind": "action",
+   "who": [
+    "June",
+    "Dale"
+   ],
+   "text": "June argues with Dale about the debt"
+  }
+ ],
+ "regenerate": {
+  "removeEvent": "e3",
+  "note": "After regenerating reply 6, e3 no longer exists: Rae's trust in Dale must rise back by the betrayal amount."
+ },
+ "playerBase": {
+  "a": "Rae",
+  "b": "June",
+  "patch": {
+   "trust": 70,
+   "kinds": [
+    "friend"
+   ]
+  }
+ },
+ "memory": {
+  "mem": {
+   "events": [
+    {
+     "id": "e1",
+     "t": 2,
+     "kind": "action",
+     "who": [
+      "Rae",
+      "Dale"
+     ],
+     "wit": [
+      "June"
+     ],
+     "text": "Rae saves Dale"
+    },
+    {
+     "id": "e9",
+     "t": 3,
+     "kind": "action",
+     "who": [
+      "Dale"
+     ],
+     "wit": [],
+     "text": "Dale counts coins"
+    }
+   ],
+   "facts": [
+    {
+     "id": "f1",
+     "text": "The ledger is forged",
+     "since": 3
+    },
+    {
+     "id": "f2",
+     "text": "Dale might be leaving town",
+     "since": 4,
+     "conf": 0.3
+    },
+    {
+     "id": "f3",
+     "text": "The harbor master is honest",
+     "since": 1
+    }
+   ],
+   "chars": {
+    "June": {
+     "kernel": {
+      "core": "medic"
+     },
+     "state": {},
+     "knows": [
+      "f1",
+      "f2"
+     ],
+     "believes": [
+      "f3"
+     ]
+    },
+    "Rae": {
+     "kernel": {
+      "core": "deputy"
+     },
+     "state": {},
+     "knows": [
+      "f1"
+     ]
+    }
+   }
+  }
+ },
+ "npc": {
+  "name": "Dale",
+  "goals": [
+   {
+    "id": "g1",
+    "text": "Hide the debt",
+    "priority": 5,
+    "term": "long",
+    "conflictsWith": [
+     "g2"
+    ]
+   },
+   {
+    "id": "g2",
+    "text": "Win back Rae's trust",
+    "priority": 3,
+    "term": "short"
+   }
+  ],
+  "schedule": [
+   {
+    "day": 0,
+    "where": "harbor office",
+    "doing": "works late"
+   },
+   {
+    "day": 3,
+    "where": "smugglers cove",
+    "doing": "pays the smugglers"
+   },
+   {
+    "day": 6,
+    "where": "pier",
+    "doing": "waits for a ship"
+   },
+   {
+    "day": 9,
+    "where": "chapel",
+    "doing": "meets the priest"
+   }
+  ]
+ },
+ "identity": {
+  "name": "Mira Vell",
+  "speech": {
+   "tone": "formal",
+   "vocabulary": "precise"
+  },
+  "core": {
+   "personality": "strict, secretly kind",
+   "temperament": "patient"
+  }
+ },
+ "developments": [
+  "Over the winter Mira has grown more relaxed and less formal with her students"
+ ]
+}

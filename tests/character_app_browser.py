@@ -40,6 +40,22 @@ try:
     ag = pg.evaluate("chAgenda(DB.sessions[0],'Dale',0,3)")
     ok(ag["where"] == "cove" and ag["developments"], "NPC agenda advances with story days")
     pg.reload(); pg.wait_for_selector(".cta"); ok(len(pg.evaluate("DB.sessions[0].rel2")) == n0, "relationships saved")
+    r = pg.evaluate("chSetRelationship(DB.sessions[0],'Rae','Dale',{trust:50,kinds:['ally']})")
+    ok(r["applied"] and pg.evaluate("chRelationships(DB.sessions[0]).find(x=>x.id==='rel:Rae>Dale').trust") == 50, "player can set a relationship")
+    ok(pg.evaluate("chUndo(DB.sessions[0]).applied") and pg.evaluate("chRelationships(DB.sessions[0]).find(x=>x.id==='rel:Rae>Dale').trust") < 0, "undo restores it")
+    ok(not pg.evaluate("chSetRelationship(DB.sessions[0],'Rae','Rae',{}).applied"), "invalid change rejected")
+    # regeneration safety: regenerate the lie reply -> its relationship change disappears
+    t_before = pg.evaluate("chRelationships(DB.sessions[0]).find(x=>x.id==='rel:Rae>Dale').trust")
+    N["n"] = 0; pg.evaluate("go({n:'chat',id:'e1'})"); pg.wait_for_selector("#log")
+    pg.click("button[aria-label='Regenerate']"); pg.wait_for_timeout(1500)
+    rd = pg.evaluate("chRelationships(DB.sessions[0]).find(x=>x.id==='rel:Rae>Dale')")
+    ok(not any(h["event"] for h in rd["history"] if "lie" in str(h.get("why",""))) or rd["trust"] > t_before, f"regenerating the lie removes its effect (trust {t_before} -> {rd['trust']})")
+    # off-screen developments only when story time advances
+    ok(pg.evaluate("chAgendaLog(DB.sessions[0]).length") == 0, "no developments without story time passing")
+    pg.evaluate("DB.sessions[0].turns.filter(t=>t.role==='user').pop().worldDays=3;chAdvance(DB.sessions[0],DB.sessions[0].turns.filter(t=>t.role==='ai').pop());save()")
+    ok(any("pays the smugglers" in x["text"] for x in pg.evaluate("chAgendaLog(DB.sessions[0])")), "days passing logs Dale's off-screen development")
+    jr = [x["role"] for x in pg.evaluate("chJournal(DB.sessions[0],'Dale')")]
+    ok("did" in jr and "feels" in jr and "intends" in jr, f"journal: did, feels, intends ({sorted(set(jr))})")
     br.close()
 finally:
     srv.terminate()
