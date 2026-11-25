@@ -23,7 +23,7 @@ with sync_playwright() as p:
     pg.route("https://graphql.anilist.co/**",lambda r:r.fulfill(status=200,headers={"access-control-allow-origin":"*"},content_type="application/json",body='{"data":{"Page":{"media":[]}}}'));pg.route("https://openlibrary.org/**",lambda r:r.fulfill(status=200,headers={"access-control-allow-origin":"*"},content_type="application/json",body='{"docs":[]}'))
     pg.goto("http://127.0.0.1:8785/index.html");pg.wait_for_selector(".cta")
     pg.evaluate("()=>{localStorage.setItem('story-forge-v2',JSON.stringify({prov:'opencode',ocKey:'ock',ocProxy:'sf.example.workers.dev',migrated:true,modes:[{n:'Swift',id:'deepseek/deepseek-v4.1-flash',d:''}],mode:0}))}");pg.reload();pg.wait_for_selector(".cta")
-    pg.click("header >> text=Settings");pg.wait_for_selector("text=OpenRouter key (optional")
+    pg.click("header button[aria-label='Settings']");pg.wait_for_selector("text=OpenRouter key (optional")
     pg.click("button:has-text('Add a mode')");pg.wait_for_timeout(300);print('chk count:',pg.locator("label.chk:has-text('Run this mode on OpenRouter')").count(),'items:',pg.locator('.item').count());pg.locator("label.chk:has-text('Run this mode on OpenRouter instead')").last.click()
     pg.wait_for_function("document.querySelectorAll(\"input[placeholder='provider/model-id']\").length===1")
     pg.locator("input[placeholder='Name']").nth(1).fill("Canon");pg.fill("input[placeholder='provider/model-id']","google/gemini-3.1-pro")

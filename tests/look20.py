@@ -42,7 +42,7 @@ with sync_playwright() as p:
     pg.click("button[aria-label='Menu']");pg.click(".drow:has-text('Story formats')");pg.click(".sheet .chk:has-text('Status and quest') input");pg.click(".sheet .chk:has-text('Chapter title cards') input");pg.click(".sheethead >> text=Done")
     print("after turning off windows/title cards: win",pg.locator(".turn.ai .body .win").count(),"| title cards",pg.locator(".chbtn.tc").count())
     # themes and layout
-    pg.click("button.back");pg.click("text=Settings");pg.wait_for_selector("h2:text-is('Look')")
+    pg.click("button.back");pg.click("header button[aria-label='Settings']");pg.wait_for_selector("h2:text-is('Look')")
     for th in ["Paper","Ink","Moonlit","Ember","Sakura"]:
         pg.click(".opt:has-text('%s')"%th);time.sleep(.1)
     print("theme now:",pg.evaluate("document.documentElement.getAttribute('data-theme')"),"| bg:",pg.evaluate("getComputedStyle(document.body).backgroundColor"))

@@ -64,7 +64,7 @@ with sync_playwright() as p:
     # drawer row
     pg.click("button[aria-label='Menu']");print("drawer chapters row:",pg.locator(".drow:has-text('Chapters'):not(:has-text('Listen'))").inner_text().replace("\n"," "));pg.click(".drow:has-text('Chapters'):not(:has-text('Listen'))");pg.wait_for_selector(".sheet .sessbtn");pg.click(".sheethead >> text=Done")
     # settings: voice + version + update
-    pg.click("button.back");pg.click("text=Settings");pg.wait_for_selector("text=Reading aloud")
+    pg.click("button.back");pg.click("header button[aria-label='Settings']");pg.wait_for_selector("text=Reading aloud")
     print("voices:",pg.locator("label.fld:has-text('Voice') option").all_inner_texts(),"|",pg.locator("p.sub:has-text('version')").inner_text())
     pg.click("text=Check for update");pg.wait_for_selector("#toast.on");print("update toast:",pg.inner_text("#toast"))
     pg.route("**/index.html?v=*",lambda r:r.fulfill(status=200,content_type="text/html",body="<script>const VER=999999;</script>"))

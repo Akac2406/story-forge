@@ -12,6 +12,6 @@ with sync_playwright() as p:
     pg.wait_for_timeout(500)
     print("audioSession:",pg.evaluate("navigator.audioSession.type"),"| silent track playing:",pg.evaluate("SPK&&!SPK.paused"),"| spoke:",pg.evaluate("window.__spoke||0"))
     pg.evaluate("ttsStop()");print("after stop playing:",pg.evaluate("!SPK.paused"))
-    pg.click("header >> text=Settings");print("setting shown:",pg.locator("text=Read aloud through the speaker").count())
+    pg.click("header button[aria-label='Settings']");print("setting shown:",pg.locator("text=Read aloud through the speaker").count())
     br.close()
 srv.terminate();print("ERRORS:",errs)

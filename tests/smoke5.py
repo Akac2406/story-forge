@@ -91,7 +91,7 @@ with sync_playwright() as p:
     print("request: reasoning",L.get("reasoning"),"| max_tokens",L["max_tokens"],"| temperature" , "temperature" in L)
     # mode sheet + settings models
     pg.click("button.pill:has-text('▾')");pg.wait_for_selector(".modebtn");print("mode sheet:",[t.replace("\n"," | ") for t in pg.locator(".modebtn").all_inner_texts()]);pg.click(".sheethead >> text=Done")
-    pg.click("button.back");pg.click("text=Settings");pg.wait_for_selector("h2:text-is('Modes')");pg.screenshot(path=SP+"/o-settings.png",full_page=True)
+    pg.click("button.back");pg.click("header button[aria-label='Settings']");pg.wait_for_selector("h2:text-is('Modes')");pg.screenshot(path=SP+"/o-settings.png",full_page=True)
     pg.click("text=Add a mode");pg.wait_for_function("document.querySelectorAll(\"input[placeholder='provider/model-id']\").length===3")
     pg.locator("button:text-is('Browse')").nth(2).click();pg.wait_for_selector(".mrow");print("catalog rp rows:",pg.locator(".mrow").count())
     pg.click(".pills button:has-text('All models')");pg.wait_for_function("document.querySelectorAll('.mrow').length===3");pg.screenshot(path=SP+"/p-catalog.png")

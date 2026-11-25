@@ -40,10 +40,10 @@ with sync_playwright() as p:
     f=pg.locator("label.fld:has-text('How closely to follow it')");f.locator("select").select_option("__c");f.locator("input").fill("Follow canon, but I can save people");pg.click("header >> text=Save");pg.wait_for_selector(".hero")
     print("story follow:",db(pg)["stories"][0]["follow"],"| story page shows custom:",pg.locator("label.fld:has-text('How closely') input").input_value())
     # settings
-    pg.click("button.back");pg.click("text=Settings");f=pg.locator("label.fld:has-text('Story text size')");f.locator("select").select_option("__c");f.locator("input").fill("18");time.sleep(.2)
+    pg.click("button.back");pg.click("header button[aria-label='Settings']");f=pg.locator("label.fld:has-text('Story text size')");f.locator("select").select_option("__c");f.locator("input").fill("18");time.sleep(.2)
     f=pg.locator("label.fld:has-text('Creativity')").first;f.locator("select").select_option("__c");f.locator("input").fill("1.3");time.sleep(.2)
     d=db(pg);print("fs:",d["fs"],"| creativity:",d["modes"][0]["t"])
-    pg.reload();pg.wait_for_selector(".cta");pg.click("text=Settings");print("after reload, size box kept:",pg.locator("label.fld:has-text('Story text size') input").input_value(),"| select shows:",pg.locator("label.fld:has-text('Story text size') select").input_value())
+    pg.reload();pg.wait_for_selector(".cta");pg.click("header button[aria-label='Settings']");print("after reload, size box kept:",pg.locator("label.fld:has-text('Story text size') input").input_value(),"| select shows:",pg.locator("label.fld:has-text('Story text size') select").input_value())
     f=pg.locator("label.fld:has-text('Story text size')");f.locator("select").select_option("17");time.sleep(.2);print("back to preset:",db(pg)["fs"],"| box hidden:",not f.locator("input").is_visible())
     print("overflow-x:",pg.evaluate("document.documentElement.scrollWidth>window.innerWidth"))
     b.close()
