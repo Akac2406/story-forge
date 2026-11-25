@@ -174,3 +174,24 @@ function universe(se){studio(se,"Universe Studio",(b,apply)=>{
 })}
 Object.assign(window.SFFanUI,{universe,studioShell:studio});
 })();
+
+(function(){
+"use strict";
+const button=(text,onclick)=>h("button",{text,onclick}), dump=x=>h("pre",{text:JSON.stringify(x,null,2)}), panel=(...kids)=>h("div",{class:"ff-panel"},...kids), field=(v="",type="text")=>{const e=h("input",{type});e.value=v;return e};
+function gameplay(se){window.SFFanUI.studioShell(se,"Gameplay Studio",(b,apply)=>{
+ const g=gmState(se),num=e=>Number(e.value),id=field(),name=field(),min=field(0,"number"),max=field(100,"number"),start=field(0,"number"),hidden=h("input",{type:"checkbox"});
+ b.append(chk("Enable gameplay",g.enabled,v=>apply(()=>gmEnable(se,v))),h("p",{text:"Level "+g.level+" · XP "+g.xp+" · Day "+g.day}),button("Undo last gameplay change",()=>apply(()=>gmUndo(se))));
+ const xp=field(10,"number"),base=field(g.curve?.base??100,"number"),growth=field(g.curve?.growth??1.5,"number"),cap=field(g.curve?.max??50,"number");
+ b.append(panel(h("b",{text:"Progression"}),fld("XP change",xp),button("Apply XP",()=>apply(()=>gmXp(se,num(xp),"Player adjustment"))),fld("Base XP",base),fld("Growth",growth),fld("Maximum level",cap),button("Save curve",()=>apply(()=>gmSet(se,{curve:{base:num(base),growth:num(growth),max:num(cap)}})))));
+ b.append(h("h3",{text:"Stats"}),...Object.entries(g.stats||{}).map(([key,s])=>{const delta=field(1,"number");return panel(h("b",{text:s.name||key}),dump(s),fld("Change",delta),button("Apply change",()=>apply(()=>gmChange(se,key,num(delta),"Player adjustment"))))}),panel(h("b",{text:"Define stat"}),fld("ID",id),fld("Name",name),fld("Minimum",min),fld("Maximum",max),fld("Starting value",start),h("label",{},hidden," Hidden from narrator"),button("Add stat",()=>apply(()=>gmDefineStat(se,{id:id.value.trim(),name:name.value.trim(),min:num(min),max:num(max),start:num(start),hidden:hidden.checked})))));
+ const qi=field(),qt=field(),steps=h("textarea",{rows:3}),reward=field(0,"number");
+ b.append(h("h3",{text:"Quests"}),...g.quests.map(q=>panel(h("b",{text:q.title}),dump(q),button("Advance",()=>apply(()=>gmAdvanceQuest(se,q.id))),button("Fail quest",()=>{if(confirm("Mark quest failed?"))apply(()=>gmFailQuest(se,q.id,"Player decision"))}))),panel(fld("Quest ID",qi),fld("Title",qt),fld("Objectives (one per line)",steps),fld("XP reward",reward),button("Add quest",()=>apply(()=>gmAddQuest(se,{id:qi.value.trim(),title:qt.value.trim(),steps:steps.value.split("\n").map(x=>x.trim()).filter(Boolean),reward:{xp:num(reward)}})))));
+ const ri=field(),stat=sel("level",["level","day",...Object.keys(g.stats||{})].map(x=>[x,x]),()=>{}),op=sel(">=",["<","<=",">",">=","=="].map(x=>[x,x]),()=>{}),threshold=field(1,"number"),effect=h("textarea",{rows:3}),note=field(),repeat=h("input",{type:"checkbox"});effect.value="{}";
+ b.append(h("h3",{text:"Consequence rules"}),dump(g.rules),panel(fld("Rule ID",ri),fld("Condition",stat),op,threshold,fld("Effect JSON (stats, fail, unlock)",effect),fld("Note",note),h("label",{},repeat," Repeat when re-armed"),button("Add rule",()=>apply(()=>gmAddRule(se,{id:ri.value.trim(),when:{stat:stat.value,op:op.value,value:num(threshold)},effect:JSON.parse(effect.value),note:note.value,repeat:repeat.checked})))));
+ const careers=gmCareers(),custom=h("textarea",{rows:6});b.append(h("h3",{text:"Careers"}),dump(g.career));
+ if(!g.career)b.append(...careers.map(c=>panel(h("b",{text:c.name}),button("Start career",()=>apply(()=>gmStartCareer(se,c.id,{}))))),panel(fld("Custom career module JSON",custom),button("Start custom career",()=>apply(()=>{const c=JSON.parse(custom.value);return gmStartCareer(se,c.id,{custom:c})}))));
+ else {const c=careers.find(x=>x.id===g.career.id)||careers.find(x=>x.id===g.career.module?.id);const acts=c?.activities||Object.entries(g.career.module?.activities||{}).map(([id,a])=>({id,...a}));b.append(...acts.map(a=>button(a.name+(a.needRank?" · requires "+a.needRank:""),()=>{if(confirm("Advance one career week?"))apply(()=>gmActivity(se,a.id))})))}
+ b.append(h("h3",{text:"Gameplay history"}),dump(gmLog(se,50)));
+})}
+Object.assign(window.SFFanUI,{gameplay});
+})();
