@@ -3,6 +3,7 @@ HERE=_os.path.dirname(_os.path.abspath(__file__));APP=_os.path.normpath(_os.path
 import sys,subprocess,time as _t,base64,json
 from playwright.sync_api import sync_playwright
 W=sys.argv[1]
+_os.makedirs(_os.path.join(W,"crops"),exist_ok=True)
 srv=subprocess.Popen([_sys.executable,"-m","http.server","8793","--bind","127.0.0.1"],cwd=APP,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);_t.sleep(1)
 with sync_playwright() as p:
     br=p.chromium.launch(args=["--no-sandbox"]);pg=br.new_page();pg.goto("http://127.0.0.1:8793/index.html");pg.wait_for_selector(".cta")

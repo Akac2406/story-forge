@@ -367,7 +367,7 @@ function appearance(se){
  const profile=window.SFVisualV48.profile(current.layout,current.format);
  const preview=h("section",{class:"sf48-sample ff-appearance-preview","aria-label":"Appearance preview",
    "data-sf-design":profile.design,"data-sf-play":profile.play,"data-preview-nav":current.nav||"bottom"});
- for(const [key,value] of Object.entries({bg:current.bg||bg,card:current.card||card,text:current.text||"#f5f1f4",accent:current.accent||accent})){
+ for(const [key,value] of Object.entries({bg:current.bg||bg,card:current.card||card,text:current.text||(selected?"#f5f1f4":null),accent:current.accent||accent})){
    if(value)preview.style.setProperty("--"+key,value);
  }
  preview.style.setProperty("--preview-scale",current.fontScale||1);
