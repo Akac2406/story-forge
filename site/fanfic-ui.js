@@ -234,3 +234,31 @@ function cinema(se){window.SFFanUI.studioShell(se,"Cinematic / Visual Novel",(b,
 })}
 Object.assign(window.SFFanUI,{cinema});
 })();
+
+(function(){
+"use strict";
+const btn=(text,onclick)=>h("button",{text,onclick}),panel=(...kids)=>h("div",{class:"ff-panel"},...kids);
+function appearance(se){
+ let scope="story",device=matchMedia("(max-width: 700px)").matches?"mobile":"desktop";
+ window.SFFanUI.studioShell(se,"Appearance & Customization",(b,apply)=>{
+ const s=apState(se,device),set=(k,v)=>apply(()=>apSet(se,{[k]:v},scope));
+ const opts=xs=>xs.map(x=>typeof x==="string"?[x,x]:Array.isArray(x)?x:[x.id,x.name]);
+ const choose=(k,xs)=>fld(k,sel(s[k],opts(xs),v=>set(k,v)));
+ const field=(k,type="text",min,max,step)=>fld(k,h("input",{type,min,max,step,value:s[k]??"",onchange:e=>set(k,type==="number"?Number(e.target.value):e.target.value||null)}));
+ const scopePick=sel(scope,opts(["global","story","mobile","desktop"]),v=>{scope=v;device=v==="mobile"||v==="desktop"?v:device;render()});
+ function render(){b.replaceChildren();build()}
+ function build(){
+ const current=apState(se,device);
+ b.append(panel(h("b",{text:"Editing scope"}),scopePick,h("p",{text:"Effective preview: "+device+". Device overrides take precedence over story and global settings."}),btn("Reset selected scope",()=>{if(confirm("Reset appearance for "+scope+"?"))apply(()=>apReset(se,scope))})));
+ b.append(panel(h("h3",{text:"Themes"}),...apThemes().map(t=>h("button",{onclick:()=>set("theme",t.id),style:"display:flex;align-items:center;gap:8px;flex-wrap:wrap"},t.name,...(t.palette||[]).map(c=>h("span",{style:"display:inline-block;width:20px;height:20px;border:1px solid currentColor;border-radius:4px;background:"+c}))))));
+ b.append(panel(h("h3",{text:"Layout and typography"}),choose("layout",apLayouts()),choose("format",apFormats()),choose("nav",["bottom","top","side","floating"]),choose("panel",["right","left","bottom","overlay"]),field("font"),field("fontScale","number",0.8,1.4,0.05),choose("spacing",["compact","cozy","roomy"]),choose("borders",["none","thin","bold"]),field("radius","number",0,24,1),field("transparency","number",0,0.6,0.05),...["bg","card","accent","text"].map(k=>field(k)),field("background"),choose("motion",["none","subtle","full"]),choose("contrast",["normal","high"]),chk("Reduced motion",!!current.reducedMotion,v=>set("reducedMotion",v))));
+ b.append(panel(h("h3",{text:"Icon design families"}),...apIcons().map(i=>btn(i.name,()=>set("icons",i.id)))));
+ const name=h("input",{placeholder:"Preset name"}),file=h("input",{type:"file",accept:".json"}),report=h("pre",{}),confirmImport=btn("Save imported preset",()=>{if(pending){const p=pending;pending=null;apply(()=>apImport(p))}});let pending=null;confirmImport.disabled=true;
+ file.addEventListener("change",()=>{pending=null;confirmImport.disabled=true;report.textContent=""});
+ b.append(panel(h("h3",{text:"Custom presets"}),name,btn("Save effective appearance",()=>apply(()=>apSavePreset(name.value,apState(se,device)))),...apPresets().map(p=>panel(h("b",{text:p.name}),btn("Apply to "+scope,()=>apply(()=>apApplyPreset(se,p.id,scope))),btn("Export",()=>{const data=apExportPreset(p.id);if(!data)return;const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:"application/json"}));const a=h("a",{href:url,download:"story-forge-appearance.json"});document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}),btn("Delete preset",()=>{if(confirm("Delete this appearance preset?"))apply(()=>apDeletePreset(p.id))}))),file,btn("Preview import",async()=>{pending=null;confirmImport.disabled=true;try{const f=file.files[0];if(!f||f.size>1024*1024)throw Error("Choose a JSON preset under 1 MB");const data=JSON.parse(await f.text());if(file.files[0]!==f||!b.isConnected)return;const r=apImportPreview(data);report.textContent=JSON.stringify(r,null,2);if(r.ok){pending=data;confirmImport.disabled=false}}catch(e){report.textContent=String(e.message||e)}}),report,confirmImport));
+ }
+ build();
+ });
+}
+Object.assign(window.SFFanUI,{appearance});
+})();
