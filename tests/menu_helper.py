@@ -2,8 +2,8 @@
 Importing this module makes every new Playwright page open all novel-menu categories as soon as the drawer appears,
 so those tests can still reach every control. It does not change the app. Use: `import menu_helper` after importing Playwright."""
 from playwright.sync_api import Browser, BrowserContext
-OPEN_ALL = """(()=>{const go=()=>document.querySelectorAll('details.story-tools').forEach(d=>{if(d.hasAttribute('name'))d.removeAttribute('name');d.open=true});
-new MutationObserver(go).observe(document,{childList:true,subtree:true});document.addEventListener('DOMContentLoaded',go)})()"""
+OPEN_ALL = """(()=>{const go=()=>{document.querySelectorAll('.ff-menu-favorites').forEach(e=>e.remove());document.querySelectorAll('details.story-tools').forEach(d=>{if(d.hasAttribute('name'))d.removeAttribute('name');if(!d.open)d.open=true})};
+new MutationObserver(go).observe(document,{childList:true,subtree:true,attributes:true,attributeFilter:['open','name']});document.addEventListener('DOMContentLoaded',go)})()"""
 def _wrap(orig):
     def new_page(self, *a, **k):
         p = orig(self, *a, **k)
