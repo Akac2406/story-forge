@@ -1730,13 +1730,17 @@ async function send(text,hide,show,days=0,replay=null){const se=DB.sessions.find
   if(se.sim&&se.sim.ph==="setup")return simSend(se,st,text);
   if(!hasKey()){toast("Add your OpenRouter key in Settings first.");return}
   if(num(DB.budget,0)>0&&DB.budgetStop&&(!isOC()||orMode(DB.modes[DB.mode]||DB.modes[0]))&&monthSpend()>=num(DB.budget,0)&&!view.overOK){view.overOK=1;toast("You’ve reached your monthly budget of $"+num(DB.budget,0).toFixed(2)+". Tap send again to go over it.");return}
-  if(memOn(se)&&!se.mem&&st.kind!=="character"&&!(se.memSnap&&se.memSnap.ok)){busy=true;try{await memSnapshot(se)}finally{busy=false}}
+  /* Pre-send steps never block a send: each has a time limit (DB.prepWait, default 120 s) and errors are caught. A step that times out keeps running in the background; the send goes ahead without it and says so. */
+  const prepLim=num(DB.prepWait,120)*1000,lim=(p,ms)=>Promise.race([Promise.resolve(p).then(v=>({v}),e=>({e})),new Promise(r=>setTimeout(()=>r({late:true}),ms))]),late=[];
+  const step=async(label,fn,ms)=>{busy=true;try{const r=await lim(fn(),ms||prepLim);if(r.late)late.push(label);return r.v}finally{busy=false}};
+  if(memOn(se)&&!se.mem&&st.kind!=="character"&&!(se.memSnap&&se.memSnap.ok))await step("memory snapshot",()=>memSnapshot(se));
   if(PRE.cancel){PRE.cancel=false;toast("Cancelled.");return}
-  if(se.memExtract&&RPQ.has(se.id)){busy=true;toast("Saving the last scene to memory…");try{await RPQ.get(se.id)}catch(e){}finally{busy=false}}
-  if(recP||needRec(se)){busy=true;toast("Checking the story so far…");try{await recWait(se)}catch(e){}finally{busy=false}}
-  if(needSum(se)){busy=true;toast("Tidying the story’s memory first…");try{await summarize(se)}finally{busy=false}}
-  const myRefs=[...new Set(refsFor(st.id).concat(refsFor(se.id),replay?refsFor(replay.sourceId):[]))];let rp="";if(myRefs.length){busy=true;try{rp=await refPick(se,st,text,myRefs)}catch(e){}finally{busy=false}}
-  let wn="";const wb=wikiOf(se,st);if(wb&&DB.wikiOn!==false&&!(se.sim&&se.sim.ph==="setup")&&!myRefs.some(r=>r.wiki===wb)){busy=true;try{wn=await wikiPick(se,st,text,wb)}catch(e){}finally{busy=false}}
+  if(se.memExtract&&RPQ.has(se.id)){toast("Saving the last scene to memory…");await step("saving the last scene",()=>RPQ.get(se.id))}
+  if(recP||needRec(se)){toast("Checking the story so far…");await step("story check",()=>recWait(se))}
+  if(needSum(se)){toast("Tidying the story’s memory first…");await step("memory tidy-up",()=>summarize(se))}
+  const myRefs=[...new Set(refsFor(st.id).concat(refsFor(se.id),replay?refsFor(replay.sourceId):[]))];let rp="";if(myRefs.length)rp=(await step("reference notes",()=>refPick(se,st,text,myRefs),Math.min(prepLim,60000)))||"";
+  let wn="";const wb=wikiOf(se,st);if(wb&&DB.wikiOn!==false&&!(se.sim&&se.sim.ph==="setup")&&!myRefs.some(r=>r.wiki===wb))wn=(await step("wiki notes",()=>wikiPick(se,st,text,wb),Math.min(prepLim,45000)))||"";
+  if(late.length)toast("Sending without "+late.join(" and ")+": it was taking too long. It will finish in the background.");
   if(PRE.cancel){PRE.cancel=false;toast("Cancelled.");return}
   const REG=REGV;const hist=se.turns.slice(),u={role:"user",text},ai={role:"ai",text:"",ps:Object.assign({},se.stats)};if(hide)u.hide=true;if(show)u.show=show;if(days&&REG)u.worldDays=days;
   if(se.life){ai.pl=Object.assign({},se.life);ai.ln=(se.log||[]).length}
