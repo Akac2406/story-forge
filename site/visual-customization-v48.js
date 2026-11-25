@@ -9,7 +9,7 @@ const formats=['RPG Adventure','Visual Novel','Novel Reader','Life Simulator','W
 const appTheme='Use Settings theme';
 const defaults={theme:appTheme,layout:'Use Settings layout',format:'Use story format',motion:'subtle'};
 let cfg={global:{...defaults},stories:{},devices:{mobile:{},desktop:{}},custom:{}};
-try{let d=JSON.parse(localStorage.getItem(KEY));if(d&&d.version===1){cfg.global={...defaults,...d.global};cfg.stories=d.stories||{};cfg.devices=d.devices||cfg.devices;cfg.custom=d.custom||{}}}catch(e){}
+function load(){try{let d=JSON.parse(localStorage.getItem(KEY));if(d&&d.version===1){cfg.global={...defaults,...d.global};cfg.stories=d.stories||{};cfg.devices=d.devices||{mobile:{},desktop:{}};cfg.custom=d.custom||{}}}catch(e){}}load();
 function valid(s){return typeof s==='string'&&s.length<100}
 function palettes(){return {...themes,...cfg.custom}}
 function storyId(){try{return view.n==='chat'?(DB.sessions.find(s=>s.id===view.id)||{}).storyId:(view.n==='story'?view.id:null)}catch(e){return null}}
@@ -118,5 +118,6 @@ function addButton(){const head=document.querySelector('#app > header');if(!head
 const oldRender=render;render=function(...args){const result=oldRender.apply(this,args);apply();addButton();return result};
 const oldGo=go;go=function(...args){const r=oldGo.apply(this,args);apply();return r};
 addEventListener('resize',apply);apply();
-window.SFVisualV48={themes:names.slice(),layouts:layouts.slice(),formats:formats.slice(),open,apply,useAppTheme(){if(cfg.global.theme!==appTheme){cfg.global.theme=appTheme;save()}apply()}};
+/* reload(): re-read storage after the appearance adapters (ap*) change it, so this module never overwrites them with a stale copy. */
+window.SFVisualV48={themes:names.slice(),layouts:layouts.slice(),formats:formats.slice(),open,apply,reload(){load();apply()},palette:n=>palettes()[n]||null,KEY,useAppTheme(){if(cfg.global.theme!==appTheme){cfg.global.theme=appTheme;save()}apply()}};
 })();

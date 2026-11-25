@@ -2,7 +2,7 @@
 const CACHE = "sf-v96";
 const APP_FILES = [
   "./", "index.html", "listen.html", "manifest.webmanifest",
-  "illustrated-reader.css", "memory-engine.js", "canon-engine.js", "memory-v2.js", "fanfic-engine.js", "character-engine.js", "director-engine.js", "gameplay-engine.js", "creator-engine.js", "fanfic-ui.js", "fanfic-ui.css", "icon-192.png", "icon-512.png",
+  "illustrated-reader.css", "memory-engine.js", "canon-engine.js", "memory-v2.js", "fanfic-engine.js", "character-engine.js", "director-engine.js", "gameplay-engine.js", "creator-engine.js", "presentation-engine.js", "fanfic-ui.js", "fanfic-ui.css", "icon-192.png", "icon-512.png",
   "visual-customization-v48.js", "visual-customization-v48.css",
   "cinematic-ui-v49.js", "cinematic-ui-v49.css",
   "character-ui-v50.js", "character-ui-v50.css",

@@ -319,7 +319,7 @@ body[data-ui-layout="academy"] .tabs button.on,body[data-ui-layout="anime"] .tab
 .sf-v46-shell{display:grid;gap:12px}.sf-v46-tabs{display:flex;gap:7px;overflow-x:auto;padding:4px 0}.sf-v46-tabs button{flex-shrink:0;border-radius:999px}.sf-v46-tabs .active{background:var(--accent,#9b7bff);color:#fff}.sf-v46-hero{padding:20px;border-radius:18px;background:linear-gradient(120deg,#38205c,#101d36);color:#fff;border:1px solid #ffffff35}.sf-v46-hero h3{font-size:1.45em;margin:5px 0}.sf-v46-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}.sf-v46-card{padding:13px;border-radius:15px;background:rgba(128,128,128,.10);border:1px solid rgba(128,128,128,.26);min-width:0}.sf-v46-card img{max-width:100%;height:150px;object-fit:cover;border-radius:12px}.sf-v46-card small{display:block;opacity:.75;margin-top:5px}.sf-v46-track{height:8px;background:#80808040;border-radius:9px;overflow:hidden;margin:6px 0}.sf-v46-track i{height:100%;display:block;background:var(--accent,#9b7bff)}.sf-v46-step{padding:12px 12px 12px 18px;border-left:3px solid var(--accent,#9b7bff);margin:8px 0;background:#80808014;border-radius:8px}.sf-v46-palette{display:flex;gap:6px;flex-wrap:wrap}.sf-v46-palette button{min-width:110px}.sf-v46-note{opacity:.75;font-size:.86em}.sf-v46-preview{padding:20px;background:linear-gradient(160deg,#101529,#342244);border:1px solid #b79aff66;border-radius:18px;color:#fff;line-height:1.7}.sf-v46-preview .speaker{font-size:.8em;color:#e2c5ff;letter-spacing:.1em}.sf-v46-preview blockquote{margin:8px 0 0;font-size:1.05em}
 </style><link rel="stylesheet" href="visual-customization-v48.css"><link rel="stylesheet" href="illustrated-reader.css"></head><body>
 <div id="app"></div><div id="toast" role="status"></div>
-<script src="memory-engine.js"></script> <script src="canon-engine.js"></script> <script src="memory-v2.js"></script> <script src="fanfic-engine.js"></script> <script src="character-engine.js"></script> <script src="director-engine.js"></script> <script src="gameplay-engine.js"></script> <script src="creator-engine.js"></script>
+<script src="memory-engine.js"></script> <script src="canon-engine.js"></script> <script src="memory-v2.js"></script> <script src="fanfic-engine.js"></script> <script src="character-engine.js"></script> <script src="director-engine.js"></script> <script src="gameplay-engine.js"></script> <script src="creator-engine.js"></script> <script src="presentation-engine.js"></script>
 <script>
 "use strict";
 const KEY="story-forge-v2",app=document.getElementById("app"),$=s=>document.querySelector(s);
@@ -2418,6 +2418,38 @@ function crOpen(pkg){const r=SFCreator.open(pkg);if(!r.ok)return{ok:false,applie
   if(!pkg.art){delete st.coverT;delete st.bannerT}if(r.game||r.director)st.blueprint={game:r.game,director:r.director};if(r.universe)st.universeRef=r.universe;
   let added=0;for(const t of r.templates){if(!t||typeof t.name!=="string"||!t.name.trim())continue;const name=t.name.trim().slice(0,48);if(sfTemplates().some(x=>x.name.toLowerCase()===name.toLowerCase()))continue;sfTemplates().push(sfTemplateFromCharacter(name,t));added++}
   DB.stories.push(st);save();return{ok:true,applied:true,reason:null,storyId:st.id,templatesAdded:added,needsUniverse:!!(r.universe&&!(DB.universes||{})[r.universe.id])}}
+/* Cinematic / visual novel presentation (presentation-engine.js, SFCinema). Stored per playthrough in se.cv; presentation only: never story text, canon, memory or gameplay.
+   Artwork is referenced: "v54:<sessionId>" = the scene artwork saved by the v54 scene presets, "cast:<name>" = that character's portrait. cvArt(se, ref) resolves a reference to an image URL. */
+function cvDo(se,fn){const r=fn(se.cv);if(r.applied){se.cv=r.cv;save()}return{ok:r.ok,applied:r.applied,reason:r.reason}}
+function cvScenePresets(){try{return JSON.parse(localStorage.getItem("sf-v54-scene-presets")||"{}")||{}}catch(e){return{}}}
+const cvLayouts=()=>SFCinema.LAYOUTS.map(l=>({id:l.id,name:l.name,caps:Object.assign({},l.caps)})),cvPresets=()=>SFCinema.PRESETS.map(p=>({id:p.id,name:p.name,settings:Object.assign({},p.settings)})),
+  cvState=se=>SFCinema.state(se&&se.cv),cvSet=(se,p)=>cvDo(se,cv=>SFCinema.set(cv,p)),cvApplyPreset=(se,id)=>cvDo(se,cv=>SFCinema.applyPreset(cv,id)),
+  cvSetScene=(se,p)=>cvDo(se,cv=>SFCinema.setScene(cv,p)),cvSetCharacter=(se,name,p)=>cvDo(se,cv=>SFCinema.setCharacter(cv,name,p)),
+  cvReset=se=>se.cv?cvDo(se,cv=>SFCinema.reset(cv)):{ok:false,applied:false,reason:"unchanged"};
+function cvScene(se){const st=cvState(se).scene,v=cvScenePresets()[se.id];if(!st.background&&v&&v.background)st.background="v54:"+se.id;if(!st.caption&&v&&v.caption)st.caption=v.caption;return st}
+function cvCast(se){const cv=cvState(se).cast,names=[...new Set(Object.keys(se.cast||{}).concat(Object.keys(cv)))];
+  return names.map(n=>Object.assign({name:n,expression:"neutral",position:"center",scale:1,visible:true,portrait:(se.cast&&se.cast[n]&&se.cast[n].pic)?"cast:"+n:null},cv[n]||{}))}
+function cvArt(se,ref){if(!ref||typeof ref!=="string")return null;let m=ref.match(/^v54:(.+)$/);if(m){const v=cvScenePresets()[m[1]];return v&&v.background||null}
+  m=ref.match(/^cast:(.+)$/);if(m){const c=se&&se.cast&&se.cast[m[1]];return c&&c.pic||null}return null}
+/* Appearance (SFAppearance) on the existing v48 storage; presets in "sf.appearance.presets". Scopes: "global", "mobile", "desktop", "story" (this playthrough's story) or "story:<id>". */
+const AP_PRESETS="sf.appearance.presets";
+function apKey(){return(window.SFVisualV48&&SFVisualV48.KEY)||"sf.visual.v48"}
+function apCfg(){try{const d=JSON.parse(localStorage.getItem(apKey())||"null");return d&&d.version===1?d:SFAppearance.empty()}catch(e){return SFAppearance.empty()}}
+function apWrite(cfg){try{localStorage.setItem(apKey(),JSON.stringify(cfg))}catch(e){return false}try{window.SFVisualV48&&SFVisualV48.reload&&SFVisualV48.reload()}catch(e){}return true}
+function apPresetsRaw(){try{return JSON.parse(localStorage.getItem(AP_PRESETS)||"{}")||{}}catch(e){return{}}}
+const apScope=(se,scope)=>scope==="story"?(se&&se.storyId?"story:"+se.storyId:null):(scope||"global"),apCatalog=()=>({themes:window.SFVisualV48?SFVisualV48.themes:null,layouts:window.SFVisualV48?SFVisualV48.layouts:null,formats:window.SFVisualV48?SFVisualV48.formats:null});
+const apThemes=()=>(window.SFVisualV48?SFVisualV48.themes:[]).map(n=>({id:n,name:n,palette:(window.SFVisualV48&&SFVisualV48.palette(n))||null})),
+  apLayouts=()=>(window.SFVisualV48?SFVisualV48.layouts:[]).slice(),apFormats=()=>(window.SFVisualV48?SFVisualV48.formats:[]).slice(),apIcons=()=>JSON.parse(JSON.stringify(SFAppearance.ICONS)),
+  apState=(se,device)=>SFAppearance.state(apCfg(),se&&se.storyId,device||(matchMedia("(max-width:700px)").matches?"mobile":"desktop")),
+  apPresets=()=>Object.values(apPresetsRaw());
+function apSet(se,patch,scope){const sc=apScope(se,scope);if(!sc)return{ok:false,applied:false,reason:"no story"};const r=SFAppearance.set(apCfg(),patch,sc,apCatalog());if(!r.applied)return{ok:false,applied:false,reason:r.reason};return apWrite(r.cfg)?{ok:true,applied:true,reason:null}:{ok:false,applied:false,reason:"storage full"}}
+function apReset(se,scope){const sc=apScope(se,scope);if(!sc)return{ok:false,applied:false,reason:"no story"};const r=SFAppearance.reset(apCfg(),sc);if(!r.applied)return{ok:false,applied:false,reason:r.reason};apWrite(r.cfg);return{ok:true,applied:true,reason:null}}
+function apSavePreset(name,settings){const r=SFAppearance.savePreset(apPresetsRaw(),name,settings);if(!r.applied)return{ok:false,applied:false,reason:r.reason};try{localStorage.setItem(AP_PRESETS,JSON.stringify(r.presets))}catch(e){return{ok:false,applied:false,reason:"storage full"}}return{ok:true,applied:true,reason:null,id:r.id}}
+function apDeletePreset(id){const r=SFAppearance.deletePreset(apPresetsRaw(),id);if(!r.applied)return{ok:false,applied:false,reason:r.reason};localStorage.setItem(AP_PRESETS,JSON.stringify(r.presets));return{ok:true,applied:true,reason:null}}
+function apApplyPreset(se,id,scope){const p=apPresetsRaw()[id];return p?apSet(se,p.settings,scope):{ok:false,applied:false,reason:"not found"}}
+function apExportPreset(id){const p=apPresetsRaw()[id];return p?SFAppearance.exportPreset(p):null}
+const apImportPreview=data=>SFAppearance.importPreview(data);
+function apImport(data){const v=SFAppearance.importPreview(data);if(!v.ok)return{ok:false,applied:false,reason:v.issues.join("; ")};return apSavePreset(v.name,v.settings)}
 function dirBlock(se){return se.director&&se.director.enabled?SFDirector.block(se.director.settings,dirAnalyze(se)):""}
 /* NPC plans and character development notes (living characters UI). Return {ok, applied, reason}. */
 function chSetNpc(se,name,plan){name=String(name||"").trim();if(!name)return{ok:false,applied:false,reason:"needs a name"};const p=plan||{},goals=Array.isArray(p.goals)?p.goals:[],sch=Array.isArray(p.schedule)?p.schedule:[];

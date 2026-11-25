@@ -1,0 +1,36 @@
+// Cinema + appearance engines. Run: node tests/presentation_engine_unit.mjs
+import assert from 'node:assert/strict'; import fs from 'node:fs'; import vm from 'node:vm'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
+const here = path.dirname(fileURLToPath(import.meta.url)); const ctx = {}; ctx.globalThis = ctx; vm.createContext(ctx);
+vm.runInContext(fs.readFileSync(path.join(here, '../site/presentation-engine.js'), 'utf8'), ctx); const C = ctx.SFCinema, A = ctx.SFAppearance; let n = 0; const ok = (c, m) => { assert.ok(c, m); n++; };
+ok(C.LAYOUTS.length >= 8 && ['novel', 'visual-novel', 'cinematic', 'rpg', 'chat', 'screenplay', 'illustrated', 'immersive'].every(id => C.LAYOUTS.some(l => l.id === id)), '8 reader layouts with capabilities');
+ok(C.PRESETS.length >= 8, 'scene presets');
+ok(C.state(null).settings.layout === 'novel' && C.state(null).layout.caps.portraits === false, 'defaults to the classic novel');
+let r = C.set(null, { layout: 'visual-novel', textReveal: 'typewriter' }); ok(r.applied && r.cv.settings.layout === 'visual-novel', 'settings applied');
+ok(C.set(r.cv, { layout: 'hologram' }).reason === 'bad value for layout' && C.set(r.cv, { volume: 3 }).reason === 'unknown setting volume' && C.set(r.cv, { revealSpeed: 500 }).reason.includes('between'), 'invalid settings rejected');
+ok(C.set(r.cv, { layout: 'visual-novel' }).reason === 'unchanged', 'no-op reported');
+let cv = r.cv; ok(C.setScene(cv, { background: 'data:image/png;base64,AAAA' }).reason.includes('artwork reference'), 'image data refused; only artwork references');
+cv = C.setScene(cv, { background: 'v54:e1', lighting: 'dusk', caption: 'Harbor at dusk' }).cv; ok(C.state(cv).scene.background === 'v54:e1' && C.state(cv).scene.lighting === 'dusk', 'scene uses an artwork reference');
+cv = C.setCharacter(cv, 'Rae', { expression: 'happy', position: 'left' }).cv; ok(cv.cast.Rae.scale === 1 && cv.cast.Rae.visible && cv.cast.Rae.position === 'left', 'character presentation with defaults');
+ok(C.setCharacter(cv, 'Rae', { position: 'ceiling' }).reason === 'bad value for position' && C.setCharacter(cv, '', {}).reason === 'needs a character name', 'bad character patch rejected');
+const pr = C.applyPreset(cv, 'noir'); ok(pr.cv.settings.lighting === 'night' && pr.cv.preset === 'noir' && pr.cv.cast.Rae, 'preset applies settings, keeps cast');
+const rm = C.state(C.set(pr.cv, { reducedMotion: true, overlay: 'rain' }).cv).settings; ok(rm.transition === 'none' && rm.overlay === 'none', 'reduced motion removes transitions and moving overlays');
+ok(JSON.stringify(C.reset(cv).cv) === JSON.stringify({ settings: {}, scene: {}, cast: {}, preset: null }), 'reset clears presentation only');
+// appearance
+ok(A.ICONS.length >= 12 && A.ICONS.every(i => i.style && Object.keys(i.style).length >= 3), '12+ icon families with style definitions');
+const cat = { themes: ['Royal Fantasy', 'Oceanic'], layouts: ['Novel Reader'], formats: ['Visual Novel'] };
+let a = A.set(null, { theme: 'Oceanic', icons: 'pixel', fontScale: 1.2 }, 'global', cat); ok(a.applied && a.cfg.global.theme === 'Oceanic' && a.cfg.version === 1, 'global settings in v48 shape');
+ok(A.set(a.cfg, { theme: 'Nope' }, 'global', cat).reason === 'unknown theme' && A.set(a.cfg, { accent: 'red' }, 'global').reason.includes('#rrggbb') && A.set(a.cfg, { x: 1 }, 'global').reason === 'unknown setting x', 'validation');
+ok(A.set(a.cfg, { icons: 'line' }, 'galaxy').reason.startsWith('scope'), 'bad scope rejected');
+let c2 = A.set(a.cfg, { icons: 'neon', accent: '#ff00aa' }, 'story:s1', cat).cfg; c2 = A.set(c2, { spacing: 'compact', icons: 'solid' }, 'mobile', cat).cfg;
+const sm = A.state(c2, 's1', 'mobile'), sd = A.state(c2, 's1', 'desktop'), g = A.state(c2, 's2', 'desktop');
+ok(sm.icons === 'solid' && sm.accent === '#ff00aa' && sm.spacing === 'compact' && sd.icons === 'neon' && g.icons === 'pixel' && g.theme === 'Oceanic', 'global < story < device precedence (v48 order)');
+ok(A.state(A.set(c2, { reducedMotion: true, contrast: 'high', transparency: 0.4 }, 'global').cfg, 's2', 'desktop').motion === 'none' && A.state(A.set(c2, { contrast: 'high', transparency: 0.4 }, 'global').cfg).transparency === 0, 'accessibility overrides');
+ok(A.set(c2, { icons: null }, 'mobile').cfg.devices.mobile.icons === undefined, 'null clears a setting');
+ok(A.reset(c2, 'story:s1').cfg.stories.s1 === undefined && A.reset(c2, 'mobile').cfg.devices.mobile.spacing === undefined, 'reset per scope');
+let ps = A.savePreset({}, 'Night reading', Object.assign({}, sm, { ocKey: 'secret', turns: [1] }), 1000); ok(ps.applied && !('ocKey' in ps.presets[ps.id].settings) && !('turns' in ps.presets[ps.id].settings), 'presets keep only appearance settings');
+const ex = A.exportPreset(ps.presets[ps.id]); ok(ex.format === 'story-forge-appearance' && ex.version === 1 && !JSON.stringify(ex).includes('secret'), 'export is portable and clean');
+const tam = JSON.parse(JSON.stringify(ex)); tam.settings.apiKey = 'sk-x'; tam.settings.icons = 'pixel'; const ip = A.importPreview(tam);
+ok(ip.ok && ip.issues[0].includes('apiKey') && !('apiKey' in ip.settings), 'import ignores unknown keys and reports them');
+ok(!A.importPreview({ format: 'x' }).ok && !A.importPreview(Object.assign({}, ex, { version: 2 })).ok && !A.importPreview(Object.assign({}, ex, { settings: { radius: 99 } })).ok, 'bad imports refused');
+ok(A.deletePreset(ps.presets, ps.id).applied && A.deletePreset(ps.presets, 'zz').reason === 'not found', 'delete preset');
+console.log(`presentation engines: ${n} checks passed`);
