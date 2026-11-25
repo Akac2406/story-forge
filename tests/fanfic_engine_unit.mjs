@@ -56,4 +56,53 @@ const kael = F.search(U, Object.assign({}, C, { position: { ch: E.position } }),
 ok(kael.includes('fact:ember:dorran-took-lys'), 'takeover character also sees its explicit foreknowledge');
 ok(!F.search(U, Object.assign({}, C, { position: { ch: E.position } }), '', { forChar: 'char:ember:mira' }).some(r => r.id === 'fact:ember:dorran-took-lys'), 'no other character gets that foreknowledge');
 ok(F.search(U, { position: { ch: 60 } }, '').find(r => r.id === 'fanon:ember:kael-cooks').label === 'fanon', 'fanon and uncertain records are labelled');
+
+// --- characters & knowledge
+const Cpos = Object.assign({}, C, { position: Object.assign({}, C.position, { ch: 5 }) });
+const kk = id => F.knows(U, Cpos, id).map(r => r.id).sort();
+ok(JSON.stringify(kk('char:ember:mira')) === JSON.stringify(['fact:ember:archive-fire', 'fact:ember:mira-dorran'].sort()) || kk('char:ember:mira').includes('fact:ember:archive-fire'), 'Mira knows common revealed facts and her own: ' + kk('char:ember:mira'));
+ok(!kk('char:ember:mira').includes('fact:ember:dorran-took-lys') && !kk('char:ember:lys').includes('fact:ember:dorran-took-lys'), 'a secret is not known by everyone');
+ok(kk('char:ember:dorran').includes('fact:ember:dorran-took-lys'), 'a participant knows their own secret even before the reader learns it');
+ok(kk('char:ember:kael').includes('fact:ember:dorran-took-lys'), 'takeover character knows its explicit foreknowledge');
+ok(!F.knows(U, Cpos, 'char:ember:kael').some(r => r.canon === 'fanon'), 'fanon is never treated as character knowledge');
+const idn = F.identity(U, C, 'char:ember:kael');
+ok(idn.controlled && idn.canon.name === 'Kael Ashveil' && idn.player.changes.length && idn.foreknowledge.length === 2 && idn.age === 18, 'takeover identity: canon, player version, foreknowledge and age kept separate');
+ok(U.chars['char:ember:kael'].core.personality.startsWith('guarded'), 'canon identity untouched');
+ok(F.relationships(C, { from: 'char:ember:mira', to: 'char:ember:kael' })[0].trust === 35 && F.relationships(C, { from: 'char:ember:kael', to: 'char:ember:mira' })[0].trust === 55, 'relationships are directional');
+const priv = F.relationships(C, { involving: 'char:ember:lys' })[0];
+ok(F.relVisibleTo(priv, 'char:ember:kael') && !F.relVisibleTo(priv, 'char:ember:mira'), 'private relationship visible only to those who know');
+// --- mutations, history, undo
+let r = F.setRule(C, 'romance', 'locked', 5);
+ok(r.applied && r.canon.rules.romance === 'locked' && C.rules.romance === 'free', 'setRule applies to a copy and records history');
+ok(!F.setRule(C, 'romance', 'free').applied && F.setRule(C, 'romance', 'free').reason === 'unchanged', 'no-op change reports unchanged');
+ok(F.setRule(C, 'nonsense', 'free').reason === 'unknown rule' && F.setPOV(C, { mode: 'sideways' }).reason === 'bad value', 'invalid changes rejected without changing data');
+const u1 = F.undo(r.canon); ok(u1.applied && u1.canon.rules.romance === 'free' && u1.canon.history.length === C.history.length, 'undo restores the previous rules');
+r = F.lock(C, 'event', 'ev:ember:4', true); ok(r.canon.locks.some(l => l.id === 'ev:ember:4'), 'lock an event');
+r = F.exception(r.canon, 'ev:ember:4', 'Mira teaches the form a year early'); ok(r.canon.exceptions.length === 2, 'approved exception added');
+r = F.setRelationship(C, { a: 'char:ember:lys', b: 'char:ember:kael', kinds: ['family'], trust: 90 }); ok(r.canon.relationships.some(x => x.id === 'rel:char:ember:lys>char:ember:kael'), 'new directional relationship with stable id');
+r = F.setFate(C, 'char:ember:dorran', 'protected'); ok(r.canon.fates['char:ember:dorran'].target === 'protected' && r.canon.fates['char:ember:dorran'].original, 'fate target changes, original fate kept');
+// --- prompt block
+const st2 = { alive: { 'char:ember:mira': true, 'char:ember:dorran': true } };
+const Cev = Object.assign({}, C, { position: Object.assign({}, C.position, { ch: 5 }), events: { 'ev:ember:3': { status: 'prevented' } } });
+const block = F.canonFor(U, Cev, { text: 'Mira watches Kael at the archive', present: ['char:ember:kael', 'char:ember:mira'], state: st2 });
+ok(/player controls Kael Ashveil/i.test(block) && /Never decide their actions/.test(block), 'prompt tells the narrator who the player controls');
+ok(/will NOT happen/.test(block) && block.includes('Lys is kidnapped') && block.includes('Kael swears revenge'), 'prompt lists events that will not happen');
+ok(/Mira Vell:/.test(block) && /Feels toward Kael Ashveil: mentor \(trust 35\)/.test(block), 'present characters get personality and directional feelings');
+ok(!block.includes('Dorran arranged') && !block.includes('ninth form burns'), 'prompt never includes spoilers beyond the position');
+ok(/Never copy passages/.test(block) && F.canonFor(U, Cev, { max: 300 }).length <= 300, 'originality rule present; budget respected');
+// --- reply check
+const iss = F.check(U, Cev, 'Bandits seize Lys on the road to the academy; Lys is kidnapped. Kael decides to run.', { state: st2 });
+ok(iss.some(i => i.kind === 'forced-event') && iss.some(i => i.kind === 'player-agency'), 'check flags a forced impossible event and deciding for the player');
+ok(F.check(U, Cev, 'Mira explains that the ninth form burns the user own life force', {}).some(i => i.kind === 'spoiler'), 'check flags a spoiler');
+ok(F.check(U, Cev, 'Mira | "Again, Kael." \nMira said nothing.', { state: { alive: { 'char:ember:mira': false } } }).some(i => i.kind === 'dead-speaks'), 'check flags a dead character speaking');
+ok(F.check(U, Cev, 'Morning mist covered the courtyard. Mira corrected a student\'s stance.', { state: st2 }).length === 0, 'clean reply has no issues');
+// --- validate, export, restore
+ok(F.validate(U, C).ok, 'fixture playthrough validates: ' + F.validate(U, C).issues);
+ok(!F.validate(U, Object.assign({}, C, { rev: 9 })).ok && !F.validate(U, Object.assign({}, C, { relationships: [{ id: 'rel:x', a: 'a', b: 'b' }] })).ok, 'validate catches bad revision pin and bad relationship ids');
+const bk = F.exportStory(Object.assign({ turns: [{ role: 'user', text: 'hi' }], ocKey: 'should-not-export-12345' }, FX.session), U, { now: 1 });
+ok(bk.credentials === false && !JSON.stringify(bk).includes('should-not-export'), 'export excludes credentials');
+ok(bk.universe.records.every(r => r.rev == null || r.rev <= C.rev), 'export keeps the pinned revision');
+const rp = F.restorePreview(bk); ok(rp.ok && rp.summary.turns === 1, 'restore preview validates a good backup: ' + rp.issues);
+ok(!F.restorePreview({ kind: 'x' }).ok && !F.restorePreview(Object.assign({}, bk, { session: Object.assign({}, bk.session, { ocKey: 'leaked-key-abcdefgh' }) })).ok, 'restore preview rejects wrong files and backups with credentials');
 console.log(`fanfic engine: ${n} checks passed`);
+

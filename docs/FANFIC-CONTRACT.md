@@ -30,7 +30,8 @@ incremental imports extend a universe; duplicate detection by chapter hash; expl
   rules:   { powers:[PowerRule], world:[text] } }
 ```
 
-`UniverseRecord` = contract-2 record plus `{ ref:[SourceRef], canon:'source'|'fanon'|'uncertain', spoilerAt:{src, ch} }`.
+`UniverseRecord` = contract-2 record plus `{ ref:[SourceRef], canon:'source'|'fanon'|'uncertain', spoilerAt:{src, ch}, knownBy?:[charId] }`.
+`who` = who the fact is about; `knownBy` = who knows it. Secrets are known only by `knownBy`; other facts default to `who`, plus common knowledge (no `who`) once revealed.
 `SourceRef` = `{ src, ch, para?, conf }`. Excerpts shown to the player are at most about 25 words.
 
 ## 2. Canon events and dependencies (butterfly effect) ✅
@@ -150,7 +151,7 @@ Integration cases (ChatGPT, agreed): empty universes and new playthroughs; exist
 invalid or outdated source references; rejected mutations that must not change saved data; large universes (hundreds of characters, thousands of events);
 backup and restore with pinned revisions; mid-story changes to rules and perspective.
 
-Status 2026-11-24: engine parts 1-2 done on `fanfic-engine` (`site/fanfic-engine.js`, 27 unit checks): indexing, incremental imports with revisions and conflicts, presets, butterfly evaluation, conflicts for protected events, impact preview, cycles, precedence, spoiler-filtered search.
+Status 2026-11-24 (late): engine parts 1-6 done and wired into the app on `fanfic-engine`: characters and takeover identity, knowledge (`knownBy`), directional relationships, fates, all mutations with history/undo, prompt canon block (`ffCanonFor`, only for stories with `se.canon`), reply check (`ffCheck` -> `ai.ffc`), validate/export/restore preview, and every `ff*` adapter function in section 9 plus `ffKnows`, `ffIdentity`, `ffSetRelationship`. Tests: fanfic_engine_unit (59), fanfic_app_browser (21), fanfic_large_universe (400 characters / 3,000 events: about 33 ms). Earlier status: engine parts 1-2 done on `fanfic-engine` (`site/fanfic-engine.js`, 27 unit checks): indexing, incremental imports with revisions and conflicts, presets, butterfly evaluation, conflicts for protected events, impact preview, cycles, precedence, spoiler-filtered search.
 
 Simulated fixtures first: a small invented universe (no copyrighted text) covering OC insertion, takeover, regression, a prevented event spreading to its
 dependents, a protected fate, spoilers, NPC-to-NPC relationships, a crossover power rule and an originality check. Then long-run simulations. Real-model trials only with Anna's approval.

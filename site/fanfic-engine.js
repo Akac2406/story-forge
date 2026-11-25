@@ -105,5 +105,83 @@ function search(u,canon,query,o){o=o||{};const pos=canon&&canon.position&&canon.
   const recs=arr(u&&u.records).filter(r=>(r.rev==null||r.rev<=rev)&&(!r.spoilerAt||r.spoilerAt.ch<=pos||fk.has(r.id))&&hit(r)).map(r=>Object.assign({},r,{label:r.canon==='source'?null:r.canon}));
   return recs}
 
-root.SFFan=Object.freeze({slug,hash,ids,splitChapters,candidateNames,indexSource,emptyUniverse,mergeImport,RULE_KEYS,defaults,need,evaluate,impact,cycles,ruleFor,search});
+/* ---------- Part 3: characters, knowledge, relationships, fates ---------- */
+const nameOf=(u,id)=>((u&&u.chars||{})[id]||{}).name||String(id).split(':').pop();
+/* knows(u, canon, charId) -> universe records this character knows at the current position.
+ * Characters in record.knownBy (or, for non-secrets without knownBy, record.who) know it regardless of reader spoilers; others know only common facts
+ * (no who, not secret) already revealed by the position; the takeover character adds explicit foreknowledge. Never 'everyone knows'. */
+function knows(u,canon,charId){const pos=canon&&canon.position&&canon.position.ch||0,rev=canon&&canon.rev||Infinity,fk=new Set(canon&&canon.identity&&canon.identity.canon===charId?arr(canon.identity.foreknowledge):[]);
+  return arr(u&&u.records).filter(r=>(r.rev==null||r.rev<=rev)&&r.canon!=='fanon'&&(fk.has(r.id)||(r.knownBy?arr(r.knownBy):(r.kind==='secret'?[]:arr(r.who))).includes(charId)||(!arr(r.who).length&&r.kind!=='secret'&&(!r.spoilerAt||r.spoilerAt.ch<=pos))))}
+/* identity(u, canon, charId) -> {canon, player?, inherited?, foreknowledge[], age} — separate records, canon is never modified. */
+function identity(u,canon,charId){const c=(u&&u.chars||{})[charId]||null,id=canon&&canon.identity||{},tk=id.canon===charId,age=canon&&canon.position&&canon.position.ages?canon.position.ages[charId]:undefined;
+  return{canon:c,player:tk?Object.assign({},id.player||{}):null,inherited:tk?id.inherited||null:null,foreknowledge:tk?arr(id.foreknowledge).slice():[],age:age??null,controlled:tk}}
+/* relationships(canon, q) -> directional records filtered by {from, to, involving, kind, includePrivate} */
+function relationships(canon,q){q=q||{};return arr(canon&&canon.relationships).filter(r=>(!q.from||r.a===q.from)&&(!q.to||r.b===q.to)&&(!q.involving||r.a===q.involving||r.b===q.involving)&&(!q.kind||arr(r.kinds).includes(q.kind))&&(q.includePrivate!==false||!r.private))}
+/* view of a relationship as seen by an observer: private ones only if the observer is in knownBy or is a or b */
+function relVisibleTo(r,obs){return!r.private||r.a===obs||r.b===obs||arr(r.knownBy).includes(obs)}
+
+/* ---------- Part 4: mutations with history and undo (return {ok, applied, reason, canon}) ---------- */
+const clone=x=>JSON.parse(JSON.stringify(x==null?null:x));
+function mutate(canon,op,key,fn,now){const C=clone(canon||{});const prev=clone(C[key]);const r=fn(C);if(r&&r.refuse)return{ok:false,applied:false,reason:r.refuse,canon};
+  if(JSON.stringify(C[key])===JSON.stringify(prev))return{ok:false,applied:false,reason:'unchanged',canon};
+  C.history=arr(C.history).concat([Object.assign({at:now||Date.now(),op,field:key,prev},r&&r.note||{})]);return{ok:true,applied:true,reason:null,canon:C}}
+function setRule(canon,k,v,now){if(!RULE_KEYS.includes(k))return{ok:false,applied:false,reason:'unknown rule',canon};if(!['locked','adaptive','free'].includes(v))return{ok:false,applied:false,reason:'bad value',canon};
+  return mutate(canon,'setRule','rules',C=>{C.rules=Object.assign({},C.rules);C.rules[k]=v;return{note:{rule:k,to:v}}},now)}
+function lock(canon,kind,id,on,now){return mutate(canon,'lock','locks',C=>{const L=arr(C.locks).filter(l=>!(l.kind===kind&&l.id===id));if(on!==false)L.push({kind,id});C.locks=L;return{note:{kind,id,on:on!==false}}},now)}
+function exception(canon,target,text,now){if(!String(text||'').trim())return{ok:false,applied:false,reason:'empty',canon};return mutate(canon,'exception','exceptions',C=>{C.exceptions=arr(C.exceptions).concat([{id:'x'+(arr(C.exceptions).length+1),target,text:String(text).trim(),approved:true,t:now||Date.now()}])},now)}
+function setFate(canon,charId,target,now){if(!['preserve','adapt','protected','free'].includes(target))return{ok:false,applied:false,reason:'bad value',canon};return mutate(canon,'setFate','fates',C=>{C.fates=Object.assign({},C.fates);C.fates[charId]=Object.assign({},C.fates[charId],{target})},now)}
+function eventStatus(canon,id,status,why,now){if(!['unchanged','altered','prevented','delayed','replaced','protected'].includes(status))return{ok:false,applied:false,reason:'bad value',canon};
+  return mutate(canon,'eventStatus','events',C=>{const cur=(C.events||{})[id];if(cur&&cur.status&&['altered','prevented','replaced'].includes(cur.status)&&cur.established)return{refuse:'established'};C.events=Object.assign({},C.events);C.events[id]={status,why:why||'set by the player',t:now||Date.now(),by:['player']}},now)}
+function setMode(canon,patch,now){return mutate(canon,'setMode','mode',C=>{C.mode=Object.assign({},C.mode,patch)},now)}
+function setPosition(canon,pos,now){return mutate(canon,'setPosition','position',C=>{C.position=Object.assign({},C.position,pos)},now)}
+function setPOV(canon,pov,now){if(pov&&pov.mode&&!['first','second','thirdLimited','omniscient','multi'].includes(pov.mode))return{ok:false,applied:false,reason:'bad value',canon};return mutate(canon,'setPOV','pov',C=>{C.pov=Object.assign({},C.pov,pov)},now)}
+function setRelationship(canon,rel,now){if(!rel||!rel.a||!rel.b)return{ok:false,applied:false,reason:'needs a and b',canon};const id='rel:'+rel.a+'>'+rel.b;
+  return mutate(canon,'setRelationship','relationships',C=>{const L=arr(C.relationships).filter(r=>r.id!==id);L.push(Object.assign({kinds:[],history:[],private:false,knownBy:[]},L.find(r=>r.id===id)||arr(canon&&canon.relationships).find(r=>r.id===id)||{},rel,{id}));C.relationships=L},now)}
+function undo(canon){const C=clone(canon||{}),h=arr(C.history);if(!h.length)return{ok:false,applied:false,reason:'nothing to undo',canon};const last=h[h.length-1],fld=last.field||last.key;C[fld]=last.prev;C.history=h.slice(0,-1);return{ok:true,applied:true,reason:null,canon:C,undone:last.op}}
+
+/* ---------- Part 5: prompt canon block and reply check ---------- */
+const toks=x=>low(x).replace(/[^a-z0-9'\s]/g,' ').split(/\s+/).filter(w=>w.length>3);
+function overlap(a,b){const A=new Set(toks(a)),B=new Set(toks(b));if(!A.size)return 0;let n=0;A.forEach(w=>{if(B.has(w))n++});return n/A.size}
+/* canonFor(u, canon, ctx) -> text for the prompt. ctx = {text (recent story), present:[charId], state, max}. Spoiler-safe, budgeted. */
+function canonFor(u,canon,ctx){ctx=ctx||{};if(!u||!canon)return'';const max=ctx.max||5000,P=canon.position||{},ev=evaluate(u,canon,ctx.state),L=[];
+  L.push('FANFICTION CANON ('+u.name+')');
+  L.push('Story position: source chapter '+(P.ch??'?')+(P.date?', '+P.date:'')+(P.ages?', ages: '+Object.entries(P.ages).map(([k,v])=>nameOf(u,k)+' '+v).join(', '):'')+'.');
+  const tk=canon.identity&&canon.identity.canon;if(tk)L.push('The player controls '+nameOf(u,tk)+'. Never decide their actions, words or feelings. Their canon personality is a starting point; the player\'s choices take precedence.'+(arr(canon.identity.foreknowledge).length?' They know some future events (foreknowledge); other characters do not.':''));
+  const R=canon.rules||{},lk=RULE_KEYS.filter(k=>R[k]==='locked'),fr=RULE_KEYS.filter(k=>R[k]==='free');
+  if(lk.length)L.push('Keep exactly as in canon: '+lk.join(', ')+'.');if(fr.length)L.push('Free to change through the story: '+fr.join(', ')+'.');
+  arr(canon.exceptions).filter(x=>x.approved).forEach(x=>L.push('Approved change: '+x.text));
+  const up=ev.upcoming.slice(0,3).map(id=>arr(u.events).find(e=>e.id===id));if(up.length)L.push('Upcoming canon events that can still happen (let them arise naturally; do not rush or force them):\n'+up.map(e=>'- '+e.title+(ev.status[e.id].status==='approaching'?' (approaching)':'')).join('\n'));
+  const gone=arr(u.events).filter(e=>['impossible','prevented'].includes((ev.status[e.id]||{}).status));if(gone.length)L.push('These canon events will NOT happen in this story; do not bring them back:\n'+gone.map(e=>'- '+e.title).join('\n'));
+  arr(ctx.present).forEach(cid=>{const c=(u.chars||{})[cid];if(!c||cid===tk)return;const k=knows(u,canon,cid).map(r=>r.text),rel=relationships(canon,{from:cid}).filter(r=>arr(ctx.present).includes(r.b));
+    L.push(c.name+': '+[c.core&&c.core.personality,c.speech&&c.speech.tone&&('speaks '+c.speech.tone),c.speech&&c.speech.mannerisms].filter(Boolean).join('; ')+'.'+(k.length?' Knows: '+k.join('; ')+'.':'')+(rel.length?' Feels toward '+rel.map(r=>nameOf(u,r.b)+': '+arr(r.kinds).join('/')+(r.trust!=null?' (trust '+r.trust+')':'')).join(', ')+'.':'')+' Does not know anything not listed here.')});
+  const hits=search(u,canon,ctx.text||'',{}).slice(0,8);if(hits.length)L.push('Relevant canon facts (revealed so far):\n'+hits.map(r=>'- '+r.text+(r.label?' ['+r.label+']':'')).join('\n'));
+  L.push('Write original scenes. Never copy passages from the source.');
+  let out=L.join('\n');if(out.length>max)out=out.slice(0,max-1)+'…';return out}
+/* check(u, canon, reply, ctx) -> [{kind, text}] rule and continuity issues. No AI request. */
+function check(u,canon,reply,ctx){ctx=ctx||{};const out=[],T=String(reply||''),ev=evaluate(u,canon,ctx.state);
+  arr(u&&u.events).filter(e=>['impossible','prevented'].includes((ev.status[e.id]||{}).status)).forEach(e=>{if(overlap(e.summary||e.title,T)>=0.6)out.push({kind:'forced-event',text:'Reply seems to bring back an event that can no longer happen: '+e.title})});
+  const pos=canon&&canon.position&&canon.position.ch||0,fk=new Set(arr(canon&&canon.identity&&canon.identity.foreknowledge));
+  arr(u&&u.records).filter(r=>r.spoilerAt&&r.spoilerAt.ch>pos&&!fk.has(r.id)).forEach(r=>{if(overlap(r.text,T)>=0.7)out.push({kind:'spoiler',text:'Reply may reveal something not known yet: '+r.text})});
+  const st=ctx.state||{};Object.entries(st.alive||{}).filter(([,v])=>v===false).forEach(([id])=>{const n=nameOf(u,id).split(' ')[0];if(new RegExp('(^|\\n)\\s*'+n+'\\s*\\|','i').test(T)||new RegExp('\\b'+n+'\\s+(said|says|replied|shouted|whispered)\\b','i').test(T))out.push({kind:'dead-speaks',text:nameOf(u,id)+' is dead but speaks in the reply'})});
+  const tk=canon&&canon.identity&&canon.identity.canon;if(tk){const n=nameOf(u,tk).split(' ')[0];if(new RegExp('\\b'+n+'\\s+(decides|decided|agrees|agreed|says|said)\\b','i').test(T)&&ctx.pov!=='omniscient')out.push({kind:'player-agency',text:'Reply may decide what the player character ('+nameOf(u,tk)+') does or says'})}
+  return out}
+
+/* ---------- Part 6: validation, export, restore preview ---------- */
+function validate(u,canon){const issues=[];if(!u)return{ok:false,issues:['universe missing']};if(!canon)return{ok:true,issues:[]};
+  if(canon.rev!=null&&canon.rev>(u.rev||0))issues.push('playthrough pinned to a revision the universe does not have');
+  Object.keys(canon.rules||{}).forEach(k=>{if(!RULE_KEYS.includes(k))issues.push('unknown rule '+k)});
+  const E=new Set(arr(u.events).map(e=>e.id));Object.keys(canon.events||{}).forEach(id=>{if(!E.has(id))issues.push('status for unknown event '+id)});
+  arr(canon.locks).forEach(l=>{if(l.kind==='event'&&!E.has(l.id))issues.push('lock on unknown event '+l.id);if(l.kind==='char'&&!(u.chars||{})[l.id])issues.push('lock on unknown character '+l.id)});
+  arr(canon.relationships).forEach(r=>{if(r.id!=='rel:'+r.a+'>'+r.b)issues.push('relationship id mismatch '+r.id)});
+  if(canon.identity&&canon.identity.canon&&!(u.chars||{})[canon.identity.canon])issues.push('takeover character not in universe');
+  cycles(u).forEach(c=>issues.push('dependency cycle '+c.join(' > ')));return{ok:!issues.length,issues}}
+function exportStory(se,u,o){o=o||{};const pinned=se&&se.canon&&se.canon.rev;return{kind:'story-forge-fanfic',v:1,at:o.now||Date.now(),session:clone(Object.assign({},se,{key:undefined,ocKey:undefined})),
+  universe:u?Object.assign(clone(u),{records:arr(u.records).filter(r=>r.rev==null||pinned==null||r.rev<=pinned)}):null,credentials:false}}
+function restorePreview(data){const issues=[];if(!data||data.kind!=='story-forge-fanfic')return{ok:false,issues:['not a Story Forge fanfiction backup']};if(data.v!==1)issues.push('unknown backup version '+data.v);
+  if(!data.session||!Array.isArray(data.session.turns))issues.push('backup has no story turns');const s=JSON.stringify(data);if(/"(?:ocKey|apiKey|orKey|password|token|secret)"\s*:\s*"[^"]{8,}/i.test(s)||/\bsk-[A-Za-z0-9_-]{12,}/.test(s))issues.push('backup contains something that looks like a credential');
+  const v=data.universe&&data.session&&data.session.canon?validate(data.universe,data.session.canon):{ok:true,issues:[]};
+  return{ok:!issues.length&&v.ok,issues:issues.concat(v.issues),summary:{turns:data.session&&arr(data.session.turns).length,universe:data.universe&&data.universe.name,rev:data.session&&data.session.canon&&data.session.canon.rev}}}
+
+root.SFFan=Object.freeze({slug,hash,ids,splitChapters,candidateNames,indexSource,emptyUniverse,mergeImport,RULE_KEYS,defaults,need,evaluate,impact,cycles,ruleFor,search,
+  knows,identity,relationships,relVisibleTo,setRule,lock,exception,setFate,eventStatus,setMode,setPosition,setPOV,setRelationship,undo,canonFor,check,validate,exportStory,restorePreview});
 })(typeof window!=='undefined'?window:globalThis);

@@ -471,7 +471,10 @@
     "spoilerAt": {
      "src": "src:ember-novel",
      "ch": 20
-    }
+    },
+    "knownBy": [
+     "char:ember:dorran"
+    ]
    },
    {
     "id": "fact:ember:archive-fire",
@@ -789,7 +792,7 @@
     {
      "at": 1764200000000,
      "op": "setRule",
-     "key": "fates",
+     "field": "fates",
      "from": "locked",
      "to": "adaptive"
     },
