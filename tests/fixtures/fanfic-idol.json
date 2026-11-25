@@ -1,0 +1,408 @@
+{
+ "fictional": {
+  "universe": {
+   "v": 1,
+   "id": "idol",
+   "type": "fictional",
+   "name": "Starlight Stage (invented idol universe)",
+   "rev": 1,
+   "revisions": [
+    {
+     "rev": 1,
+     "at": 1,
+     "note": "invented"
+    }
+   ],
+   "sources": [],
+   "aliases": {},
+   "conflicts": [],
+   "rules": {
+    "powers": [],
+    "world": [
+     "Agencies hold monthly evaluations"
+    ]
+   },
+   "chars": {
+    "char:idol:seo-jin": {
+     "id": "char:idol:seo-jin",
+     "name": "Seo Jin",
+     "born": "2001",
+     "gender": "m",
+     "core": {
+      "personality": "calm leader"
+     },
+     "speech": {
+      "tone": "warm"
+     }
+    },
+    "char:idol:ari": {
+     "id": "char:idol:ari",
+     "name": "Ari Moon",
+     "born": "2002",
+     "gender": "f",
+     "core": {
+      "personality": "bold dancer"
+     },
+     "speech": {
+      "tone": "teasing"
+     }
+    },
+    "char:idol:rin": {
+     "id": "char:idol:rin",
+     "name": "Rin Hale",
+     "born": "2008",
+     "gender": "f",
+     "core": {
+      "personality": "shy vocalist, 16"
+     },
+     "speech": {
+      "tone": "quiet"
+     }
+    },
+    "char:idol:taeo": {
+     "id": "char:idol:taeo",
+     "name": "Taeo Park",
+     "gender": "m",
+     "core": {
+      "personality": "rapper, age not stated"
+     },
+     "speech": {
+      "tone": "blunt"
+     }
+    }
+   },
+   "events": [
+    {
+     "id": "ev:idol:1",
+     "title": "Monthly evaluation",
+     "summary": "Trainees perform for the agency.",
+     "ch": 1,
+     "order": 1,
+     "when": "2024-03",
+     "who": [
+      "char:idol:seo-jin",
+      "char:idol:ari",
+      "char:idol:rin"
+     ],
+     "where": "Agency studio",
+     "importance": 3,
+     "requires": [],
+     "needs": [],
+     "leadsTo": [
+      "ev:idol:2"
+     ]
+    },
+    {
+     "id": "ev:idol:2",
+     "title": "Debut lineup announced",
+     "summary": "The agency announces the debut lineup.",
+     "ch": 2,
+     "order": 2,
+     "when": "2024-09",
+     "who": [
+      "char:idol:seo-jin",
+      "char:idol:ari"
+     ],
+     "where": "Agency",
+     "importance": 5,
+     "requires": [
+      "ev:idol:1"
+     ],
+     "needs": [],
+     "leadsTo": []
+    }
+   ],
+   "records": [
+    {
+     "id": "fact:idol:debut-date",
+     "layer": "universe",
+     "kind": "fact",
+     "text": "Debut is planned for autumn 2024",
+     "who": [],
+     "canon": "source",
+     "verified": "documented",
+     "date": "2024-03",
+     "spoilerAt": {
+      "ch": 1
+     }
+    }
+   ]
+  },
+  "canon": {
+   "universe": "idol",
+   "rev": 1,
+   "mode": {
+    "types": [
+     "oc"
+    ],
+    "player": {
+     "name": "Haneul (OC)",
+     "origin": "oc"
+    }
+   },
+   "position": {
+    "ch": 1,
+    "order": 1,
+    "date": "2024-05",
+    "ages": {
+     "char:idol:seo-jin": 23,
+     "char:idol:ari": 22,
+     "char:idol:rin": 16,
+     "player": 20
+    }
+   },
+   "rules": {},
+   "locks": [],
+   "exceptions": [],
+   "events": {},
+   "relationships": [],
+   "fates": {},
+   "romance": {
+    "pref": "any",
+    "focus": "optional",
+    "pacing": "natural",
+    "interest": "char:idol:seo-jin",
+    "canonRelationships": "adaptive"
+   },
+   "competitions": {}
+  }
+ },
+ "realworld": {
+  "universe": {
+   "v": 1,
+   "id": "demo-stage",
+   "type": "contemporary",
+   "name": "Demo Survival Show (placeholder public figures, test only)",
+   "rev": 1,
+   "revisions": [],
+   "sources": [],
+   "aliases": {
+    "person:demo-stage:public-a": [
+     "Han Doyun"
+    ],
+    "person:demo-stage:public-b": [
+     "Mina Seol"
+    ]
+   },
+   "conflicts": [],
+   "rules": {
+    "powers": [],
+    "world": []
+   },
+   "chars": {
+    "char:demo-stage:oc-friend": {
+     "id": "char:demo-stage:oc-friend",
+     "name": "Lee Sora",
+     "born": "1999",
+     "gender": "f",
+     "core": {
+      "personality": "fictional trainee, supportive"
+     },
+     "speech": {}
+    }
+   },
+   "people": {
+    "person:demo-stage:public-a": {
+     "id": "person:demo-stage:public-a",
+     "name": "Han Doyun",
+     "publicRole": "placeholder idol (test data, not a real person)",
+     "publicPersona": "energetic on stage",
+     "born": "1998"
+    },
+    "person:demo-stage:public-b": {
+     "id": "person:demo-stage:public-b",
+     "name": "Mina Seol",
+     "publicRole": "placeholder contestant (test data)",
+     "publicPersona": "precise dancer",
+     "born": "2007"
+    }
+   },
+   "events": [
+    {
+     "id": "ev:demo-stage:1",
+     "title": "Episode 1 auditions",
+     "summary": "Contestants audition.",
+     "ch": 1,
+     "order": 1,
+     "when": "2023-04",
+     "who": [
+      "person:demo-stage:public-a",
+      "person:demo-stage:public-b"
+     ],
+     "where": "Studio",
+     "importance": 3,
+     "requires": [],
+     "needs": [],
+     "leadsTo": [
+      "ev:demo-stage:2"
+     ]
+    },
+    {
+     "id": "ev:demo-stage:2",
+     "title": "First ranking",
+     "summary": "The first public ranking is announced.",
+     "ch": 2,
+     "order": 2,
+     "when": "2023-05",
+     "who": [],
+     "where": "Studio",
+     "importance": 4,
+     "requires": [
+      "ev:demo-stage:1"
+     ],
+     "needs": [],
+     "leadsTo": []
+    }
+   ],
+   "records": [
+    {
+     "id": "fact:demo-stage:ep1",
+     "layer": "universe",
+     "kind": "event",
+     "text": "Episode 1 aired in April 2023",
+     "who": [],
+     "canon": "source",
+     "verified": "documented",
+     "date": "2023-04",
+     "ref": [
+      {
+       "src": "public broadcast listing (placeholder)",
+       "conf": 1
+      }
+     ],
+     "spoilerAt": {
+      "ch": 1
+     }
+    },
+    {
+     "id": "fact:demo-stage:rumor",
+     "layer": "universe",
+     "kind": "fact",
+     "text": "A rumored concept change",
+     "who": [],
+     "canon": "uncertain",
+     "verified": "reported",
+     "date": "2023-05",
+     "spoilerAt": {
+      "ch": 2
+     }
+    }
+   ]
+  },
+  "canon": {
+   "universe": "demo-stage",
+   "rev": 1,
+   "mode": {
+    "types": [
+     "oc"
+    ],
+    "player": {
+     "name": "Jun (OC)",
+     "origin": "oc"
+    }
+   },
+   "position": {
+    "ch": 1,
+    "order": 1,
+    "date": "2023-04",
+    "ages": {
+     "player": 21
+    }
+   },
+   "rules": {},
+   "locks": [],
+   "exceptions": [],
+   "events": {},
+   "relationships": [],
+   "fates": {},
+   "romance": {
+    "pref": "bl",
+    "focus": "background",
+    "pacing": "slow",
+    "canonRelationships": "preserve"
+   },
+   "competitions": {}
+  }
+ },
+ "expect": {
+  "romance": {
+   "eligible": [
+    [
+     "player",
+     "char:idol:seo-jin"
+    ],
+    [
+     "player",
+     "char:idol:ari"
+    ],
+    [
+     "player",
+     "char:demo-stage:oc-friend"
+    ]
+   ],
+   "ineligible": [
+    [
+     "player",
+     "char:idol:rin",
+     "minor"
+    ],
+    [
+     "player",
+     "char:idol:taeo",
+     "age unknown"
+    ],
+    [
+     "player",
+     "person:demo-stage:public-a",
+     "real person"
+    ],
+    [
+     "player",
+     "person:demo-stage:public-b",
+     "real person"
+    ]
+   ]
+  },
+  "competition": {
+   "config": {
+    "weights": {
+     "performance": 40,
+     "votes": 25,
+     "skill": 20,
+     "teamwork": 10
+    },
+    "random": 5
+   },
+   "seed": "demo-ep2",
+   "entries": [
+    {
+     "id": "player",
+     "factors": {
+      "performance": 82,
+      "votes": 60,
+      "skill": 75,
+      "teamwork": 90
+     }
+    },
+    {
+     "id": "person:demo-stage:public-a",
+     "factors": {
+      "performance": 88,
+      "votes": 85,
+      "skill": 80,
+      "teamwork": 70
+     }
+    },
+    {
+     "id": "char:demo-stage:oc-friend",
+     "factors": {
+      "performance": 70,
+      "votes": 55,
+      "skill": 72,
+      "teamwork": 95
+     }
+    }
+   ]
+  }
+ }
+}

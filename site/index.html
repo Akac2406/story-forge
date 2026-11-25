@@ -2355,6 +2355,9 @@ const ffSetRule=(se,k,v)=>ffMut(se,c=>SFFan.setRule(c,k,v)),ffLock=(se,kind,id,o
   ffSearch=(se,q,o)=>{const u=ffU(se);return u?SFFan.search(u,se.canon,q,o):[]},ffRelationships=(se,q)=>SFFan.relationships(se&&se.canon,q),
   ffImpact=(se,id,ch)=>{const u=ffU(se);return u?SFFan.impact(u,se.canon,ffWorldState(se),id,ch):[]},ffValidate=se=>{const u=ffU(se);return u?SFFan.validate(u,se.canon):{ok:false,issues:["universe missing"]}},
   ffExport=(se,o)=>SFFan.exportStory(se,ffU(se),o),ffRestorePreview=data=>SFFan.restorePreview(data),ffKnows=(se,id)=>{const u=ffU(se);return u?SFFan.knows(u,se.canon,id):[]},ffIdentity=(se,id)=>{const u=ffU(se);return u?SFFan.identity(u,se.canon,id):null};
+const ffSetRomance=(se,p)=>ffMut(se,c=>SFFan.setRomance(c,p)),ffRomanceAllowed=(se,a,b)=>{const u=ffU(se);return u?SFFan.romanceAllowed(u,se.canon,a,b):{ok:false,reason:"universe missing"}},
+  ffAgeAt=(se,id)=>{const u=ffU(se);return u?SFFan.ageAt(u,se.canon,id):null},ffRank=(entries,config,seed)=>SFFan.rank(entries,config,seed),
+  ffRecordCompetition=(se,id,result,o)=>ffMut(se,c=>SFFan.recordCompetition(c,id,result,o));
 function ffCanonFor(se){const u=ffU(se);if(!u)return"";const sc=(se.mem&&se.mem.scene)||{},present=(sc.who||[]).map(n=>ffCharId(u,n)).filter(Boolean);
   return SFFan.canonFor(u,se.canon,{text:se.turns.slice(-3).map(x=>x.text||"").join(" "),present,state:ffWorldState(se),max:[6000,4500,3000][DB.saver||0]})}
 function ffCheck(se,text){const u=ffU(se);return u?SFFan.check(u,se.canon,text,{state:ffWorldState(se),pov:se.canon.pov&&se.canon.pov.mode}):[]}

@@ -145,6 +145,7 @@ function overlap(a,b){const A=new Set(toks(a)),B=new Set(toks(b));if(!A.size)ret
 /* canonFor(u, canon, ctx) -> text for the prompt. ctx = {text (recent story), present:[charId], state, max}. Spoiler-safe, budgeted. */
 function canonFor(u,canon,ctx){ctx=ctx||{};if(!u||!canon)return'';const max=ctx.max||5000,P=canon.position||{},ev=evaluate(u,canon,ctx.state),L=[];
   L.push('FANFICTION CANON ('+u.name+')');
+  realWorldLines(u,canon,ctx.present).forEach(x=>L.push(x));romanceLines(u,canon,ctx.present).forEach(x=>L.push(x));
   L.push('Story position: source chapter '+(P.ch??'?')+(P.date?', '+P.date:'')+(P.ages?', ages: '+Object.entries(P.ages).map(([k,v])=>nameOf(u,k)+' '+v).join(', '):'')+'.');
   const tk=canon.identity&&canon.identity.canon;if(tk)L.push('The player controls '+nameOf(u,tk)+'. Never decide their actions, words or feelings. Their canon personality is a starting point; the player\'s choices take precedence.'+(arr(canon.identity.foreknowledge).length?' They know some future events (foreknowledge); other characters do not.':''));
   const R=canon.rules||{},lk=RULE_KEYS.filter(k=>R[k]==='locked'),fr=RULE_KEYS.filter(k=>R[k]==='free');
@@ -164,6 +165,7 @@ function check(u,canon,reply,ctx){ctx=ctx||{};const out=[],T=String(reply||''),e
   arr(u&&u.records).filter(r=>r.spoilerAt&&r.spoilerAt.ch>pos&&!fk.has(r.id)).forEach(r=>{if(overlap(r.text,T)>=0.7)out.push({kind:'spoiler',text:'Reply may reveal something not known yet: '+r.text})});
   const st=ctx.state||{};Object.entries(st.alive||{}).filter(([,v])=>v===false).forEach(([id])=>{const n=nameOf(u,id).split(' ')[0];if(new RegExp('(^|\\n)\\s*'+n+'\\s*\\|','i').test(T)||new RegExp('\\b'+n+'\\s+(said|says|replied|shouted|whispered)\\b','i').test(T))out.push({kind:'dead-speaks',text:nameOf(u,id)+' is dead but speaks in the reply'})});
   const tk=canon&&canon.identity&&canon.identity.canon;if(tk){const n=nameOf(u,tk).split(' ')[0];if(new RegExp('\\b'+n+'\\s+(decides|decided|agrees|agreed|says|said)\\b','i').test(T)&&ctx.pov!=='omniscient')out.push({kind:'player-agency',text:'Reply may decide what the player character ('+nameOf(u,tk)+') does or says'})}
+  realWorldCheck(u,canon,T,out);
   return out}
 
 /* ---------- Part 6: validation, export, restore preview ---------- */
@@ -182,6 +184,42 @@ function restorePreview(data){const issues=[];if(!data||data.kind!=='story-forge
   const v=data.universe&&data.session&&data.session.canon?validate(data.universe,data.session.canon):{ok:true,issues:[]};
   return{ok:!issues.length&&v.ok,issues:issues.concat(v.issues),summary:{turns:data.session&&arr(data.session.turns).length,universe:data.universe&&data.universe.name,rev:data.session&&data.session.canon&&data.session.canon.rev}}}
 
+/* ---------- Part 7 (contract section 14): real-world universes, romance eligibility, competitions ---------- */
+const isReal=(u,id)=>String(id||'').startsWith('person:')||!!((u&&u.people||{})[id]);
+const personOf=(u,id)=>(u&&u.people||{})[id]||null;
+const nameAny=(u,id)=>id==='player'?'the player character':((personOf(u,id)||{}).name||nameOf(u,id));
+const yearOf=x=>{const m=String(x||'').match(/(\d{3,4})/);return m?Number(m[1]):null};
+/* ageAt(u, canon, id) -> number|null. Uses established ages first, then birth year vs story date. Conflicting sources -> null. */
+function ageAt(u,canon,id){const P=canon&&canon.position||{},set=P.ages&&P.ages[id],c=(u&&u.chars||{})[id]||personOf(u,id)||{},by=yearOf(c.born),dy=yearOf(P.date);
+  const calc=by!=null&&dy!=null?dy-by:null;if(set!=null&&calc!=null&&Math.abs(set-calc)>1)return null;return set!=null?Number(set):calc}
+/* romanceAllowed(u, canon, a, b) -> {ok, reason}. Safety gate only (preference guides, never forces). */
+function romanceAllowed(u,canon,a,b){const R=canon&&canon.romance||{};if(R.pref==='none')return{ok:false,reason:'romance off'};
+  for(const id of [a,b]){if(isReal(u,id))return{ok:false,reason:'real person'};const age=ageAt(u,canon,id);if(age==null)return{ok:false,reason:'age unknown'};if(age<18)return{ok:false,reason:'minor'}}
+  return{ok:true,reason:null}}
+/* seeded PRNG (mulberry32) */
+function rng(seed){let t=parseInt(hash(seed),36)>>>0;return()=>{t=(t+0x6D2B79F5)>>>0;let r=Math.imul(t^(t>>>15),1|t);r=(r+Math.imul(r^(r>>>7),61|r))^r;return((r^(r>>>14))>>>0)/4294967296}}
+/* rank(entries, config, seed) -> {config, seed, results:[{id, score, rank, parts}]}. Reproducible; random part bounded by config.random (percent of 100). */
+function rank(entries,config,seed){const W=(config&&config.weights)||{performance:40,votes:25,skill:20,teamwork:10},rnd=Math.max(0,Math.min(20,Number(config&&config.random)||0)),tot=Object.values(W).reduce((a,b)=>a+Number(b||0),0)||1,R=rng(seed);
+  const res=arr(entries).slice().sort((x,y)=>x.id<y.id?-1:1).map(e=>{const parts={};let sc=0;Object.keys(W).forEach(k=>{const v=Math.max(0,Math.min(100,Number((e.factors||{})[k])||0))*W[k]/tot;parts[k]=Math.round(v*100)/100;sc+=v});
+    const r=(R()*2-1)*rnd;parts.random=Math.round(r*100)/100;sc=Math.max(0,sc*(100-rnd)/100+r+rnd/2);return{id:e.id,score:Math.round(sc*100)/100,parts}});
+  res.sort((x,y)=>y.score-x.score||(x.id<y.id?-1:1)).forEach((x,i)=>x.rank=i+1);return{config:{weights:W,random:rnd},seed:String(seed),results:res}}
+/* recordCompetition(canon, id, result, o) — established outcomes are never re-rolled unless o.replace is explicitly set by the player. */
+function recordCompetition(canon,id,result,o){if((canon&&canon.competitions||{})[id]&&!(o&&o.replace))return{ok:false,applied:false,reason:'established',canon};
+  return mutate(canon,'competition','competitions',C=>{C.competitions=Object.assign({},C.competitions);C.competitions[id]=Object.assign({at:(o&&o.now)||Date.now()},result)},o&&o.now)}
+function setRomance(canon,patch,now){const p=patch||{};if(p.pref&&!['bl','gl','straight','any','none'].includes(p.pref))return{ok:false,applied:false,reason:'bad value',canon};
+  if(p.focus&&!['background','optional','balanced','central'].includes(p.focus))return{ok:false,applied:false,reason:'bad value',canon};
+  return mutate(canon,'setRomance','romance',C=>{C.romance=Object.assign({},C.romance,p)},now)}
+const ROMANCE_WORDS=/\b(kiss(?:es|ed|ing)?|dat(?:e|es|ed|ing)\b(?! of)|in love|confess(?:es|ed|ion)?|romantic|boyfriend|girlfriend|lover|cuddl\w*|blush\w* .{0,20}heart|holds? (?:his|her|their) hand)\b/i;
+function realWorldLines(u,canon,present){if(!u||!u.type||u.type==='fictional')return[];const ppl=arr(present).filter(id=>isReal(u,id)).map(id=>nameAny(u,id));
+  return['This is ALTERNATE-REALITY FICTION based on public events ('+u.type+'). Invented events are fiction, not fact.',
+    'Real public figures'+(ppl.length?' ('+ppl.join(', ')+')':'')+' appear only in professional and public settings: practice, performances, competitions, public appearances. Never give them romance, sexuality, health issues, scandals, crimes, family or private-life details, and never invent quotes presented as real.']}
+function romanceLines(u,canon,present){const R=canon&&canon.romance;if(!R)return[];if(R.pref==='none')return['No romance in this story.'];
+  const ids=['player'].concat(arr(present)),ok=[],no=[];ids.forEach((a,i)=>ids.slice(i+1).forEach(b=>{if(a!=='player'&&b!=='player')return;const r=romanceAllowed(u,canon,a,b);(r.ok?ok:no).push(nameAny(u,a==='player'?b:a)+(r.ok?'':' ('+r.reason+')'))}));
+  return['Romance preference: '+({bl:'BL',gl:'GL',straight:'straight',any:'any'})[R.pref||'any']+', focus '+(R.focus||'optional')+', pacing '+(R.pacing||'natural')+'. Non-explicit. Characters choose freely; romance is never guaranteed.'+(ok.length?' Possible romantic interests here: '+ok.join(', ')+'.':'')+(no.length?' Never romantic with: '+no.join(', ')+'.':'')]}
+function realWorldCheck(u,canon,T,out){const sent=String(T||'').split(/(?<=[.!?\n])\s+/);
+  sent.filter(x=>ROMANCE_WORDS.test(x)).forEach(x=>{Object.keys(u&&u.people||{}).forEach(id=>{const n=nameAny(u,id).split(' ')[0];if(new RegExp('\\b'+n+'\\b','i').test(x))out.push({kind:'real-person-romance',text:'Romance involving a real person: '+x.slice(0,140)})});
+    Object.keys(u&&u.chars||{}).forEach(id=>{const age=ageAt(u,canon,id),n=nameOf(u,id).split(' ')[0];if(age!=null&&age<18&&new RegExp('\\b'+n+'\\b','i').test(x))out.push({kind:'minor-romance',text:'Romance involving a minor ('+nameOf(u,id)+'): '+x.slice(0,140)})})});return out}
+
 root.SFFan=Object.freeze({slug,hash,ids,splitChapters,candidateNames,indexSource,emptyUniverse,mergeImport,RULE_KEYS,defaults,need,evaluate,impact,cycles,ruleFor,search,
-  knows,identity,relationships,relVisibleTo,setRule,lock,exception,setFate,eventStatus,setMode,setPosition,setPOV,setRelationship,undo,canonFor,check,validate,exportStory,restorePreview});
+  knows,identity,relationships,relVisibleTo,isReal,ageAt,romanceAllowed,rank,recordCompetition,setRomance,setRule,lock,exception,setFate,eventStatus,setMode,setPosition,setPOV,setRelationship,undo,canonFor,check,validate,exportStory,restorePreview});
 })(typeof window!=='undefined'?window:globalThis);

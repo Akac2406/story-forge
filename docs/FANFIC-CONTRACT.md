@@ -219,3 +219,11 @@ Romance Preferences (under Characters & Relationships).
 - Career simulation is modular and reusable (idol groups, survival shows, agencies, acting, sports, other careers). Detailed mechanics follow after the core fanfiction screens.
 - UI (ChatGPT): Real-World Story Creator, public-source vs fictional timeline indicators, Romance Preferences, idol career dashboard, competition configuration, contextual menus, menu memory.
 - Fixtures requested from Claude: a fictional idol group, a real-world alternate-reality professional scenario, eligible and ineligible romance pairings, reproducible competition results.
+
+**Status (2026-11-24, late):** engine side of section 14 built on `memory-overhaul`.
+Functions: `SFFan.isReal`, `ageAt`, `romanceAllowed(u, canon, a, b) -> {ok, reason: 'romance off'|'real person'|'age unknown'|'minor'}`, `rank(entries, config, seed)`,
+`recordCompetition(canon, id, result, {replace?})` (established results are never re-rolled), `setRomance`. App adapter: `ffSetRomance`, `ffRomanceAllowed`, `ffAgeAt`, `ffRank`, `ffRecordCompetition`.
+Prompt block adds the alternate-reality framing for non-fictional universes, and the romance preference with possible and never-romantic characters.
+`ffCheck` adds `real-person-romance` and `minor-romance`. Fixture: `tests/fixtures/fanfic-idol.json` (invented names only, including placeholder "public figures";
+eligible and ineligible pairs, a reproducible competition). Tests: `tests/fanfic_realworld_unit.mjs` (28 checks).
+Universe records for people: `universe.people[personId] = PublicFigure`; aliases may point at person ids.
