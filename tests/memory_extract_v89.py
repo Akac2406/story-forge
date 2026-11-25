@@ -47,9 +47,10 @@ with sync_playwright() as p:
     ok(pg.evaluate("!DB.sessions[0].memExtract"), "switch is off by default")
     # turn the switch on through the Story memory sheet
     pg.click("button[aria-label='Menu']"); pg.click("button.drow:has-text('Story memory (beta)')"); pg.wait_for_timeout(300)
-    box = pg.locator("label.chk:has-text('Take memory notes in a separate quick step') input")
-    ok(box.count() == 1 and not box.is_checked(), "Story memory sheet shows the new switch, unticked")
-    box.check(); pg.evaluate("closeSheet(true)")
+    box = pg.locator("label:has-text('Memory notes') select")
+    ok(box.count() == 1 and box.input_value() == "off", "Story memory sheet shows the Memory notes choice, set to the narrator")
+    box.select_option("step"); pg.evaluate("closeSheet(true)")
+    ok(pg.evaluate("DB.sessions[0].memExtract") is True, "choosing the separate step turns it on")
     n0 = len(extracts())
     send(pg, "I read on.", 2)
     pg.wait_for_function("RPQ.size===0"); pg.wait_for_timeout(300)
