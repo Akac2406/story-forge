@@ -18,4 +18,6 @@ ok(Object.keys(mem.chars).sort().join('|') === 'Corwin Hale|Ilse Varn', 'no dupl
 ok(mem.chars['Ilse Varn'].knows.length === 2 && mem.chars['Corwin Hale'].knows.length === 1, 'knowledge collected on one entry per person');
 const m3 = M.init(); M.record(m3, M.parseMeta('[[META]]\nEVENTS: 2 | action | Aled, Brother Aled | chapel | Aled prays | none\nLEARNED: none\nSCENE: chapel | Aled | dawn'), { t: 1 });
 ok(Object.keys(m3.chars).join('|') === 'Aled', 'two forms of one name in the same reply become one character');
+const m4 = M.init(); M.record(m4, M.parseMeta('[[META]]\nEVENTS: 2 | action | Ilse (watching, hidden), Corwin Hale | hall | Ilse watches Corwin | the household (kitchen girl, yardman\nLEARNED: none\nSCENE: hall | Ilse (hidden), Corwin Hale | night'), { t: 1 });
+ok(Object.keys(m4.chars).sort().join('|') === 'Corwin Hale|Ilse|the household', 'bracketed notes never become characters: ' + Object.keys(m4.chars).join('|'));
 console.log(`memory names: ${n} checks passed`);

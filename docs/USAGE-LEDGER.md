@@ -16,8 +16,9 @@ Sources: **Dashboard** = Anna's OpenCode usage page (authoritative). **Estimate*
 | 2026-11-25 03:30 | Claude | Hybrid + recall rerun on v94: Glass Orchard (40 turns; provider slow, ~2 min replies) | 1.60% | 0.64% | 0.32% | Estimate |
 | 2026-11-25 04:10 | Claude | Hybrid + recall on v94: Cedar Ridge (30 turns) | 1.09% | 0.43% | 0.22% | Estimate |
 | 2026-11-25 08:40 | Claude | Hybrid + recall on v95 (player action for LEARNED): Glass Orchard (40 turns) | 1.78% | 0.71% | 0.36% | Estimate |
+| 2026-11-25 10:20 | Claude | Hybrid + recall on v96 (name resolution): Glass Orchard (40 turns; interrupted at turn 6 by a Chrome disconnect, resumed) | ~1.8% | ~0.7% | ~0.36% | Estimate |
 
-Running total toward the 45% stop: **about 5.9%** monthly (4% dashboard + 1.87% estimate since). Next dashboard reading will replace the estimate.
+Running total toward the 45% stop: **about 6.2%** monthly (4% dashboard + 2.23% estimate since). Next dashboard reading will replace the estimate.
 
 ## Results: Glass Orchard, hybrid + recall (2026-11-25)
 
@@ -72,3 +73,15 @@ Both stories improve with recall on v94; knowledge capture is still the weakest 
 Notes 32/40, repaired 40/40, scene 25/25, characters 17/17, events 13/15, knowledge 3/6 (exact and paraphrase), no leaks 6/6, secrets 30/30.
 
 The knowledge score did not improve, but the cause is different from before: the step now does record the knowledge (turn 28: "Aled: that the deed and water rights matter and the signature is on the deed (Ilse told him)"), yet memory had split people into duplicates ("Aled" / "Brother Aled", "Corwin" / "Corwin Hale (beyond the door)": 27 character entries in a 6-person story), so knowledge landed on a copy the checks (and the narrator's "who knows what") don't treat as the same person. Fix in 96: the memory engine resolves names to an existing character (parenthetical notes stripped, titles ignored, one unambiguous capitalised match required; descriptions like "a dock hand" never merged). No leaks were introduced by the v95 change.
+
+## Results: Glass Orchard, hybrid + recall on v96 (name resolution)
+
+| Check | v94 | v95 | v96 |
+|---|---|---|---|
+| Knowledge (exact / paraphrase) | 5/6 / 5/6 | 3/6 / 3/6 | **5/6 / 6/6** |
+| Events recorded | 14/15 | 13/15 | 12/15 |
+| Scene / characters | 23/25, 17/17 | 25/25, 17/17 | 25/25, 17/17 |
+| No knowledge leaks / secrets kept | 6/6, 29/30 | 6/6, 30/30 | 6/6, 29/30 |
+| Notes written / repaired | 31/40, 35/40 | 32/40, 40/40 | 30/40, 40/40 |
+
+The six named people now have exactly one memory entry each (Corwin Hale, Tamsin Reed, Ilse, Lady Orla, Brother Aled, Vey Calder; no wrong merges). Remaining junk entries came from bracketed notes split at commas ("Ilse (watching, hidden)" → "watching", "hidden"); fixed in 97 by dropping bracketed notes before splitting names. Events vary by ±2 between runs; treat as noise until repeated.

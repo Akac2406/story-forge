@@ -1,5 +1,5 @@
 // Offline shell only. Never persist arbitrary story, API, or user-data responses.
-const CACHE = "sf-v96";
+const CACHE = "sf-v97";
 const APP_FILES = [
   "./", "index.html", "listen.html", "manifest.webmanifest",
   "illustrated-reader.css", "memory-engine.js", "canon-engine.js", "memory-v2.js", "fanfic-engine.js", "character-engine.js", "director-engine.js", "gameplay-engine.js", "creator-engine.js", "presentation-engine.js", "fanfic-ui.js", "fanfic-ui.css", "icon-192.png", "icon-512.png",

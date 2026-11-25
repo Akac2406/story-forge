@@ -39,7 +39,8 @@ const IMPW={trivial:1,minor:1,low:2,small:2,medium:3,moderate:3,normal:3,high:4,
 const impOf=x=>{const n=parseInt(x,10);if(n>=1)return Math.min(5,n);const w=String(x||'').toLowerCase().replace(/[^a-z ]/g,'').trim();return IMPW[w]||0};
 const NONE=/^\s*(none|n\/a|-+|nothing|unknown|unclear|…|\.\.\.)\.?\s*$/i;
 const clean=x=>String(x==null?'':x).replace(/^[\s*_"“]+|[\s*_"”]+$/g,'').trim();
-const names=x=>String(x||'').split(/\s*,\s*|\s+and\s+/).map(clean).filter(n=>n&&!NONE.test(n)&&n.length<=48);
+/* Bracketed notes ("Ilse (watching, hidden)") are dropped before splitting, so their words never become characters. */
+const names=x=>String(x||'').replace(/\([^()]*\)/g,' ').replace(/\([^()]*$/,' ').split(/\s*,\s*|\s+and\s+/).map(clean).filter(n=>n&&!NONE.test(n)&&n.length<=48);
 const norm=t=>String(t||'').toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(w=>w.length>2||/^\d+$/.test(w));
 function overlap(a,b){const A=new Set(norm(a)),B=new Set(norm(b));if(!A.size||!B.size)return 0;let n=0;A.forEach(w=>{if(B.has(w))n++});return n/Math.min(A.size,B.size)}
 const KEYLINE=/^[\s*_>#-]*[A-Z][A-Z ]{2,}[*_]*\s*:/;
