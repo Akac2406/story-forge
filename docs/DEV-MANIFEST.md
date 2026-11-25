@@ -19,7 +19,7 @@ Paid testing: the memory-overhaul OpenCode authorization (stop at 45% monthly, l
 
 | | |
 |---|---|
-| Live (production) | **95** (released 2026-11-25): memory step sees the player's action as evidence for LEARNED only; gameplay engine (phase 9) and creator packages (adapters, no UI yet). 94: stall watchdog, notes-history fix, phase 8 adapters |
+| Live (production) | **96** (released 2026-11-25): Universe, Gameplay and Creator studios (ChatGPT); memory name resolution (one entry per person). 95: player action as LEARNED evidence; gameplay + creator engines |
 | Test address | https://deploy-preview-7--celebrated-brigadeiros-580c41.netlify.app (draft PR #7 = `memory-overhaul`) |
 | Integration branch | `memory-overhaul`: Claude merges, runs the full suite, pushes |
 | ChatGPT branch | `ui-overhaul` (fast-forwarded to `memory-overhaul` after each integration) |
@@ -67,6 +67,8 @@ Workflow per batch: ChatGPT commits to `ui-overhaul`; Claude merges into `memory
 | 2026-11-25 | release 94 | notes-history fix (`mt` else `rmt` with header) + watchdog + phase 8 adapters | full suite pass; `meta_history_browser.py`; upgrade 93 -> 94 check 26/26 |
 | 2026-11-25 | 09f1882, 89d46ea | phase 9 gameplay engine + gm*; creator packages SFCreator + cr* | gameplay 28+15, creator 16+13 checks |
 | 2026-11-25 | release 95 | memory step: player action as LEARNED-only evidence (`repair_prompt_browser.py`) | full suite pass; upgrade 94 -> 95 check 26/26; real-model confirmation run next |
+| 2026-11-25 | 329e38b, ba86c88, 2a773a9, 3f26f19 | ui-overhaul: Universe, Gameplay, Creator studios + menu | no fixes needed; `studios_browser.py` 12 checks (confirm dialogs accepted) |
+| 2026-11-25 | release 96 | studios + memory name resolution (`memory_names_unit.mjs` 9) | full suite pass; upgrade 95 -> 96 check 26/26 |
 
 ## Known issues / notes
 
