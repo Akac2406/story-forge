@@ -1,6 +1,6 @@
 # Quick Create API (Intelligent Fanfiction Creation) — draft contract
 
-Status: engine done (`site/quick-create-engine.js`, `SFQuick`, pure; `tests/quick_create_unit.mjs` 19 checks; fixture `tests/fixtures/quick-create.json`). App adapters (`qc*`) are next; shapes below are the contract the UI can build against. No paid calls in tests (mock provider).
+Status: engine (`site/quick-create-engine.js`, `SFQuick`; `tests/quick_create_unit.mjs` 19 checks; fixture `tests/fixtures/quick-create.json`) and app adapters (`qc*` in index.html; `tests/quick_create_browser.py` 16 checks with a mock model and stubbed lookups) are done on memory-overhaul. Not released. No paid calls in tests.
 
 ## Flow
 
@@ -20,3 +20,11 @@ Status: engine done (`site/quick-create-engine.js`, `SFQuick`, pure; `tests/quic
 - The style profile records choices only: quoted passages of 60+ characters are removed and reported; no exact author imitation.
 - Edits cannot change `sources`/`uncertain`; unknown paths refused; diff lists only the touched paths.
 - Content rules: no romance or sexual content with anyone under 18 or real people (also enforced later by `ffRomanceAllowed`/`ffCheck`); the player stays in control of their character.
+
+## Adapter details (implemented)
+
+- `qcResearch(query, {characters?: [names], signal})`: `searchWorks` → best match becomes fact `f0`; `wikiFind` → the work's fandom wiki; up to 8 `wikiPage` reads (the work's main pages plus each named character). Character pages get canon ids `char:<work-slug>:<name-slug>` so takeover and locks can be validated. Returns `{ok, reason, work: {title, kind, year, author}, wiki, facts, sources}`; `reason: "cancelled"` on abort; when nothing is found it says so and suggests importing the source.
+- `qcPreview(input, {facts?, universeId?, signal})`: with `universeId` uses the imported universe (facts from it unless given); otherwise builds a temporary universe from the research facts (nothing saved). One non-streaming request (max 1,800 output tokens). Sets the creation session context and clears the undo stack.
+- `qcEdit(bp, instruction, {signal})` and `qcApply(bp, patch)` (manual edits; same patch shape): accepted changes push the previous blueprint on the undo stack; `qcUndo()` pops it.
+- `qcCommit(bp)`: re-validates; saves the research universe under a free id (never overwrites, e.g. `ember-academy-2`), creates the story with `ffCreateStory`, stores `blueprint {game (career started on defaults), director {enabled, settings}}`, `fanfic.setup {memoryRecall, layout}`, `fanfic.styleProfile`, `fanfic.quick {characters, notes, sources, uncertain}`. Any failure restores stories and universes exactly. New playthroughs get the canon, memory recall, cinematic layout, director and gameplay setup.
+- Narrator prompt: stories with a style profile get a short "SOURCE STYLE" section (tense, pacing, dialogue, description, tone, structure) with "never copy text from the source".

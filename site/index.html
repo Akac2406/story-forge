@@ -319,7 +319,7 @@ body[data-ui-layout="academy"] .tabs button.on,body[data-ui-layout="anime"] .tab
 .sf-v46-shell{display:grid;gap:12px}.sf-v46-tabs{display:flex;gap:7px;overflow-x:auto;padding:4px 0}.sf-v46-tabs button{flex-shrink:0;border-radius:999px}.sf-v46-tabs .active{background:var(--accent,#9b7bff);color:#fff}.sf-v46-hero{padding:20px;border-radius:18px;background:linear-gradient(120deg,#38205c,#101d36);color:#fff;border:1px solid #ffffff35}.sf-v46-hero h3{font-size:1.45em;margin:5px 0}.sf-v46-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}.sf-v46-card{padding:13px;border-radius:15px;background:rgba(128,128,128,.10);border:1px solid rgba(128,128,128,.26);min-width:0}.sf-v46-card img{max-width:100%;height:150px;object-fit:cover;border-radius:12px}.sf-v46-card small{display:block;opacity:.75;margin-top:5px}.sf-v46-track{height:8px;background:#80808040;border-radius:9px;overflow:hidden;margin:6px 0}.sf-v46-track i{height:100%;display:block;background:var(--accent,#9b7bff)}.sf-v46-step{padding:12px 12px 12px 18px;border-left:3px solid var(--accent,#9b7bff);margin:8px 0;background:#80808014;border-radius:8px}.sf-v46-palette{display:flex;gap:6px;flex-wrap:wrap}.sf-v46-palette button{min-width:110px}.sf-v46-note{opacity:.75;font-size:.86em}.sf-v46-preview{padding:20px;background:linear-gradient(160deg,#101529,#342244);border:1px solid #b79aff66;border-radius:18px;color:#fff;line-height:1.7}.sf-v46-preview .speaker{font-size:.8em;color:#e2c5ff;letter-spacing:.1em}.sf-v46-preview blockquote{margin:8px 0 0;font-size:1.05em}
 </style><link rel="stylesheet" href="visual-customization-v48.css"><link rel="stylesheet" href="illustrated-reader.css"></head><body>
 <div id="app"></div><div id="toast" role="status"></div>
-<script src="memory-engine.js"></script> <script src="canon-engine.js"></script> <script src="memory-v2.js"></script> <script src="fanfic-engine.js"></script> <script src="character-engine.js"></script> <script src="director-engine.js"></script> <script src="gameplay-engine.js"></script> <script src="creator-engine.js"></script> <script src="presentation-engine.js"></script>
+<script src="memory-engine.js"></script> <script src="canon-engine.js"></script> <script src="memory-v2.js"></script> <script src="fanfic-engine.js"></script> <script src="character-engine.js"></script> <script src="director-engine.js"></script> <script src="gameplay-engine.js"></script> <script src="creator-engine.js"></script> <script src="presentation-engine.js"></script> <script src="quick-create-engine.js"></script>
 <script>
 "use strict";
 const KEY="story-forge-v2",app=document.getElementById("app"),$=s=>document.querySelector(s);
@@ -933,6 +933,7 @@ function play(st,d){if(!hasKey()){toast("Add your OpenRouter key in Settings fir
   sd(se,st).forEach(s=>{se.stats[s.n]=num(s.v,0)});
   if(st.cast0&&st.cast0.length){se.cast={};st.cast0.forEach(c=>{se.cast[c.n]={r:c.role||"",l:[c.age?"age "+c.age:"",c.looks].filter(Boolean).join(", "),t:[],a:c.hook||"",ch:0,u:Date.now(),pic:c.th||undefined}})}
   if(st.ctr&&st.ctr.length){se.ctr={};st.ctr.forEach(c=>{se.ctr[c.n]=0})}if(st.ooc)se.fmt=Object.assign(fmtOf(se),{tag:1});
+  if(st.fanfic&&st.fanfic.setup)try{const x=st.fanfic.setup;if(x.memoryRecall)se.memRecall=true;if(x.layout)se.cv={settings:{layout:x.layout},scene:{},cast:{},preset:null}}catch(e){}
   if(st.fanfic&&st.fanfic.canon&&window.SFFan)try{se.canon=JSON.parse(JSON.stringify(st.fanfic.canon));if(se.canon.mode&&se.canon.mode.player&&se.canon.mode.player.name&&!(d.name||"").trim())se.char.name=se.canon.mode.player.name}catch(e){}
   if(st.blueprint&&window.SFCreator)try{if(st.blueprint.game)se.game=SFCreator.gameSetup(st.blueprint.game);if(st.blueprint.director)se.director=JSON.parse(JSON.stringify(st.blueprint.director))}catch(e){}
   DB.sessions.push(se);save();view={n:"chat",id:se.id};begin(se,st)}
@@ -1631,6 +1632,8 @@ function buildMsgs(se,st,hist,action,days=0){if(se.sim)st=Object.assign({},st,{t
   if(se.director&&se.director.enabled&&window.SFDirector&&!isC)try{const db=dirBlock(se);if(db)add("story director","\n\n"+db,0,2)}catch(e){console.warn("director failed",e)}
   if(se.game&&se.game.enabled&&window.SFGame&&!isC)try{const gb=SFGame.block(se.game);if(gb)add("gameplay","\n\n"+gb,0,2)}catch(e){console.warn("gameplay failed",e)}
   if(se.canon&&window.SFFan&&!isC)try{const fb=ffCanonFor(se);if(fb)add("fanfiction canon","\n\n"+fb,0,2)}catch(e){console.warn("fanfiction canon failed",e)}
+  {const sp=se.styleProfile||(st&&st.fanfic&&st.fanfic.styleProfile);if(sp&&!isC){const L=[];if(sp.tense)L.push(sp.tense+" tense");if(sp.pacing)L.push(sp.pacing+" pacing");if(sp.dialogue)L.push(sp.dialogue+" dialogue");if(sp.description)L.push(sp.description+" description");if(sp.tone)L.push("tone: "+String(sp.tone).slice(0,120));if(sp.structure)L.push("structure: "+String(sp.structure).slice(0,160));
+    if(L.length)add("source style","\n\nSOURCE STYLE (match these choices in your own words; never copy text from the source): "+L.join("; ")+".",0,3)}}
   if(se.memRecall&&memOn(se)&&!isC&&window.SFMem2)try{const rt=se.turns.slice(-3).map(x=>x.text||"").join(" "),sc=(se.mem&&se.mem.scene)||{},hits=SFMem2.retrieve(memView(se),{text:rt,present:sc.who||[],where:sc.where||"",t:se.turns.length,max:[6000,4000,2500][DB.saver||0]});
     if(hits.length)add("recalled memories","\n\nRelevant memories from earlier in this story (most useful first). Stay consistent with them; facts listed are true as of now:\n"+SFMem2.render(hits),0,3)}catch(e){console.warn("memory recall failed",e)}
   if(se.wn)s+="\n\nFan wiki notes on people, places and terms in this scene. Treat them as accurate canon for names, looks, personalities, abilities and relationships. Wiki pages also describe events from later in the story, so never reveal or act on anything that has not happened yet at the current point of the timeline:\n"+se.wn;
@@ -2523,6 +2526,52 @@ function ffSaveDraft(draft){const d=draft||{};const name=String(d.name||"").trim
   DB.ffDrafts=DB.ffDrafts||{};const id=d.id&&DB.ffDrafts[d.id]?d.id:"fd"+uid();DB.ffDrafts[id]={id,name,universe:d.universe||"",options:o,updated:Date.now()};save();return{ok:true,applied:true,reason:null,id}}
 function ffLoadDraft(id){const d=(DB.ffDrafts||{})[id];return d?JSON.parse(JSON.stringify(d)):null}
 function ffDeleteDraft(id){if(!(DB.ffDrafts||{})[id])return{ok:false,applied:false,reason:"not found"};delete DB.ffDrafts[id];save();return{ok:true,applied:true,reason:null}}
+/* Quick Create (docs/QUICK-CREATE-API.md). Research uses the app's existing lookups (searchWorks, wikiFind, wikiSearch, wikiPage); the model never browses.
+   One creation session at a time: QC keeps the context of the last preview and an undo stack of accepted edits. Nothing is saved before qcCommit. */
+const QC={ctx:null,undo:[]};
+const qcAbort=s=>{if(s&&s.aborted){const e=new Error("cancelled");e.name="AbortError";throw e}};
+const qcSlug=t=>String(t||"").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,40)||"work";
+async function qcResearch(query,o){o=o||{};const q=String(query||"").trim().slice(0,200);if(!q)return{ok:false,reason:"Enter the title of the work"};
+  try{qcAbort(o.signal);const works=await searchWorks(q);qcAbort(o.signal);const w=works[0]||null,title=(w&&w.t)||q,us=qcSlug(title),facts=[],sources=[];
+    if(w)facts.push({id:"f0",text:title+(w.ty?" is a "+w.ty:"")+(w.y?" ("+w.y+")":"")+(w.a?" by "+w.a:"")+(w.st?"; status: "+w.st:"")+".",source:{title:w.src||"Search"},confidence:"confirmed"});
+    let wiki=null;try{wiki=await wikiFind(title)}catch(e){}qcAbort(o.signal);
+    if(wiki&&wiki.base){let req=0;const seen=new Set();const add=async(t,charName)=>{if(!t||seen.has(t)||req>=8)return;seen.add(t);req++;qcAbort(o.signal);const pg=await wikiPage(wiki.base,t,900).catch(()=>null);if(!pg||!pg.x)return;
+        const url=wiki.base+"/wiki/"+encodeURIComponent(pg.t.replace(/ /g,"_"));sources.push({title:(wiki.name||"Wiki")+": "+pg.t,url});
+        facts.push({id:"f"+facts.length,text:pg.x.slice(0,400),source:{title:(wiki.name||"Wiki")+": "+pg.t,url},confidence:"confirmed",charId:charName?"char:"+us+":"+qcSlug(charName):undefined,charName:charName||undefined})};
+      const top=await wikiSearch(wiki.base,title,2).catch(()=>[]);for(const t of top)await add(t);
+      for(const n of (o.characters||[]).slice(0,5)){const hit=(await wikiSearch(wiki.base,n,1).catch(()=>[]))[0];await add(hit,hit?n:null)}}
+    if(!facts.length)return{ok:false,reason:"Couldn't find this work. Import the source, or describe it yourself and the setup will mark what it couldn't confirm."};
+    return{ok:true,reason:null,work:w?{title,kind:w.ty||"",year:w.y||null,author:w.a||""}:{title,kind:"",year:null,author:""},wiki:wiki&&wiki.base||null,facts,sources}}
+  catch(e){return{ok:false,reason:e&&e.name==="AbortError"?"cancelled":"Research failed: "+(e&&e.message||e)}}}
+/* A temporary universe from research facts, so canon choices can be validated before anything is saved. */
+function qcResearchUniverse(title,facts){const us=qcSlug(title),chars={};(facts||[]).forEach(f=>{if(f.charId&&!chars[f.charId])chars[f.charId]={id:f.charId,name:f.charName||f.charId.split(":").pop(),desc:String(f.text||"").slice(0,300)}});
+  return{v:1,id:us,name:String(title||us),rev:1,created:Date.now(),updated:Date.now(),revisions:[],sources:[],aliases:{},chars,events:[],records:(facts||[]).map(f=>({id:"fact:"+us+":"+f.id,layer:"universe",kind:"fact",text:f.text,who:[],canon:f.confidence==="confirmed"?"source":"uncertain",source:f.source,rev:1,spoilerAt:null})),conflicts:[],rules:{powers:[],world:[]},research:true}}
+function qcCtx(u,facts){return{universe:u,facts,fan:SFFan,director:window.SFDirector,game:window.SFGame,cinema:window.SFCinema}}
+async function qcPreview(input,o){o=o||{};input=input||{};try{qcAbort(o.signal);
+    const u=o.universeId?ffUniverse(o.universeId):qcResearchUniverse(input.sourceTitle||"Untitled",o.facts||[]);if(o.universeId&&!u)return{ok:false,reason:"universe missing"};
+    const facts=o.facts||(o.universeId?SFQuick.factsFromUniverse(u):[]),msgs=SFQuick.prompt(input,facts,{modes:SFFan.MODES,careers:window.SFGame?SFGame.careerList().map(c=>c.id):[],universe:u}),est=SFQuick.estimate(msgs,1800);
+    const r=await ask(msgs,{max:1800,temp:0.4,signal:o.signal,lite:true});qcAbort(o.signal);const p=SFQuick.parse(r.text);if(!p.ok)return{ok:false,reason:p.reason,estimate:est,usage:r.usage||null};
+    const v=SFQuick.validate(p.value,qcCtx(u,facts));QC.ctx={universe:u,facts,imported:!!o.universeId,input:Object.assign({},input)};QC.undo=[];
+    return{ok:v.ok,reason:v.ok?null:v.issues[0],blueprint:v.blueprint,issues:v.issues,unsupported:v.unsupported,canon:v.canon,estimate:est,usage:r.usage||null}}
+  catch(e){return{ok:false,reason:e&&e.name==="AbortError"?"cancelled":String(e&&e.message||e)}}}
+async function qcEdit(bp,instruction,o){o=o||{};if(!QC.ctx)return{ok:false,reason:"preview first"};if(!String(instruction||"").trim())return{ok:false,reason:"Describe the change"};
+  try{qcAbort(o.signal);const r=await ask(SFQuick.editPrompt(bp,instruction),{max:900,temp:0.2,signal:o.signal,lite:true});qcAbort(o.signal);const p=SFQuick.parse(r.text);if(!p.ok)return{ok:false,reason:p.reason};
+    return qcApply(bp,p.value)}catch(e){return{ok:false,reason:e&&e.name==="AbortError"?"cancelled":String(e&&e.message||e)}}}
+function qcApply(bp,patch){if(!QC.ctx)return{ok:false,reason:"preview first"};const r=SFQuick.applyPatch(bp,patch,qcCtx(QC.ctx.universe,QC.ctx.facts));if(r.ok&&r.diff.length)QC.undo.push(bp);return{ok:r.ok,reason:r.reason,blueprint:r.blueprint,diff:r.diff,issues:r.issues}}
+function qcUndo(){const b=QC.undo.pop();return b?{ok:true,blueprint:b}:{ok:false,reason:"nothing to undo"}}
+/* Atomic: everything or nothing. */
+function qcCommit(bp){if(!QC.ctx)return{ok:false,applied:false,reason:"preview first"};const ctx=qcCtx(QC.ctx.universe,QC.ctx.facts),v=SFQuick.validate(bp,ctx);if(!v.ok)return{ok:false,applied:false,reason:v.issues[0]||"invalid setup"};
+  const B=v.blueprint,u=QC.ctx.universe,snap=JSON.stringify({stories:DB.stories,universes:DB.universes||{}});
+  let uid0=u.id;try{if(!QC.ctx.imported){DB.universes=DB.universes||{};let n=2;while(DB.universes[uid0])uid0=u.id+"-"+n++;DB.universes[uid0]=Object.assign({},u,{id:uid0})}
+    const o={};for(const k of ["modes","takeover","start","pov","romance","rules","locks","exceptions","fates","foreknowledge"])if(B[k]!==undefined)o[k]=B[k];if(B.player)o.player={name:B.player.name,desc:B.player.desc};if(B.player&&B.player.age!=null)o.startAge=B.player.age;
+    const r=ffCreateStory(uid0,Object.assign(o,{title:B.title,setting:[B.premise,B.opening].filter(Boolean).join("\n\n")}));if(!r.applied)throw new Error(r.reason);
+    const st=getStory(r.storyId);let game=null;if(B.gameplay&&B.gameplay.career&&window.SFGame){const g=SFGame.startCareer(SFGame.defaults(),B.gameplay.career);if(g.applied)game=g.game}
+    let director=null;if(B.director&&window.SFDirector){const d=SFDirector.set(SFDirector.defaults(),B.director);if(d.applied===false&&d.reason)throw new Error("director: "+d.reason);director={enabled:true,settings:d.settings}}
+    if(game||director)st.blueprint={game,director};st.fanfic.setup={memoryRecall:!!(B.memory&&B.memory.recall),layout:B.appearance&&B.appearance.layout||null};if(B.styleProfile&&Object.keys(B.styleProfile).length)st.fanfic.styleProfile=B.styleProfile;
+    st.fanfic.quick={characters:B.characters,notes:B.notes,sources:(QC.ctx.facts||[]).filter(f=>B.sources.includes(f.id)).map(f=>f.source),uncertain:B.uncertain};
+    if(window.__qcFailAfterStory)throw new Error("simulated failure");
+    save();QC.ctx=null;QC.undo=[];return{ok:true,applied:true,reason:null,storyId:r.storyId}}
+  catch(e){const p=JSON.parse(snap);DB.stories=p.stories;DB.universes=p.universes;save();return{ok:false,applied:false,reason:String(e&&e.message||e)}}}
 const AP_PRESETS="sf.appearance.presets";
 function apKey(){return(window.SFVisualV48&&SFVisualV48.KEY)||"sf.visual.v48"}
 function apCfg(){try{const d=JSON.parse(localStorage.getItem(apKey())||"null");return d&&d.version===1?d:SFAppearance.empty()}catch(e){return SFAppearance.empty()}}
