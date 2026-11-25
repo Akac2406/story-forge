@@ -3,6 +3,7 @@ anything missing, never replacing the narrator's events or knowledge. Simulated 
 Run: python tests/memory_hybrid_v91.py"""
 import json, os, re, subprocess, sys, time
 from playwright.sync_api import sync_playwright
+import menu_helper  # opens collapsible novel-menu categories for older tests (UI overhaul)
 HERE = os.path.dirname(os.path.abspath(__file__)); APP = os.path.join(HERE, "..", "site"); PORT = 8899
 fails = []; errs = []; calls = []
 def ok(c, m):

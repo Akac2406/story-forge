@@ -2,6 +2,7 @@
 Simulated replies, throwaway story, no network. Run: python tests/memory_phase2_v87.py"""
 import json, os, subprocess, sys, time
 from playwright.sync_api import sync_playwright
+import menu_helper  # opens collapsible novel-menu categories for older tests (UI overhaul)
 HERE = os.path.dirname(os.path.abspath(__file__)); APP = os.path.join(HERE, "..", "site"); PORT = 8896
 fails = []; errs = []; calls = []
 def ok(c, m):

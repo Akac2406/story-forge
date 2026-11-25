@@ -7,6 +7,7 @@ from pathlib import Path
 from threading import Thread
 
 from playwright.sync_api import expect, sync_playwright
+import menu_helper  # opens collapsible novel-menu categories for older tests (UI overhaul)
 
 
 SITE = Path(__file__).resolve().parent.parent / "site"

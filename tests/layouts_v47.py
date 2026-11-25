@@ -3,6 +3,7 @@ no page errors, no sideways scrolling, story text and the main controls stay vis
 Run: python tests/layouts_v47.py"""
 import json, os, re, subprocess, sys, time
 from playwright.sync_api import sync_playwright
+import menu_helper  # opens collapsible novel-menu categories for older tests (UI overhaul)
 HERE = os.path.dirname(os.path.abspath(__file__)); APP = os.path.join(HERE, "..", "site"); PORT = 8849
 html = open(os.path.join(APP, "index.html")).read()
 LAYOUTS = sorted(set(re.findall(r'data-ui-layout="([a-z]+)"', html)))
@@ -38,7 +39,7 @@ with sync_playwright() as p:
                 for lab in ("Send", "Regenerate", "Menu"):
                     ok(pg.locator(f"button[aria-label='{lab}']").first.is_visible(), f"{tag}: {lab} button visible")
                 pg.get_by_role("button", name="Menu", exact=True).click()
-                pg.get_by_text("Reading and artwork", exact=True).click()
+                pass  # categories are opened by menu_helper (UI overhaul renamed this group)
                 pg.get_by_role("button", name="Visual Suite", exact=True).click()
                 pg.locator(".sheet").get_by_text("Visual Suite", exact=True).wait_for()
                 n += 1

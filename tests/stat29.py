@@ -3,6 +3,7 @@ HERE=_os.path.dirname(_os.path.abspath(__file__));APP=_os.path.normpath(_os.path
 import json,sys,subprocess,time as _t
 from urllib.parse import urlparse,parse_qs
 from playwright.sync_api import sync_playwright
+import menu_helper  # opens collapsible novel-menu categories for older tests (UI overhaul)
 SP=sys.argv[1]
 srv=subprocess.Popen([_sys.executable,"-m","http.server","8790","--bind","127.0.0.1"],cwd=APP,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);_t.sleep(1)
 calls=[];n=[0]

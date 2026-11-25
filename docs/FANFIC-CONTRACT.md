@@ -179,3 +179,34 @@ UI can build against contract-compatible fixtures without waiting: `tests/fixtur
 ## ID conventions (all examples above)
 
 Characters `char:<universe>:<slug>` · events `ev:<universe>:<n>` · sources `src:<slug>` · universe records `fact:<universe>:<slug>` / `fanon:<universe>:<slug>` · relationships `rel:<charIdA>><charIdB>` (directional) · fates keyed by charId. Display names are never used as keys.
+
+## 14. Real-world alternate reality stories and romance preferences (v2.1 proposal by Claude, pending ChatGPT's agreement)
+
+Generalises the same engine; no separate system. Covers OC insertion into real idol groups, alternate seasons of survival shows,
+trainee and career simulations, historical insertion.
+
+**Universe type:** `universe.type: 'fictional'|'historical'|'contemporary'|'hybrid'`.
+**Public-source records:** universe records add `verified:'documented'|'reported'|'uncertain'`, `date`, and `ref` naming the public source.
+Documented public events (debuts, releases, broadcasts, rankings) become `CanonEvent`s with dates, so source revisions, butterfly effects,
+locks and exceptions all work unchanged. Invented playthrough events stay in the playthrough overlay and are always marked fictional.
+**Public-figure profiles:** `PublicFigure { id:'person:<universe>:<slug>', name, publicRole, publicPersona (observable, hedged), born? }`,
+separate from `CharIdentity`. Playthrough development (professional bonds, rivalries, shared experiences) is stored as usual.
+
+**Safeguards (engine-enforced in `ffCanonFor` and `ffCheck`, not just UI):**
+1. **Fiction framing.** Real-world playthroughs are labelled "alternate-reality fiction" in the UI and in exports. Invented events are never presented as fact.
+2. **No romantic or sexual storylines involving real people.** Romance options apply to OCs and fictional characters only.
+   Real people can be friends, teammates, mentors and rivals, in a professional and public context.
+3. **Minors: no romance, ever.** Romance requires every participant to be an adult (18+) at the story date. This applies to fictional characters too.
+   If an age is unknown, no romance. Real people who were minors at the story date also get no invented personal storylines beyond professional activities.
+4. **No invented private life presented about real people:** no sexuality, health, crimes, scandals, family or relationships, and no quotes attributed as real.
+   Invented scenes with real people stay in the professional sphere (practice, performances, competition, public appearances).
+5. **Competitions are not auto-wins.** Rankings are simulated from performances and choices with a seeded, reproducible method; the player's character can lose.
+
+**Romance preferences** (all story types): `se.canon.romance = { pref:'bl'|'gl'|'straight'|'any'|'none', pacing:'slow'|'natural'|'fast', interest?:charId,
+canonRelationships:'preserve'|'adaptive'|'au' }`. Changeable mid-story without losing relationship history. Non-explicit.
+Gated by safeguards 2 and 3: the engine only offers or steers romance between adult fictional characters or OCs.
+
+**Engine additions (Claude):** `universe.type`, `verified`, `PublicFigure`, `romanceAllowed(u, canon, aId, bId)` (age and real-person gate),
+safeguard lines in the prompt block for real-world universes, `ffCheck` kinds `real-person-romance` and `minor-romance`,
+seeded competition ranking `rank(entries, seed)`. **UI (ChatGPT):** Real-World Story Creator, idol career dashboard (under World & Gameplay),
+Romance Preferences (under Characters & Relationships).

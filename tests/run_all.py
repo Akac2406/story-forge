@@ -25,7 +25,7 @@ for name in node_tests:
     if result.returncode:
         failed.append(name)
         print((result.stdout + result.stderr)[-1500:])
-names = sorted(f[:-3] for f in os.listdir(HERE) if f.endswith(".py") and f != "run_all.py")
+names = sorted(f[:-3] for f in os.listdir(HERE) if f.endswith(".py") and f not in ("run_all.py", "menu_helper.py"))  # menu_helper is a shared test helper, not a test
 for n in names:
     if n in NEEDS_BOOK and not BOOK:
         print(f"-- {n}: skipped (pass an EPUB path to run it)"); continue

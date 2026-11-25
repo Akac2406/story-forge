@@ -2,6 +2,7 @@ import os as _os,sys as _sys
 HERE=_os.path.dirname(_os.path.abspath(__file__));APP=_os.path.normpath(_os.path.join(HERE,"..","site"));FIX=_os.path.join(HERE,"fixtures")
 import json,sys,subprocess,time as _t
 from playwright.sync_api import sync_playwright
+import menu_helper  # opens collapsible novel-menu categories for older tests (UI overhaul)
 SP=sys.argv[1]
 srv=subprocess.Popen([_sys.executable,"-m","http.server","8789","--bind","127.0.0.1"],cwd=APP,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);_t.sleep(1)
 calls=[];n=[0]

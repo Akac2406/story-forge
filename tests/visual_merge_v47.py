@@ -3,6 +3,7 @@ reply switching, branching, story memory and offline loading must still work wit
 Simulated replies only (no real model). Run: python tests/visual_merge_v47.py"""
 import json, os, subprocess, sys, time
 from playwright.sync_api import sync_playwright
+import menu_helper  # opens collapsible novel-menu categories for older tests (UI overhaul)
 HERE = os.path.dirname(os.path.abspath(__file__)); APP = os.path.join(HERE, "..", "site"); PORT = 8847
 fails = []
 def ok(c, m):
@@ -36,7 +37,7 @@ def strip(s): return {k: v for k, v in s.items() if k not in ("updated",)}
 def open_visuals(pg, screen):
     if screen == "phone":
         pg.get_by_role("button", name="Menu", exact=True).click()
-        pg.get_by_text("Reading and artwork", exact=True).click()
+        pass  # categories are opened by menu_helper (UI overhaul renamed this group)
         pg.get_by_role("button", name="Visual Suite", exact=True).click()
     else:
         pg.locator("button.pill.story-visuals").click()
