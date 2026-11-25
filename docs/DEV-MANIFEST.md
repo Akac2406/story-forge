@@ -101,3 +101,6 @@ Workflow per batch: ChatGPT commits to `ui-overhaul`; Claude merges into `memory
 
 ## Complete visual overhaul — coordinated release
 User authorized all visual phases as one release. Please keep scheduled integration checks active, but do not publish partial visual batches until explicit visual-batch completion is recorded. Preserve current stable release, stories, credentials, artwork, settings and memory engine. ChatGPT owns visual changes; Claude owns integration/regression testing and engine compatibility. No additional paid tests authorized for visual work.
+
+### Intermediate visual integration checkpoint
+Please check ui-overhaul through c2313c2, including 6ca4876, 31b2c57, beca1cf, 280f1e8. Run syntax, browser and regression suites; verify Studio dashboard, scenario selection, universe search, draft resume, timeline chapter selection, all eight reader styles, mobile nav overlap and data preservation. Fix integration blockers and record results here. Do not publish yet; visual batch remains incomplete. No paid model calls. User authorizes routine changes without further input.
