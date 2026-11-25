@@ -68,7 +68,16 @@ function apply(){const c=resolved(),pal=palettes()[c.theme],r=document.documentE
   if(format)r.dataset.sfPlay=format;
   else delete r.dataset.sfPlay;
   applyInterfaceLook(r,r.dataset.theme,designs[design],c.interfaceLook);
-  r.dataset.sfMotion=motion;
+  const customKeys=['bg','card','accent','text'];
+  for(const k of customKeys)if(/^#[0-9a-f]{6}$/i.test(c[k]||''))r.style.setProperty('--'+k,c[k]);
+  for(const [key,values] of Object.entries({icons:['line','rounded','solid','duotone','pixel','sketch','ink','runic','neon','engraved','geometric','sticker','glyph','blueprint'],spacing:['compact','cozy','roomy'],borders:['none','thin','bold'],nav:['bottom','top','side','floating'],panel:['right','left','bottom','overlay'],contrast:['normal','high']})){
+    const attr='sf'+key[0].toUpperCase()+key.slice(1);if(values.includes(c[key]))r.dataset[attr]=c[key];else delete r.dataset[attr];
+  }
+  const bounded=(key,min,max,unit)=>{const n=c[key];if(typeof n==='number'&&Number.isFinite(n))r.style.setProperty('--sf-'+key,Math.max(min,Math.min(max,n))+unit);else r.style.removeProperty('--sf-'+key)};
+  bounded('radius',0,24,'px');bounded('fontScale',.8,1.4,'');bounded('transparency',0,.6,'');
+  if(c.contrast==='high')r.style.setProperty('--sf-transparency','0');
+  r.dataset.sfReducedMotion=String(!!c.reducedMotion||motion==='none'||matchMedia('(prefers-reduced-motion: reduce)').matches);
+  r.dataset.sfMotion=r.dataset.sfReducedMotion==='true'?'off':motion;
   r.dataset.sfLayout=c.layout.replace(/[^a-z]/gi,'').toLowerCase();r.dataset.sfFormat=c.format.replace(/[^a-z]/gi,'').toLowerCase();
 }
 function el(tag,props={},...kids){const x=document.createElement(tag);for(const [k,v] of Object.entries(props)){if(k==='text')x.textContent=v;else if(k==='class')x.className=v;else if(k==='on')x.addEventListener('click',v);else x.setAttribute(k,v)}kids.flat().forEach(k=>x.append(k));return x}

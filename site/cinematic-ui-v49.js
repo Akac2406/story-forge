@@ -11,7 +11,16 @@ function decorate(){
   start.addEventListener('click',()=>go({n:'build'}));browse.addEventListener('click',()=>page.querySelector('.grid')?.scrollIntoView({behavior:document.documentElement.dataset.sfMotion==='off'?'instant':'smooth',block:'start'}));
   actions.append(start,browse);hero.append(actions);page.prepend(hero);
  }
+ if(typeof view==='undefined'||view.n!=='chat'){for(const k of Object.keys(document.documentElement.dataset))if(k.startsWith('sfCv'))delete document.documentElement.dataset[k]}
  if(typeof view!=='undefined'&&view.n==='chat'){
+  const se=DB.sessions.find(s=>s.id===view.id),root=document.documentElement;
+  if(se&&typeof cvState==='function'){
+   const cv=cvState(se),c=cv.settings,scene=cv.scene||{},reduced=c.reducedMotion||root.dataset.sfReducedMotion==='true'||matchMedia('(prefers-reduced-motion: reduce)').matches;
+   for(const [k,v] of Object.entries({layout:c.layout,lighting:scene.lighting||c.lighting,overlay:scene.overlay||c.overlay,dialogue:c.dialogueBox,narration:c.narration,reveal:reduced&&c.textReveal==='typewriter'?'fade-in':c.textReveal,transition:reduced?'none':scene.transition||c.transition}))root.dataset['sfCv'+k[0].toUpperCase()+k.slice(1)]=v||'none';
+   root.dataset.sfCvReduced=String(!!reduced);
+   const log0=document.querySelector('#log'),ref=scene.background,src=ref&&typeof cvArt==='function'?cvArt(se,ref):null;
+   if(log0){if(src&&cv.layout?.caps?.background)log0.style.backgroundImage='linear-gradient(#0005,#0009),url('+JSON.stringify(src)+')';else log0.style.removeProperty('background-image')}
+  }
   const log=document.querySelector('#log');if(log&&!document.querySelector('.sf49-viewbar')){
    const bar=h('div','sf49-viewbar');bar.append(h('span','','Reading view'));
    const modes=[['Character RPG','RPG'],['Visual Novel','Visual Novel'],['Novel Reader','Reader'],['Immersive Cinema','Cinema']];
