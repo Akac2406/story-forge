@@ -2643,6 +2643,8 @@ function menuSheet(se,st){closeSheet(true);const ends=ed(se,st),fo=foundOf(st),n
       chk("Show suggested replies",DB.sugg!==false,v=>{DB.sugg=v;save()})
     ),
     h("details",{class:"story-tools",name:"sf-novel-menu"},h("summary",{text:"Appearance & Media",style:"padding:12px 8px;cursor:pointer;font-weight:600"}),
+      st.kind!=="character"&&window.SFFanUI?.cinema?drow("Cinematic / Visual Novel",()=>window.SFFanUI.cinema(se)):null,
+      window.SFFanUI?.appearance?drow("Appearance Studio",()=>window.SFFanUI.appearance(se)):null,
       illustratedReader()?drow("Play presentation",()=>sheet("Play presentation",h("div",{class:"row"},
         [["reader","Illustrated Reader"],["cinematic","Cinematic Visual Novel"]].map(([value,label])=>
           h("button",{class:(DB.readerPresentation||"reader")===value?"primary":null,text:label,onclick:()=>{
