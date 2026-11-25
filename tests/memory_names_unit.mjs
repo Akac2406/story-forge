@@ -1,0 +1,21 @@
+// Memory name resolution. Run: node tests/memory_names_unit.mjs
+import assert from 'node:assert/strict'; import fs from 'node:fs'; import vm from 'node:vm'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
+const here = path.dirname(fileURLToPath(import.meta.url)); const ctx = {}; ctx.globalThis = ctx; vm.createContext(ctx);
+vm.runInContext(fs.readFileSync(path.join(here, '../site/memory-engine.js'), 'utf8'), ctx); const M = ctx.SFMemory; let n = 0; const ok = (c, m) => { assert.ok(c, m); n++; };
+const R = M.resolveName, K = ['Corwin Hale', 'Brother Aled', 'Lady Orla Brannock', 'Vey Calder', 'Tamsin Reed', 'a dock hand'];
+ok(R(K, 'Corwin Hale (beyond the door)') === 'Corwin Hale', 'parenthetical note stripped');
+ok(R(K, 'Corwin') === 'Corwin Hale' && R(K, 'Aled') === 'Brother Aled' && R(K, 'Lady Orla') === 'Lady Orla Brannock', 'short names and titles resolve to the known character');
+ok(R(K, 'corwin hale') === 'Corwin Hale', 'case-insensitive exact match');
+ok(R(K, "Vey Calder's man") === "Vey Calder's man" && R(K, 'the household') === 'the household' && R(K, 'Tam') === 'Tam', 'descriptions, possessives and partial words are not merged');
+ok(R(['Anna Lee', 'Anna Park'], 'Anna') === 'Anna', 'ambiguous short name is not merged');
+ok(R(['Aled'], 'Brother Aled') === 'Aled', 'fuller name maps to the existing short one');
+let mem = M.init();
+const p1 = M.parseMeta('[[META]]\nEVENTS: 3 | reveal | Corwin Hale | hall | Corwin admits the sale | Ilse Varn\nLEARNED: Ilse Varn: that Corwin sold the water\nSCENE: hall | Corwin Hale, Ilse Varn | night');
+M.record(mem, p1, { t: 2 });
+const p2 = M.parseMeta('[[META]]\nEVENTS: 2 | action | Corwin | hall | Corwin locks the chest | Ilse\nLEARNED: Ilse: that the chest is locked; Corwin Hale (beyond the door): that Ilse saw the chest\nSCENE: hall | Corwin, Ilse | night');
+M.record(mem, p2, { t: 4 });
+ok(Object.keys(mem.chars).sort().join('|') === 'Corwin Hale|Ilse Varn', 'no duplicate characters across replies: ' + Object.keys(mem.chars).join('|'));
+ok(mem.chars['Ilse Varn'].knows.length === 2 && mem.chars['Corwin Hale'].knows.length === 1, 'knowledge collected on one entry per person');
+const m3 = M.init(); M.record(m3, M.parseMeta('[[META]]\nEVENTS: 2 | action | Aled, Brother Aled | chapel | Aled prays | none\nLEARNED: none\nSCENE: chapel | Aled | dawn'), { t: 1 });
+ok(Object.keys(m3.chars).join('|') === 'Aled', 'two forms of one name in the same reply become one character');
+console.log(`memory names: ${n} checks passed`);

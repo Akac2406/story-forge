@@ -116,9 +116,20 @@ function blankChar(){return {kernel:{core:'',voice:'',values:'',lines:[]},state:
 function getP(o,p){for(const k of p){if(o==null)return undefined;o=o[k]}return o}
 function setP(o,p,v){for(let i=0;i<p.length-1;i++){if(o[p[i]]==null||typeof o[p[i]]!=='object')o[p[i]]={};o=o[p[i]]}if(v===undefined)delete o[p[p.length-1]];else o[p[p.length-1]]=v}
 const same=(a,b)=>JSON.stringify(a===undefined?null:a)===JSON.stringify(b===undefined?null:b);
+/* Name resolution: "Corwin Hale (beyond the door)", "Corwin" and "Brother Aled" reuse an existing "Corwin Hale" / "Aled" when exactly one
+   known capitalised name clearly matches (titles ignored). Descriptions ("a dock hand", "Vey Calder's man") are never merged. */
+const TITLES=/^(brother|sister|father|mother|lady|lord|sir|dame|mr|mrs|ms|miss|mx|dr|doctor|master|mistress|captain|officer|madam|madame|king|queen|prince|princess|uncle|aunt|old|young)$/i;
+const nameToks=n=>String(n).split(/\s+/).filter(w=>w&&!TITLES.test(w.replace(/\.$/,'')));
+const properName=n=>{const w=String(n).split(/\s+/).filter(Boolean);return w.length>0&&w.length<=4&&w.every(x=>/^[A-Z][\w'\u2019.-]*$/.test(x))&&!/['\u2019]s$/.test(w[w.length-1])};
+function resolveName(keys,raw){let n=clean(String(raw||'').replace(/\s*\([^)]*\)\s*$/,''));if(!n)return clean(raw);const ex=keys.find(k=>k.toLowerCase()===n.toLowerCase());if(ex)return ex;
+  if(!properName(n))return n;const A=nameToks(n).map(w=>w.toLowerCase());if(!A.length)return n;
+  const hits=keys.filter(k=>{if(!properName(k))return false;const B=nameToks(k).map(w=>w.toLowerCase());if(!B.length)return false;return A.every(w=>B.includes(w))||B.every(w=>A.includes(w))});
+  return hits.length===1?hits[0]:n}
 function buildDelta(mem,p,ctx){
   mem=mem||init();p=p||{events:[],learned:[],scene:null};ctx=ctx||{};
   const t=Number(ctx.t)||0,mx={v:1,t,tid:ctx.tid||'',ev:[],fa:[],nc:[],ml:[],kn:[],set:[],seq:[mem.seq,mem.seq]};let seq=mem.seq;const nid=x=>x+(++seq);
+  const seen=Object.keys(mem.chars||{}),rn=n=>{const r=resolveName(seen,n);if(r&&!seen.includes(r))seen.push(r);return r};
+  p={events:(p.events||[]).map(e=>Object.assign({},e,{who:(e.who||[]).map(rn).filter((x,i,A)=>A.indexOf(x)===i),wit:(e.wit||[]).map(rn).filter((x,i,A)=>A.indexOf(x)===i)})),learned:(p.learned||[]).map(l=>Object.assign({},l,{who:rn(l.who)})),scene:p.scene?Object.assign({},p.scene,{who:(p.scene.who||[]).map(rn).filter((x,i,A)=>A.indexOf(x)===i)}):p.scene};
   const has=n=>(mem.chars&&mem.chars[n])||mx.nc.some(c=>c.n===n);
   const ensure=n=>{if(n&&!has(n))mx.nc.push({n,o:blankChar()})};
   const sc=p.scene;
@@ -156,5 +167,5 @@ function undo(mem,mx,later){
 function record(mem,p,ctx){const mx=buildDelta(mem,p,ctx);apply(mem,mx);return mx}
 function shiftTurns(mem,after,d){if(!mem)return mem;(mem.events||[]).forEach(e=>{if(e.t>after)e.t+=d});(mem.facts||[]).forEach(f=>{if(f.since>after)f.since+=d});return mem}
 function empty(mx){return !mx||!((mx.ev||[]).length||(mx.fa||[]).length||(mx.nc||[]).length||(mx.kn||[]).length||(mx.set||[]).length)}
-root.SFMemory=Object.freeze({init,migrate,relHistory,timeline,charView,checks,stats,integrity,parseMeta,validateMeta,splitEvents,metaStart,buildDelta,apply,undo,record,shiftTurns,empty});
+root.SFMemory=Object.freeze({init,migrate,relHistory,timeline,charView,checks,stats,integrity,parseMeta,validateMeta,splitEvents,metaStart,buildDelta,apply,undo,record,shiftTurns,empty,resolveName});
 })(typeof window!=='undefined'?window:globalThis);

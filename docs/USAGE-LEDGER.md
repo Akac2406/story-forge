@@ -15,8 +15,9 @@ Sources: **Dashboard** = Anna's OpenCode usage page (authoritative). **Estimate*
 | 2026-11-25 02:20 | Claude | Hybrid + recall: Glass Orchard (40 turns, live v92/v93 trial page; resumed once at turn 31) | 1.94% | 0.78% | 0.39% | Estimate |
 | 2026-11-25 03:30 | Claude | Hybrid + recall rerun on v94: Glass Orchard (40 turns; provider slow, ~2 min replies) | 1.60% | 0.64% | 0.32% | Estimate |
 | 2026-11-25 04:10 | Claude | Hybrid + recall on v94: Cedar Ridge (30 turns) | 1.09% | 0.43% | 0.22% | Estimate |
+| 2026-11-25 08:40 | Claude | Hybrid + recall on v95 (player action for LEARNED): Glass Orchard (40 turns) | 1.78% | 0.71% | 0.36% | Estimate |
 
-Running total toward the 45% stop: **about 5.5%** monthly (4% dashboard + 1.51% estimate since). Next dashboard reading will replace the estimate.
+Running total toward the 45% stop: **about 5.9%** monthly (4% dashboard + 1.87% estimate since). Next dashboard reading will replace the estimate.
 
 ## Results: Glass Orchard, hybrid + recall (2026-11-25)
 
@@ -65,3 +66,9 @@ Conclusion: the fix stops the snowballing (no long streaks of missing notes) and
 | Regenerate / branch / cancel, integrity, real stories untouched | | ok |
 
 Both stories improve with recall on v94; knowledge capture is still the weakest area (exact keyword checks are strict). Recommendation: make recall + the notes-history fix the default for hybrid stories after one more confirming run, and look at LEARNED extraction in the hybrid step (it records "none" too often when the narrator skips its notes).
+
+## Results: Glass Orchard, hybrid + recall on v95 (memory step sees the player's action for LEARNED)
+
+Notes 32/40, repaired 40/40, scene 25/25, characters 17/17, events 13/15, knowledge 3/6 (exact and paraphrase), no leaks 6/6, secrets 30/30.
+
+The knowledge score did not improve, but the cause is different from before: the step now does record the knowledge (turn 28: "Aled: that the deed and water rights matter and the signature is on the deed (Ilse told him)"), yet memory had split people into duplicates ("Aled" / "Brother Aled", "Corwin" / "Corwin Hale (beyond the door)": 27 character entries in a 6-person story), so knowledge landed on a copy the checks (and the narrator's "who knows what") don't treat as the same person. Fix in 96: the memory engine resolves names to an existing character (parenthetical notes stripped, titles ignored, one unambiguous capitalised match required; descriptions like "a dock hand" never merged). No leaks were introduced by the v95 change.
