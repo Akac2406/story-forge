@@ -93,7 +93,7 @@ async function loadApp(seed) {
 }
 function seedDB() {
   const st = scen.story, o = prog.opts;
-  return { migrated: true, memv2: false, metaRepair: !!o.rp, ocLite: o.rp ? "effort" : null, prov: "opencode", ocKey: o.dry ? "dry-run" : OC.key, ocProxy: o.dry ? "dry-run.invalid" : OC.proxy, ocMon: OC.mon, ocDay: OC.day, ocScale: OC.scale,
+  return { migrated: true, memv2: false, metaRepair: !!o.rp, ocLite: (o.rp || o.mx) ? "effort" : null, prov: "opencode", ocKey: o.dry ? "dry-run" : OC.key, ocProxy: o.dry ? "dry-run.invalid" : OC.proxy, ocMon: OC.mon, ocDay: OC.day, ocScale: OC.scale,
     modes: [{ n: "Trial", id: "deepseek/deepseek-v4.1-flash", d: "", p: "", t: 0.8 }], mode: 0, saver: 0, sugg: true, syncAuto: false,
     stories: [{ id: "trial-story", kind: "story", title: scen.title, setting: st.setting, style: st.style, lore: st.lore, entries: st.entries, stats: [], endings: [], starts: [], follow: "strict" }],
     sessions: [{ id: "trial", storyId: "trial-story", memv2: true, memDev: true, memPrompt: !!o.p2, memExtract: !!o.mx, start: "", follow: "strict", char: { name: scen.player.name, desc: scen.player.desc, trait: "" }, turns: [], temp: "", mems: [], note: "", stats: {}, upto: 0, len: o.len, sugg: [], ending: null, ended: [], people: {}, think: 0, wstyle: "default", wcustom: "", goal: "", updated: Date.now() }] };
