@@ -2485,6 +2485,9 @@ function menuSheet(se,st){closeSheet(true);const ends=ed(se,st),fo=foundOf(st),n
     ),
     h("details",{class:"story-tools",name:"sf-novel-menu"},h("summary",{text:"Canon & Fanfiction",style:"padding:12px 8px;cursor:pointer;font-weight:600"}),
       se.canon&&window.SFFanUI?.library?drow("Source Library",()=>window.SFFanUI.library(se)):null,
+      se.canon&&window.SFFanUI?.studio?drow("Fanfiction Studio",()=>window.SFFanUI.studio(se)):null,
+      se.canon&&window.SFFanUI?.canon?drow("Canon Manager",()=>window.SFFanUI.canon(se)):null,
+      se.canon&&window.SFFanUI?.timeline?drow("Timeline & Fates",()=>window.SFFanUI.timeline(se)):null,
       drow("Reference texts",()=>refSheet(st.id),String(refsFor(st.id).length+refsFor(se.id).length)),
       st.kind!=="character"?drow("Canon mode",()=>canonModeSheet(se,st),CANON_MODES.find(x=>x[0]===SFCanon.mode(se,st))?.[1]):null,
       drow("Canon Bible",()=>canonBible(se,st),String((st.entries||[]).length)),
@@ -2493,6 +2496,8 @@ function menuSheet(se,st){closeSheet(true);const ends=ed(se,st),fo=foundOf(st),n
       wikiOf(se,st)?chk("Look things up on the fan wiki",DB.wikiOn!==false,v=>{DB.wikiOn=v;save()}):null
     ),
     h("details",{class:"story-tools",name:"sf-novel-menu"},h("summary",{text:"Characters & Relationships",style:"padding:12px 8px;cursor:pointer;font-weight:600"}),
+      se.canon&&window.SFFanUI?.inspector?drow("Character Inspector",()=>window.SFFanUI.inspector(se)):null,
+      se.canon&&window.SFFanUI?.romance?drow("Romance Preferences",()=>window.SFFanUI.romance(se)):null,
       drow("Dashboard",()=>{closeSheet(true);window.SFCharacterV50?.open()}),
       drow("Character Studio",()=>{closeSheet(true);window.SFCharacterStudioV51?.open("Profiles")}),
       drow("Character profiles",()=>{closeSheet(true);window.SFCinematicV53?.open()}),
@@ -2501,6 +2506,7 @@ function menuSheet(se,st){closeSheet(true);const ends=ed(se,st),fo=foundOf(st),n
       drow("Avatars",()=>avatarSheet(se),se.char.name||"")
     ),
     h("details",{class:"story-tools",name:"sf-novel-menu"},h("summary",{text:"Memory & Continuity",style:"padding:12px 8px;cursor:pointer;font-weight:600"}),
+      se.canon&&window.SFFanUI?.continuity?drow("Continuity Center",()=>window.SFFanUI.continuity(se)):null,
       st.kind!=="character"?drow("Story record",()=>recSheet(se),(se.facts||[]).length?(se.facts.length+" facts"):""):null,
       st.kind!=="character"?drow("Review story changes",()=>reviewStoryChanges(se)):null,
       drow("User notes",()=>noteSheet(se)),
@@ -2508,6 +2514,8 @@ function menuSheet(se,st){closeSheet(true);const ends=ed(se,st),fo=foundOf(st),n
       st.kind!=="character"?drow("Story memory (beta)",()=>memBetaSheet(se,st),se.memv2?"On":"Off"):null
     ),
     h("details",{class:"story-tools",name:"sf-novel-menu"},h("summary",{text:"World & Gameplay",style:"padding:12px 8px;cursor:pointer;font-weight:600"}),
+      se.canon&&ffU(se)?.type&&ffU(se).type!=="fictional"&&window.SFFanUI?.realworld?drow("Real-World Story",()=>window.SFFanUI.realworld(se)):null,
+      se.canon&&((ffU(se)?.type&&ffU(se).type!=="fictional")||Object.keys(se.canon.competitions||{}).length)&&window.SFFanUI?.competition?drow("Competition Studio",()=>window.SFFanUI.competition(se)):null,
       st.kind!=="character"?drow("World Status",()=>worldSheet(se,st),se.sim&&se.sim.ph==="setup"?"Setting up":""):null,
       st.kind!=="character"?drow("World schedule",()=>worldScheduleSheet(se)):null,
       st.kind!=="character"?drow("Progression",()=>progressionSheet(se)):null,
