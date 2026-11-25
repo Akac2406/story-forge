@@ -18,6 +18,20 @@ function decorate(){
    const cv=cvState(se),c=cv.settings,scene=(typeof cvScene==='function'?cvScene(se):cv.scene)||{},reduced=c.reducedMotion||root.dataset.sfReducedMotion==='true'||matchMedia('(prefers-reduced-motion: reduce)').matches;
    for(const [k,v] of Object.entries({layout:c.layout,lighting:scene.lighting||c.lighting,overlay:scene.overlay||c.overlay,dialogue:c.dialogueBox,narration:c.narration,reveal:reduced&&c.textReveal==='typewriter'?'fade-in':c.textReveal,transition:reduced?'none':scene.transition||c.transition}))root.dataset['sfCv'+k[0].toUpperCase()+k.slice(1)]=v||'none';
    root.dataset.sfCvReduced=String(!!reduced);
+   root.dataset.sfCvNameplate=String(c.nameplate!==false);
+   if(reduced&&['rain','snow','embers','petals'].includes(root.dataset.sfCvOverlay))root.dataset.sfCvOverlay='none';
+   const stageLog=document.querySelector('#log');document.querySelector('.sf-cv-cast')?.remove();
+   if(stageLog&&cv.layout?.caps?.portraits&&typeof cvCast==='function'){
+    const stage=h('section','sf-cv-cast');stage.setAttribute('aria-label','Scene characters');
+    const order=['far-left','left','center','right','far-right'];
+    for(const p of cvCast(se).filter(p=>p.visible!==false&&p.position!=='offscreen').sort((a,b)=>order.indexOf(a.position)-order.indexOf(b.position))){
+     const src=cvArt(se,p.portrait);if(!src)continue;
+     const card=h('figure','sf-cv-portrait');card.dataset.position=p.position;card.style.setProperty('--portrait-scale',Math.max(.5,Math.min(1.5,Number(p.scale)||1)));
+     const img=h('img');img.src=src;img.alt=p.name;img.loading='lazy';card.append(img,h('figcaption','',p.name+' · '+(p.expression||'neutral')));stage.append(card);
+    }
+    if(stage.children.length)stageLog.before(stage);
+   }
+
    const log0=document.querySelector('#log'),ref=scene.background,src=ref&&typeof cvArt==='function'?cvArt(se,ref):null;
    if(log0){if(src&&cv.layout?.caps?.background)log0.style.backgroundImage='linear-gradient(#0005,#0009),url('+JSON.stringify(src)+')';else log0.style.removeProperty('background-image')}
   }
