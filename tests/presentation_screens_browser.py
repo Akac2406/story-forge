@@ -44,6 +44,13 @@ try:
     ok(pg.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--bg').trim().toLowerCase()") == pg.evaluate("SFVisualV48.palette('Oceanic')[0]").lower(), "v48 applied it live")
     pg.locator("button", has_text="Pixel").first.click(); pg.wait_for_timeout(250)
     ok(pg.evaluate(f"apState({S}).icons") == "pixel", "icon family chosen through apSet")
+    pg.get_by_label("layout", exact=True).select_option("Immersive Cinema")
+    pg.get_by_label("format", exact=True).select_option("Visual Novel")
+    sample = pg.get_by_role("region", name="Appearance preview")
+    ok(sample.get_attribute("data-sf-design") == "cinema" and sample.get_attribute("data-sf-play") == "cinema", "layout and format change the live preview")
+    pg.get_by_label("Editing scope", exact=True).select_option("mobile")
+    pg.get_by_label("format", exact=True).select_option("Character Chat")
+    ok(sample.get_attribute("data-sf-play") == "chat" and pg.evaluate(f"apState({S},'desktop').format") == "Visual Novel", "device preview resolves mobile overrides independently")
     ok("dummy-oc-key" not in json.dumps(store), "no credentials in appearance storage")
     br.close()
 finally:

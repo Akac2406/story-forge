@@ -33,6 +33,15 @@ try:
     pixel = icon_path()
     pg.evaluate(f"apSet({S},{{icons:'geometric',font:'monospace'}},'global')")
     ok(pixel and icon_path() and pixel != icon_path(), "changing icon family changes the navigation path")
+    icons = pg.evaluate("""()=>{
+      const paths=apIcons().map(({id})=>{
+        apSet(DB.sessions[0],{icons:id},'global');
+        return [...document.querySelectorAll('#app .look-icon path')]
+          .filter(path=>getComputedStyle(path).display!=='none').map(path=>path.getAttribute('d')).join('|');
+      });
+      return [paths.every(Boolean),new Set(paths).size];
+    }""")
+    ok(icons == [True,14], "all 14 icon families draw distinct navigation paths")
     ok(pg.evaluate("document.documentElement.style.getPropertyValue('--sf-custom-font')") == "monospace", "custom font reaches the reader token")
     pg.evaluate(f"apSet({S},{{contrast:'high',transparency:0.4}},'global')"); pg.wait_for_timeout(100)
     ok(pg.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--sf-transparency').trim()") == "0", "high contrast removes transparency")
@@ -47,6 +56,15 @@ try:
     fs = pg.evaluate("(()=>{const b=document.querySelector('#log .turn.ai .body');return b?getComputedStyle(b).fontStyle:null})()"); ok(fs == "italic", f"italic narration applied ({fs})")
     pg.evaluate(f"cvSet({S},{{layout:'visual-novel',transition:'fade',textReveal:'typewriter'}})"); chat(pg)
     bg = pg.evaluate("getComputedStyle(document.querySelector('#log')).backgroundImage"); ok("url(" in bg, "visual-novel layout shows the scene artwork by reference")
+    pg.evaluate(f"""()=>{{
+      {S}.cast.Mira={{pic:'{PNG}'}};
+      cvSetCharacter({S},'Mira',{{expression:'happy',portrait:'cast:Mira'}});
+      cvSetExpressionArt({S},'Mira','happy','v54:e1');
+    }}""")
+    chat(pg)
+    ok(pg.locator(".sf-cv-portrait img").count() == 1 and pg.evaluate(f"{S}.cv.cast.Mira.expressionArt.happy") == "v54:e1", "expression artwork is referenced by the reader")
+    pg.evaluate(f"cvSetCharacter({S},'Mira',{{expression:'neutral'}})")
+    ok(pg.evaluate(f"cvExpressionArt({S},cvCast({S})[0])") == PNG, "an unassigned expression uses the existing portrait")
     pg.evaluate(f"cvSet({S},{{autoAdvance:true,autoDelay:1,fullscreen:true,hideUI:true}})"); chat(pg)
     playback = pg.get_by_role("button", name="Play saved replies")
     playback.click()

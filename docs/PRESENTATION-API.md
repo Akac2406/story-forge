@@ -15,6 +15,7 @@ All mutations return `{ok, applied, reason}`. Presentation never changes story t
 | `cvApplyPreset(se, id)` | merges the preset's settings; keeps scene and cast |
 | `cvScene(se)` / `cvSetScene(se, {background, lighting, overlay, transition, caption})` | falls back to the v54 artwork and caption for this playthrough |
 | `cvCast(se)` / `cvSetCharacter(se, name, {expression, position, scale 0.5–1.5, visible, portrait})` | expression: neutral happy sad angry surprised afraid thoughtful smug tired determined; position: far-left left center right far-right offscreen |
+| `cvSetExpressionArt(se, name, expression, ref)` / `cvExpressionArt(se, character)` | Assign or clear an existing artwork reference for the selected expression. The reader falls back to the default portrait when the reference is absent or unavailable. References live under the character’s presentation state and travel with it in backups. |
 | `cvReset(se)` | clears presentation only |
 | `cvArt(se, ref)` | image URL for a reference, or null |
 

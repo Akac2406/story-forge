@@ -132,5 +132,5 @@ const oldRender=render;render=function(...args){const result=oldRender.apply(thi
 const oldGo=go;go=function(...args){const r=oldGo.apply(this,args);apply();return r};
 addEventListener('resize',apply);apply();
 /* reload(): re-read storage after the appearance adapters (ap*) change it, so this module never overwrites them with a stale copy. */
-window.SFVisualV48={themes:names.slice(),layouts:layouts.slice(),formats:formats.slice(),open,apply,reload(){load();apply()},palette:n=>palettes()[n]||null,KEY,useAppTheme(){if(cfg.global.theme!==appTheme){cfg.global.theme=appTheme;save()}apply()}};
+window.SFVisualV48={themes:names.slice(),layouts:layouts.slice(),formats:formats.slice(),open,apply,reload(){load();apply()},palette:n=>palettes()[n]||null,profile:(layout,format)=>({design:uiDesigns[layout],play:playStyles[format]}),KEY,useAppTheme(){if(cfg.global.theme!==appTheme){cfg.global.theme=appTheme;save()}apply()}};
 })();

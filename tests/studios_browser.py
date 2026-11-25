@@ -48,6 +48,23 @@ try:
     if st: pg.get_by_role("button", name=st[0]).last.click(); pg.wait_for_timeout(300)
     ok(bool(st) and pg.evaluate(f"!!{S}.game&&!!{S}.game.career"), "Gameplay Studio starts a career through gmStartCareer " + str(st[:2]))
     n0 = len(errs); pg.evaluate(f"window.SFFanUI.gameplay({S})"); pg.wait_for_timeout(300); ok(len(errs) == n0, "Gameplay Studio reopens with a running career")
+    pg.evaluate(f"window.SFFanUI.gameplay({F})")
+    pg.get_by_label("Career ID", exact=True).fill("archive")
+    pg.get_by_label("Career name", exact=True).fill("Archivist")
+    editor = pg.locator(".ff-panel", has=pg.get_by_role("heading", name="Custom career", exact=True)).last
+    for section, values in [
+        ("Stats", {"Stat ID": "cataloging", "Name": "Cataloging"}),
+        ("Ranks", {"Rank ID": "trainee", "Name": "Trainee"}),
+        ("Activities", {"Activity ID": "sort", "Name": "Sort records", "Gain stat ID": "cataloging"}),
+    ]:
+        group = editor.locator("details", has=pg.get_by_text(section, exact=True))
+        group.locator("summary").click()
+        for label, value in values.items():
+            group.get_by_label(label, exact=True).fill(value)
+    pg.get_by_role("button", name="Start custom career", exact=True).click()
+    ok(pg.evaluate(f"{F}.game.career.id") == "archive", "structured form starts a custom career")
+    pg.get_by_role("button", name="Sort records", exact=True).click()
+    ok(pg.evaluate(f"{F}.game.career.week") == 1, "custom activities are available in the career screen")
     # Creator: export uses crBuild (download), no page errors
     pg.evaluate(f"window.SFFanUI.creator({S})"); pg.wait_for_timeout(300)
     labels = pg.evaluate("[...document.querySelectorAll('button')].map(b=>b.textContent)")

@@ -621,6 +621,13 @@ const HOME_ICON_ART={
   runic:["M12 2l9 10-9 10-9-10zM12 6v12M7 12h10","M7 3l12 9-12 9 3-9z","M12 3l9 5v8l-9 5-9-5V8zM3 8l9 5 9-5M12 13v8","M5 20V7l7-4 7 4v13l-7-4zM12 3v13","M5 5l14 14M19 5L5 19M12 3l9 9-9 9-9-9z"],
   geometric:["M12 3l9 9-9 9-9-9zM12 8l4 4-4 4-4-4z","M6 3l15 9-15 9zM6 12h15","M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z","M3 5h5v14H3zM10 5h5v14h-5zM17 5h4v14h-4z","M12 3l9 9-9 9-9-9zM12 7v10M7 12h10"],
   blueprint:["M3 3h18v18H3zM12 5v14M5 12h14","M5 5h14v14H5zM9 7l8 5-8 5z","M3 3h18v18H3zM3 8h18M8 8v13M13 12h5M13 16h5","M5 4h14v16H5zM8 4v16M11 8h5M11 12h5","M3 3h18v18H3zM12 6v12M6 12h12"],
+  solid:["M12 2l2 5 5-2-2 5 5 2-5 2 2 5-5-2-2 5-2-5-5 2 2-5-5-2 5-2-2-5 5 2z","M6 2l16 10L6 22z","M2 4h20v16H2zM5 7v4h14V7zM5 14v3h6v-3z","M3 4h5v16H3zM9 4h5v16H9zM15 5l4-1 3 15-4 1z","M2 8h6V2h8v6h6v8h-6v6H8v-6H2z"],
+  sketch:["M12 3l2 6 7 3-7 2-2 7-3-6-6-3 6-2z","M6 4q7 3 14 8-6 5-14 8z","M4 5q8 1 16 0l-1 14-15 1zM8 9l8 1M8 14l7-1","M4 6q4-2 8 2 4-4 8-2v13q-5-2-8 0-4-2-8 0zM12 8v11","M11 4l2 15M4 12l16-1"],
+  ink:["M4 17Q8 7 19 4L11 15 4 20zM11 15l8 2","M6 5q8 0 13 7-6 6-13 7z","M5 18L18 5M9 16l5 3 5-5M5 10l5-5 3 4","M4 17h16M6 13h12M8 9h10M10 5h6","M6 17L18 5M6 7l12 10"],
+  neon:["M4 16l4-8h4l2 5 2-9 4 12","M5 5h6l8 7-8 7H5l8-7z","M3 8h4V4h10v4h4v12H3zM8 13h8M12 10v6","M4 6h16v13H4zM7 10h10M7 14h6","M8 4h8v4h4v8h-4v4H8v-4H4V8h4zM8 12h8M12 8v8"],
+  engraved:["M12 3a9 9 0 1 1 0 18 9 9 0 1 1 0-18zM12 6l6 6-6 6-6-6z","M4 5h16v14H4zM9 8l6 4-6 4z","M5 4h14v16H5zM8 7h8v10H8zM10 10h4M10 14h4","M4 5h16v15H4zM8 8h8v9H8zM12 8v9","M4 12l8-8 8 8-8 8zM9 12h6M12 9v6"],
+  sticker:["M12 3a5 5 0 0 1 4 6 5 5 0 0 1 5 5 5 5 0 0 1-6 3 4 4 0 0 1-7 1 5 5 0 0 1-4-9 5 5 0 0 1 8-6z","M4 8q0-4 5-4 5 1 11 6 2 2 0 4-6 5-11 6-5 0-5-4z","M5 7q0-3 3-3h8q3 0 3 3v7q0 3-3 3h-3l-4 4v-4H8q-3 0-3-3z","M3 7q0-3 4-3l5 2 5-2q4 0 4 3v11l-9 2-9-2z","M11 3h2q2 0 2 2v4h4q2 0 2 2v2q0 2-2 2h-4v4q0 2-2 2h-2q-2 0-2-2v-4H5q-2 0-2-2v-2q0-2 2-2h4V5q0-2 2-2z"],
+  glyph:["M12 1l2 8 7-3-5 6 5 6-7-3-2 8-2-8-7 3 5-6-5-6 7 3z","M4 3h5v2l12 7-12 7v2H4v-2h2V5H4z","M3 4h18v3h-2v10h2v3H3v-3h2V7H3zM8 7v10h8V7z","M4 4h7v2H9v12h2v2H4v-2h2V6H4zM13 4h7v2h-2v12h2v2h-7v-2h2V6h-2z","M9 3h6v2h-2v6h6V9h2v6h-2v-2h-6v6h2v2H9v-2h2v-6H5v2H3V9h2v2h6V5H9z"],
   editorial:[
     "M3 5c4-1 6 0 9 2v14c-3-2-5-3-9-2zM21 5c-4-1-6 0-9 2v14c3-2 5-3 9-2z",
     "M6 3h12v18l-6-4-6 4z",
@@ -2479,6 +2486,21 @@ function cvCast(se){const cv=cvState(se).cast,names=[...new Set(Object.keys(se.c
   return names.map(n=>Object.assign({name:n,expression:"neutral",position:"center",scale:1,visible:true,portrait:(se.cast&&se.cast[n]&&se.cast[n].pic)?"cast:"+n:null},cv[n]||{}))}
 function cvArt(se,ref){if(!ref||typeof ref!=="string")return null;let m=ref.match(/^v54:(.+)$/);if(m){const v=cvScenePresets()[m[1]];return v&&v.background||null}
   m=ref.match(/^cast:(.+)$/);if(m){const c=se&&se.cast&&se.cast[m[1]];return c&&c.pic||null}return null}
+function cvExpressionArt(se,character){
+  return cvArt(se,character.expressionArt?.[character.expression])||cvArt(se,character.portrait);
+}
+function cvSetExpressionArt(se,name,expression,ref){
+  const character=cvCast(se).find(c=>c.name===name);
+  if(!character||character.expression!==expression||ref&&!cvArt(se,ref))return{ok:false,applied:false,reason:"Choose artwork that exists in this playthrough."};
+  return cvDo(se,cv=>{
+    const result=SFCinema.setCharacter(cv,name,{expression});
+    if(!result.applied)return result;
+    const next=result.cv.cast[name],art={...next.expressionArt};
+    if(ref)art[expression]=ref;else delete art[expression];
+    if(Object.keys(art).length)next.expressionArt=art;else delete next.expressionArt;
+    return result;
+  });
+}
 /* Appearance (SFAppearance) on the existing v48 storage; presets in "sf.appearance.presets". Scopes: "global", "mobile", "desktop", "story" (this playthrough's story) or "story:<id>". */
 /* Fanfiction story creation (Studio): ffNewCanonPreview validates the choices; ffCreateStory adds a story whose every new playthrough starts with that canon. */
 const ffNewCanonPreview=(uid,o)=>{const u=ffUniverse(uid);if(!u)return{ok:false,reason:"universe missing"};if(o&&o.crossover&&(o.crossover.with||[]).some(id=>!ffUniverse(id)))return{ok:false,reason:"crossover universe missing"};return SFFan.newCanon(u,o)},

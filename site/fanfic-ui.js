@@ -208,6 +208,54 @@ Object.assign(window.SFFanUI,{universe,studioShell:studio});
 (function(){
 "use strict";
 const button=(text,onclick)=>h("button",{text,onclick}), dump=x=>sfStudioReadable(x), panel=(...kids)=>h("div",{class:"ff-panel"},...kids), field=(v="",type="text")=>{const e=h("input",{type});e.value=v;return e};
+function careerEditor(se,apply){
+ const id=field(),name=field(),advanced=h("textarea",{rows:6});
+ const definitions=[
+   ["Stats",[["id","Stat ID"],["name","Name"],["min","Minimum",0],["max","Maximum",100],["start","Starting value",20]]],
+   ["Ranks",[["id","Rank ID"],["name","Name"],["stat","Required stat ID"],["threshold","Minimum requirement",0]]],
+   ["Activities",[["id","Activity ID"],["name","Name"],["stat","Gain stat ID"],["low","Minimum gain",1],["high","Maximum gain",3],["costStat","Cost stat ID"],["cost","Cost amount",0],["needRank","Required rank ID"]]]
+ ];
+ const sections=definitions.map(([label,fields])=>{
+   const rows=[];
+   const group=h("div",{class:"ff-ui"});
+   function add(){
+     const inputs=fields.map(([key,title,value])=>[key,title,field(value??"",value===undefined?"text":"number")]);
+     const item={read:()=>Object.fromEntries(inputs.map(([key,,input])=>[key,input.type==="number"?input.valueAsNumber:input.value.trim()]))};
+     const row=panel(h("div",{class:"ff-filter-grid"},...inputs.map(([,title,input])=>fld(title,input))),
+       button("Remove row",()=>{rows.splice(rows.indexOf(item),1);row.remove()}));
+     rows.push(item);group.append(row);
+   }
+   add();
+   return {node:h("details",{},h("summary",{text:label}),group,button("Add row",add)),read:()=>rows.map(row=>row.read())};
+ });
+ function start(){
+   if(advanced.value.trim()){const c=JSON.parse(advanced.value);return gmStartCareer(se,c.id,{custom:c})}
+   const [stats,ranks,activities]=sections.map(section=>section.read());
+   const careerId=id.value.trim();
+   const validId=value=>/^[A-Za-z][A-Za-z0-9_-]{0,47}$/.test(value)&&!Object.hasOwn(Object.prototype,value);
+   if(!validId(careerId)||!name.value.trim()||gmCareers().some(c=>c.id===careerId))throw Error("Enter a new career ID and name.");
+   for(const rows of [stats,ranks,activities]){
+     if(!rows.length||rows.some(row=>!validId(row.id)||!row.name)||new Set(rows.map(row=>row.id)).size!==rows.length)throw Error("Give each stat, rank and activity a name and a unique ID.");
+   }
+   const statIds=new Set(stats.map(row=>row.id)),rankIds=new Set(ranks.map(row=>row.id));
+   const finite=(...values)=>values.every(Number.isFinite);
+   if(stats.some(s=>!finite(s.min,s.max,s.start)||s.min>s.start||s.start>s.max))throw Error("Starting values must be within their stat range.");
+   if(ranks.some(r=>r.stat&&(!statIds.has(r.stat)||!finite(r.threshold))))throw Error("Rank requirements must reference a defined stat and a numeric threshold.");
+   if(activities.some(a=>!statIds.has(a.stat)||!finite(a.low,a.high)||a.low>a.high||
+     (a.costStat&&(!statIds.has(a.costStat)||!finite(a.cost)))||(a.needRank&&!rankIds.has(a.needRank))))throw Error("Check activity stat and rank IDs, gains and costs.");
+   const career={
+     id:careerId,name:name.value.trim(),
+     stats:stats.map(s=>[s.id,s.name,s.min,s.max,s.start]),
+     ranks:ranks.map(r=>({id:r.id,name:r.name,...(r.stat?{need:{[r.stat]:r.threshold}}:{})})),
+     activities:Object.fromEntries(activities.map(a=>[a.id,{name:a.name,gain:{[a.stat]:[a.low,a.high]},
+       cost:a.costStat?{[a.costStat]:a.cost}:{},needRank:a.needRank||null}]))
+   };
+   return gmStartCareer(se,career.id,{custom:career});
+ }
+ return panel(h("h3",{text:"Custom career"}),h("div",{class:"ff-filter-grid"},fld("Career ID",id),fld("Career name",name)),
+   ...sections.map(section=>section.node),h("details",{},h("summary",{text:"Advanced career JSON"}),fld("Custom career module JSON",advanced)),
+   button("Start custom career",()=>apply(start)));
+}
 function gameplay(se){window.SFFanUI.studioShell(se,"Gameplay Studio",(b,apply)=>{
  const g=gmState(se),num=e=>Number(e.value),id=field(),name=field(),min=field(0,"number"),max=field(100,"number"),start=field(0,"number"),hidden=h("input",{type:"checkbox"});
  b.append(chk("Enable gameplay",g.enabled,v=>apply(()=>gmEnable(se,v))),h("p",{text:"Level "+g.level+" · XP "+g.xp+" · Day "+g.day}),button("Undo last gameplay change",()=>apply(()=>gmUndo(se))));
@@ -241,9 +289,9 @@ function gameplay(se){window.SFFanUI.studioShell(se,"Gameplay Studio",(b,apply)=
   fld("Note",note),h("label",{},repeat," Repeat when re-armed"),button("Add rule",()=>apply(()=>gmAddRule(se,{
     id:ri.value.trim(),when:{stat:stat.value,op:op.value,value:num(threshold)},effect:ruleEffect(),note:note.value,repeat:repeat.checked
   })))));
- const careers=gmCareers(),custom=h("textarea",{rows:6});b.append(h("h3",{text:"Careers"}),dump(g.career));
- if(!g.career)b.append(...careers.map(c=>panel(h("b",{text:c.name}),button("Start career",()=>apply(()=>gmStartCareer(se,c.id,{}))))),panel(fld("Custom career module JSON",custom),button("Start custom career",()=>apply(()=>{const c=JSON.parse(custom.value);return gmStartCareer(se,c.id,{custom:c})}))));
- else {const c=careers.find(x=>x.id===g.career.id)||careers.find(x=>x.id===g.career.module?.id);const acts=c?.activities||Object.entries(g.career.module?.activities||{}).map(([id,a])=>({id,...a}));b.append(...acts.map(a=>button(a.name+(a.needRank?" · requires "+a.needRank:""),()=>{if(confirm("Advance one career week?"))apply(()=>gmActivity(se,a.id))})))}
+ const careers=gmCareers();b.append(h("h3",{text:"Careers"}),dump(g.career));
+ if(!g.career)b.append(...careers.map(c=>panel(h("b",{text:c.name}),button("Start career",()=>apply(()=>gmStartCareer(se,c.id,{}))))),careerEditor(se,apply));
+ else {const c=careers.find(x=>x.id===g.career.id)||careers.find(x=>x.id===g.career.module?.id);const acts=c?.activities||Object.entries(g.career.activities||g.career.module?.activities||{}).map(([id,a])=>({id,...a}));b.append(...acts.map(a=>button(a.name+(a.needRank?" · requires "+a.needRank:""),()=>{if(confirm("Advance one career week?"))apply(()=>gmActivity(se,a.id))})))}
  b.append(h("h3",{text:"Gameplay history"}),dump(gmLog(se,50)));
 })}
 Object.assign(window.SFFanUI,{gameplay});
@@ -286,8 +334,8 @@ function cinema(se){window.SFFanUI.studioShell(se,"Cinematic / Visual Novel",(b,
  const url=cvArt(se,scene.background);
  b.append(panel(h("h3",{text:"Scene artwork"}),url?h("img",{src:url,alt:"Current scene",style:"width:100%;max-height:220px;object-fit:contain"}):null,fld("Background reference",bg),fld("Caption",caption),btn("Save scene artwork",()=>apply(()=>cvSetScene(se,{background:bg.value||null,caption:caption.value}))),...Object.entries({lighting,overlay,transition}).map(([k,values])=>fld(k,sel(scene[k]||s[k],values.map(x=>[x,x]),x=>apply(()=>cvSetScene(se,{[k]:x})))))));
  b.append(h("h3",{text:"Cast presentation"}),...Object.entries(cast||{}).map(([name,c])=>{
- const n=c.name||name,ref=c.portrait||"cast:"+n,src=cvArt(se,ref),portrait=h("input",{value:ref}),scale=h("input",{type:"number",min:0.5,max:1.5,step:0.1,value:c.scale??1});
- return panel(h("b",{text:n}),src?h("img",{src,alt:n,style:"width:96px;height:120px;object-fit:contain"}):null,chk("Visible",c.visible!==false,x=>apply(()=>cvSetCharacter(se,n,{visible:x}))),fld("Expression",sel(c.expression||"neutral",["neutral","happy","sad","angry","surprised","afraid","thoughtful","smug","tired","determined"].map(x=>[x,x]),x=>apply(()=>cvSetCharacter(se,n,{expression:x})))),fld("Position",sel(c.position||"center",["far-left","left","center","right","far-right","offscreen"].map(x=>[x,x]),x=>apply(()=>cvSetCharacter(se,n,{position:x})))),fld("Scale",scale),fld("Portrait reference",portrait),btn("Save portrait and scale",()=>apply(()=>cvSetCharacter(se,n,{portrait:portrait.value,scale:Number(scale.value)}))));
+ const n=c.name||name,ref=c.portrait||"cast:"+n,src=cvExpressionArt(se,{...c,portrait:ref}),portrait=h("input",{value:ref}),expressionArt=h("input",{value:c.expressionArt?.[c.expression]||"",placeholder:"cast:Name or v54:PlaythroughID"}),scale=h("input",{type:"number",min:0.5,max:1.5,step:0.1,value:c.scale??1});
+ return panel(h("b",{text:n}),src?h("img",{src,alt:n,style:"width:96px;height:120px;object-fit:contain"}):null,chk("Visible",c.visible!==false,x=>apply(()=>cvSetCharacter(se,n,{visible:x}))),fld("Expression",sel(c.expression||"neutral",["neutral","happy","sad","angry","surprised","afraid","thoughtful","smug","tired","determined"].map(x=>[x,x]),x=>apply(()=>cvSetCharacter(se,n,{expression:x})))),fld("Position",sel(c.position||"center",["far-left","left","center","right","far-right","offscreen"].map(x=>[x,x]),x=>apply(()=>cvSetCharacter(se,n,{position:x})))),fld("Scale",scale),fld("Portrait reference",portrait),btn("Save portrait and scale",()=>apply(()=>cvSetCharacter(se,n,{portrait:portrait.value,scale:Number(scale.value)}))),h("details",{},h("summary",{text:"Artwork for "+c.expression+" expression"}),fld("Expression artwork reference",expressionArt),btn("Save expression artwork",()=>apply(()=>cvSetExpressionArt(se,n,c.expression,expressionArt.value.trim())))));
  }));
  b.append(btn("Reset presentation only",()=>{if(confirm("Reset cinematic presentation? Story content is unchanged."))apply(()=>cvReset(se))}));
 })}
@@ -302,22 +350,35 @@ function appearance(se){
  window.SFFanUI.studioShell(se,"Appearance & Customization",(b,apply)=>{
  const set=(k,v)=>apply(()=>apSet(se,{[k]:v},scope));
  const opts=xs=>xs.map(x=>typeof x==="string"?[x,x]:Array.isArray(x)?x:[x.id,x.name]);
- const choose=(k,xs)=>fld(k,sel(apState(se,device)[k],opts(xs),v=>set(k,v)));
+ const choose=(k,xs)=>{
+   const input=sel(apState(se,device)[k],opts(xs),v=>set(k,v));
+   input.setAttribute("aria-label",k);
+   return fld(k,input);
+ };
  const field=(k,type="text",min,max,step)=>fld(k,h("input",{type,min,max,step,value:apState(se,device)[k]??"",onchange:e=>set(k,type==="number"?Number(e.target.value):e.target.value||null)}));
  const scopePick=sel(scope,opts(["global","story","mobile","desktop"]),v=>{scope=v;device=v==="mobile"||v==="desktop"?v:device;render()});
+ scopePick.setAttribute("aria-label","Editing scope");
  function render(){b.replaceChildren();build()}
  function build(){
  const current=apState(se,device);
  b.append(panel(h("b",{text:"Editing scope"}),scopePick,h("p",{text:"Effective preview: "+device+". Device overrides take precedence over story and global settings."}),btn("Reset selected scope",()=>{if(confirm("Reset appearance for "+scope+"?"))apply(()=>apReset(se,scope))})));
  const selected=apThemes().find(t=>t.id===current.theme);
  const [bg,card,accent]=selected?.palette||[];
- const preview=h("section",{class:"ff-appearance-preview","aria-label":"Appearance preview"});
- for(const [key,value] of Object.entries({bg:current.bg||bg,card:current.card||card,text:current.text,accent:current.accent||accent})){
-   if(value)preview.style.setProperty("--preview-"+key,value);
+ const profile=window.SFVisualV48.profile(current.layout,current.format);
+ const preview=h("section",{class:"sf48-sample ff-appearance-preview","aria-label":"Appearance preview",
+   "data-sf-design":profile.design,"data-sf-play":profile.play,"data-preview-nav":current.nav||"bottom"});
+ for(const [key,value] of Object.entries({bg:current.bg||bg,card:current.card||card,text:current.text||"#f5f1f4",accent:current.accent||accent})){
+   if(value)preview.style.setProperty("--"+key,value);
  }
  preview.style.setProperty("--preview-scale",current.fontScale||1);
  if(current.radius!==undefined)preview.style.setProperty("--preview-radius",current.radius+"px");
- preview.append(h("strong",{text:selected?.name||"Current appearance"}),h("p",{text:"The lanterns lit the road into town."}),h("small",{text:[current.layout,current.format].filter(Boolean).join(" · ")}));
+ const img=cvArt(se,current.background);
+ if(img)preview.style.setProperty("--preview-art","linear-gradient(#0007,#000a),url("+JSON.stringify(img)+")");
+ if(current.font)preview.style.setProperty("--bodyfont",JSON.stringify(current.font)+", system-ui");
+ preview.append(h("strong",{text:selected?.name||"Current appearance"}),h("div",{class:"ff-appearance-sample"},
+   h("article",{class:"turn ai"},h("div",{class:"who",text:"Narrator"}),h("div",{class:"body",text:"The lanterns lit the road into town."})),
+   h("article",{class:"turn user"},h("div",{class:"body",text:"I follow the light."}))),
+   h("small",{text:[current.layout,current.format].filter(Boolean).join(" · ")}));
  b.append(preview);
  const themes=h("div",{class:"ff-option-grid"}),themeQuery=h("input",{type:"search","aria-label":"Search themes",placeholder:"Search themes",oninput:filterThemes});
  function filterThemes(){

@@ -60,7 +60,7 @@ function decorate(){
     const stage=h('section','sf-cv-cast');stage.setAttribute('aria-label','Scene characters');
     const order=['far-left','left','center','right','far-right'];
     for(const p of cvCast(se).filter(p=>p.visible!==false&&p.position!=='offscreen').sort((a,b)=>order.indexOf(a.position)-order.indexOf(b.position))){
-     const src=cvArt(se,p.portrait);if(!src)continue;
+     const src=cvExpressionArt(se,p);if(!src)continue;
      const card=h('figure','sf-cv-portrait');card.dataset.position=p.position;card.style.setProperty('--portrait-scale',Math.max(.5,Math.min(1.5,Number(p.scale)||1)));
      const img=h('img');img.src=src;img.alt=p.name;img.loading='lazy';card.append(img,h('figcaption','',p.name+' · '+(p.expression||'neutral')));stage.append(card);
     }
