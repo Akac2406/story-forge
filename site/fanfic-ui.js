@@ -327,7 +327,14 @@ Object.assign(window.SFFanUI,{createFanfiction});
 "use strict";
 function fanfictionHome(root){
  function cover(st,fallback="✧"){return h("span",{class:"ff-cover"},st?readerCover(st):h("span",{text:fallback}))}
- function universeCover(id){return cover(DB.stories.find(st=>st.fanfic?.universe===id&&(st.cover||st.img||st.banner))||DB.stories.find(st=>st.fanfic?.universe===id))}
+ function universeCover(id){const u=ffUniverse(id);if(u?.artwork?.cover)return h("span",{class:"ff-cover"},h("img",{src:u.artwork.cover,alt:"",loading:"lazy"}));return cover(DB.stories.find(st=>st.fanfic?.universe===id&&(st.cover||st.coverT))||DB.stories.find(st=>st.fanfic?.universe===id))}
+ function artworkEditor(id,refresh){
+ const u=ffUniverse(id),draft={...u.artwork},box=h("div",{class:"ff-ui"}),preview=h("div",{class:"ff-art-preview"}),status=h("p",{role:"status"});let busyArt=false;
+ function paint(){preview.replaceChildren(...["cover","banner"].map(k=>h("div",{},h("strong",{text:k}),draft[k]?h("img",{src:draft[k],alt:k}):h("p",{text:"No custom artwork"}))))}
+ for(const k of ["cover","banner"]){box.append(h("label",{},k+" image",h("input",{type:"file",accept:"image/png,image/jpeg,image/webp",onchange:async e=>{const f=e.target.files[0];if(!f||busyArt)return;busyArt=true;try{if(f.size>12*1024*1024)throw Error("Choose an image under 12 MB");draft[k]=await imgShrink(f,k==="cover"?480:1000,.78);paint()}catch(err){status.textContent=err.message}finally{busyArt=false}}})),h("button",{text:"Clear "+k,onclick:()=>{if(!busyArt){delete draft[k];paint()}}}))}
+ box.append(preview,status,h("button",{class:"primary",text:"Save universe artwork",onclick:()=>{if(busyArt)return;const latest=ffUniverse(id);if(!latest)return;const r=ffSaveUniverse({...latest,artwork:draft});if(r.applied){closeSheet(true);refresh()}else status.textContent=r.reason}}));paint();sheet("Universe artwork",box)
+ }
+
 
  const el=(tag,attrs,...kids)=>h(tag,attrs,...kids),button=(text,onclick)=>h("button",{text,onclick});
  let section="home";
@@ -336,7 +343,8 @@ function fanfictionHome(root){
  const u=ffUniverse(id);if(!u){draw("home");return}
  root.replaceChildren();const wrap=h("div",{class:"ff-dashboard"});root.append(wrap);
  const chars=Object.values(u.chars||{}),events=u.events||[],sources=u.sources||[],stories=DB.stories.filter(st=>st.fanfic?.universe===id);
- wrap.append(button("‹ Your universes",()=>draw("universes")),h("section",{class:"ff-hero"},h("small",{text:"UNIVERSE LIBRARY"}),h("h2",{text:u.name}),h("p",{text:sources.length+" sources · "+chars.length+" characters · "+events.length+" events"}),h("button",{class:"ff-primary",text:"Create fanfiction",onclick:()=>wizard(id)})));
+ wrap.append(button("‹ Your universes",()=>draw("universes")),h("section",{class:"ff-hero"},u.artwork?.banner?h("img",{class:"ff-hero-image",src:u.artwork.banner,alt:""}):null,h("small",{text:"UNIVERSE LIBRARY"}),h("h2",{text:u.name}),h("p",{text:sources.length+" sources · "+chars.length+" characters · "+events.length+" events"}),h("button",{class:"ff-primary",text:"Create fanfiction",onclick:()=>wizard(id)})));
+ wrap.append(button("Customize universe artwork",()=>artworkEditor(id,()=>universePage(id))));
  const results=h("div",{class:"ff-ui"}),search=h("input",{placeholder:"Search this section",type:"search","aria-label":"Search universe"});let selected=0;
  const sections=[["Sources",sources.map(x=>({title:x.title,detail:(x.kind||"Source")+" · "+(x.chapters||[]).length+" chapters"}))],["Characters",chars.map(x=>({title:x.name,detail:[x.appearance,x.personality].filter(v=>typeof v==="string").join(" · ")}))],["Timeline",events.map(x=>({title:x.title,detail:"Chapter "+x.ch+" · "+(x.summary||"")}))],["Canon records",(u.records||[]).map(x=>({title:x.kind||"Fact",detail:x.text||""}))],["Playthroughs",stories.map(x=>({title:x.title,detail:"Open story",action:()=>go({n:"story",id:x.id})}))]];
  function refresh(){const q=search.value.toLowerCase();const rows=sections[selected][1].filter(x=>(x.title+" "+x.detail).toLowerCase().includes(q));results.replaceChildren(h("h3",{text:sections[selected][0]+" · "+rows.length}),...rows.slice(0,100).map(x=>h(x.action?"button":"article",{class:"ff-panel",onclick:x.action||null},h("strong",{text:x.title}),h("p",{text:x.detail}))),rows.length>100?h("p",{text:"Showing first 100 results. Search to narrow the list."}):null)}
