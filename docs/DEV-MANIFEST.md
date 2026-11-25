@@ -23,8 +23,8 @@ The single place for "what is live, what is in progress, who owns what". Update 
 
 | Branch | Owner | Contents | Status |
 |---|---|---|---|
-| `v91-hybrid-memory` | Claude | Hybrid memory notes, `memStatus`/`memRetry`, contract docs | Simulated tests pass; paid trial not run |
-| `v90-trial-notes` | Claude | v90 trial results in docs | Folded into `v91-hybrid-memory` |
+| `memory-overhaul` | Claude + ChatGPT | The whole memory overhaul (starts from hybrid memory, `memStatus`/`memRetry`) | Draft PR #7 = test address https://deploy-preview-7--celebrated-brigadeiros-580c41.netlify.app |
+| `v91-hybrid-memory`, `v90-trial-notes` | Claude | Folded into `memory-overhaul` | Done |
 
 ## Module ownership
 
@@ -34,7 +34,11 @@ The single place for "what is live, what is in progress, who owns what". Update 
 | Screens and sheets, backups/restore UI, Timeline and Memory Studio, mobile layout | ChatGPT |
 | Shared contracts (`docs/MEMORY-CONTRACT.md`, v87 notes/canon contract) | Both; change only with a note here |
 
-## Roadmap (renumbered: targets, not fixed numbers)
+## Plan
+
+Per Anna (2026-11-24): one complete memory overhaul, one testing campaign, one release. See docs/MEMORY-OVERHAUL-ARCHITECTURE.md and docs/USAGE-LEDGER.md. Target 2026-11-30, contingency 2026-12-04.
+
+## Roadmap after the overhaul (targets, not fixed numbers)
 
 1. Reliability, hybrid memory and OpenCode unification (shared)
 2. Story Timeline and Memory Studio (ChatGPT)
@@ -47,5 +51,5 @@ The single place for "what is live, what is in progress, who owns what". Update 
 
 ## Approvals
 
-Anna approves: paid API trials, publishing to the live site, hosting changes, destructive data changes,
-and big changes to the memory design. Everything else (coding, free tests, branches, packaging) goes ahead.
+Anna approves: publishing to the live site, hosting changes, destructive data changes,
+and big changes to the memory design. Real-model testing is pre-approved up to 45% monthly OpenCode usage (ledger). Everything else (coding, tests, branches, packaging) goes ahead.
