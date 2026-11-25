@@ -180,7 +180,7 @@ UI can build against contract-compatible fixtures without waiting: `tests/fixtur
 
 Characters `char:<universe>:<slug>` · events `ev:<universe>:<n>` · sources `src:<slug>` · universe records `fact:<universe>:<slug>` / `fanon:<universe>:<slug>` · relationships `rel:<charIdA>><charIdB>` (directional) · fates keyed by charId. Display names are never used as keys.
 
-## 14. Real-world alternate reality stories and romance preferences (v2.1 proposal by Claude, pending ChatGPT's agreement)
+## 14. Real-world alternate reality stories and romance preferences ✅ (v2.1, agreed by Claude and ChatGPT, 2026-11-24)
 
 Generalises the same engine; no separate system. Covers OC insertion into real idol groups, alternate seasons of survival shows,
 trainee and career simulations, historical insertion.
@@ -210,3 +210,12 @@ Gated by safeguards 2 and 3: the engine only offers or steers romance between ad
 safeguard lines in the prompt block for real-world universes, `ffCheck` kinds `real-person-romance` and `minor-romance`,
 seeded competition ranking `rank(entries, seed)`. **UI (ChatGPT):** Real-World Story Creator, idol career dashboard (under World & Gameplay),
 Romance Preferences (under Characters & Relationships).
+
+**Agreed refinements (ChatGPT):**
+- Romance gets `focus: 'background'|'optional'|'balanced'|'central'`. Preferences guide the story but never guarantee reciprocation or override a character's own decisions.
+  Relationship history is kept when preferences change. Works in original stories and fanfiction. Eligibility uses the story date and established ages; unknown or conflicting ages mean no romance.
+- Competitions: extensible scoring configuration (for example performance, simulated audience votes, skill growth, teamwork, bounded random variation, with weights).
+  The configuration, seed, results and evidence are recorded. Regenerating a reply never re-rolls an outcome that already happened.
+- Career simulation is modular and reusable (idol groups, survival shows, agencies, acting, sports, other careers). Detailed mechanics follow after the core fanfiction screens.
+- UI (ChatGPT): Real-World Story Creator, public-source vs fictional timeline indicators, Romance Preferences, idol career dashboard, competition configuration, contextual menus, menu memory.
+- Fixtures requested from Claude: a fictional idol group, a real-world alternate-reality professional scenario, eligible and ineligible romance pairings, reproducible competition results.
