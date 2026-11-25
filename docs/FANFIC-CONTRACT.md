@@ -23,10 +23,10 @@ incremental imports extend a universe; duplicate detection by chapter hash; expl
 ```
 { v:1, id, name, created, updated,
   sources: [{ id, title, kind:'novel'|'manga'|'anime'|'wiki'|'notes', priority:1..n, lang, chapters:[{n, title, hash, words}], coverage:{from,to}, indexedAt }],
-  aliases: { "Raon Zieghart": ["Raon", "Young Master Raon"], ... },        // names, translations, titles
+  aliases: { "char:<universe>:<slug>": ["Name", "Title", "Translation"], ... },   // keyed by stable id
   records: [ UniverseRecord ],                                           // memory contract 2 records with layer 'universe'
   events:  [ CanonEvent ],
-  chars:   { [name]: CharIdentity },
+  chars:   { [charId]: CharIdentity },
   rules:   { powers:[PowerRule], world:[text] } }
 ```
 
@@ -74,7 +74,7 @@ Timeline sync tracks separately: source chapter, playthrough chapter, in-world d
 
 ```
 mode: { types:['oc'|'self'|'takeover'|'transmigration'|'reincarnation'|'regression'|'fixit'|'whatif'|'divergence'|'au'|'crossover'|'rolereversal'|'parallel'|'nextgen'|'prequel'|'sequel'|'missing'|'slice'|'ensemble'|'altending'],
-        start:{src, ch, order}, takeover?: name, player:{name, desc, origin} }
+        start:{src, ch, order}, takeover?: charId, player:{name, desc, origin} }
 pov:  { mode:'first'|'second'|'thirdLimited'|'omniscient'|'multi', who? }
 position: { ch, order }                 // where the playthrough sits on the canon timeline
 ```
@@ -83,8 +83,8 @@ position: { ch, order }                 // where the playthrough sits on the can
 
 Refinements: stable character ids (not display names); age progression; identity provenance; explicit evidence for every knowledge item. A source revelation becoming available does **not** mean every character knows it.
 
-`CharIdentity` (source, read-only):
-`{ name, aliases[], core:{personality, values, temperament}, speech:{tone, vocabulary, mannerisms, lines[] (short paraphrased examples)}, appearance, abilities[], affiliations[], ambitions[], arcs:[{fromCh, toCh, summary}] }`
+`CharIdentity` (source, read-only), keyed by stable id `char:<universe>:<slug>`:
+`{ id, name, aliases[], core:{personality, values, temperament}, speech:{tone, vocabulary, mannerisms, lines[] (short paraphrased examples)}, appearance, abilities[], affiliations[], ambitions[], arcs:[{fromCh, toCh, summary}] }`
 
 Playthrough development is stored as memory records (character layer, `src: narrator|step|player`), each tied to the events that justify it.
 **Knowledge boundary:** a character knows source facts revealed up to the story position (`spoilerAt`) that they plausibly witnessed, plus playthrough facts linked `knows:`.
@@ -96,10 +96,10 @@ Refinement: **directional.** `rel:A>B` and `rel:B>A` are separate records (A may
 
 Original draft shape (now per direction):
 
-`{ id:'rel:A | B', a, b, kinds:['family'|'friend'|'rival'|'mentor'|'romance'|'ally'|'enemy'], baseline (canon), trust?, affection?, respect? (-100..100, optional), history:[eventIds], private:bool, knownBy[] }`
+`{ id:'rel:<charIdA>><charIdB>', a:<charId>, b:<charId>, kinds:['family'|'friend'|'rival'|'mentor'|'romance'|'ally'|'enemy'], baseline (canon), trust?, affection?, respect? (-100..100, optional), history:[eventIds], private:bool, knownBy[] }`
 Covers NPC-to-NPC relationships. Romance is optional, fictional and age-appropriate. Private developments are not known to others unless `knownBy` says so.
 
-## 7. Fates ✅
+## 7. Fates ✅ (`se.canon.fates[charId]`)
 
 `{ original:text, target:'preserve'|'adapt'|'protected'|'free', current:text, changedAt?, why?, by:[recordIds] }`
 "Protected" warns before an irreversible outcome; it does not remove every obstacle.
@@ -167,3 +167,8 @@ UI can build against contract-compatible fixtures without waiting: `tests/fixtur
 1. Menu category names: is "Canon & Fanfiction" where Source Library, Character Integration, Canon Management, Timeline & Fates, Relationships and Story Direction live?
 2. Do default rule presets per story mode belong in the UI (ChatGPT) or the engine (Claude)? Proposal: engine provides `ffDefaults(mode)`, UI shows and edits them.
 3. Visual references (manga/anime images): store in IndexedDB as blobs keyed by universe; images are never sent to the model unless the player asks (vision via OpenCode is untested).
+
+
+## ID conventions (all examples above)
+
+Characters `char:<universe>:<slug>` · events `ev:<universe>:<n>` · sources `src:<slug>` · universe records `fact:<universe>:<slug>` / `fanon:<universe>:<slug>` · relationships `rel:<charIdA>><charIdB>` (directional) · fates keyed by charId. Display names are never used as keys.

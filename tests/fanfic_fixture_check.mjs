@@ -17,3 +17,6 @@ ok(C.identity.canon === C.mode.takeover && U.chars[C.identity.canon], 'takeover 
 ok(U.records.every(r => ['source', 'fanon', 'uncertain'].includes(r.canon)), 'every universe record says source, fanon or uncertain');
 ok(Object.keys(C.rules).length === 14 && Object.values(C.rules).every(v => ['locked', 'adaptive', 'free'].includes(v)), 'all 14 canon rule categories set');
 console.log(`fanfic fixture: ${n} checks passed`);
+{ const E = JSON.parse(fs.readFileSync(path.join(here, 'fixtures/fanfic-ember.json'), 'utf8')).expect.spoilerFiltered;
+  const vis = U.records.filter(r => !r.spoilerAt || r.spoilerAt.ch <= E.position).map(r => r.id).sort();
+  assert.deepEqual(vis, E.visible.slice().sort(), 'spoiler-filter expectation matches the data'); console.log('fanfic fixture: spoiler expectation consistent'); }

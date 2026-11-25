@@ -815,5 +815,35 @@
    "link": null,
    "powers": []
   }
+ },
+ "expect": {
+  "spoilerFiltered": {
+   "note": "At position ch 5 (se.canon.position.ch), canon search/retrieval may only return universe records with spoilerAt.ch <= 5, plus records with no spoilerAt. Uncertain and fanon records are labelled as such.",
+   "position": 5,
+   "query": "Dorran Mira Kael archive",
+   "visible": [
+    "fact:ember:archive-fire",
+    "fanon:ember:kael-cooks"
+   ],
+   "hidden": [
+    "fact:ember:dorran-took-lys",
+    "fact:ember:ninth-form",
+    "fact:ember:mira-dorran"
+   ],
+   "exceptionForForeknowledge": "The player character (takeover with foreknowledge) may also see fact:ember:dorran-took-lys; no other character may."
+  },
+  "knowledge": {
+   "char:ember:kael": [
+    "fact:ember:archive-fire",
+    "fact:ember:dorran-took-lys (foreknowledge)"
+   ],
+   "char:ember:mira": [
+    "fact:ember:archive-fire"
+   ],
+   "char:ember:lys": [
+    "fact:ember:archive-fire"
+   ]
+  },
+  "revisionIsolation": "Universe is at rev 2 (chapters 41-60 added); this playthrough pins rev 1, so chapters 41-60 records (e.g. spoilerAt ch 41) are not part of it until an explicit upgrade."
  }
 }
