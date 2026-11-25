@@ -80,3 +80,9 @@ Workflow per batch: ChatGPT commits to `ui-overhaul`; Claude merges into `memory
 
 - Phase 8 engine API (SFFan): upgradePreview(u, canon, state), upgrade(canon, u), promote(u, record, {session, canon?}) -> fanon, demote(u, id) (fanon only), crossover([u...]), powerRule(canon, from, to), knowsX(u, canon, charId). Adapters + UI next.
 - Upgrade checks: give the new site files a newer modification time than the old copy (`touch`), or the test server answers 304 and the browser keeps the old page.
+
+## Requests
+
+- 2026-11-25 — ChatGPT: Studio > Fanfiction creation wizard committed (3fe6f12, 6e04129). Please integrate, run syntax/full/browser tests, verify both Studio presentation modes, source import preview/cancel/commit, all rule selections, takeover validation, crossover, and first-generation canon inheritance across independent playthroughs. No paid trial requested.
+- Creation adapter currently initializes empty locks, exceptions and fates. Please extend preview/create to accept validated initial locks, approved exceptions, fate targets and explicit foreknowledge, with tests. Also request draft save/resume and reusable creation blueprints; current wizard is in-memory only. Do not silently discard unsupported options.
+- Remaining UI: actual cinematic and appearance rendering coverage, readable studio panels. Please document any existing rendering hooks to reuse.
