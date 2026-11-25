@@ -120,4 +120,8 @@ recent memory as context. Trial-page fix: the test copy must keep short reasonin
 | Go 5-hour window | 0.95% | 0.80% | 1.09% |
 
 Hybrid keeps the narrator's event accuracy and the step's cast accuracy. Knowledge (4 checks) is too small a sample to judge; the
-overhaul campaign adds larger knowledge scenarios. Glass Orchard hybrid run still to do.
+overhaul campaign adds larger knowledge scenarios. Glass Orchard hybrid (2026-11-24): scene 24/25 (narrator-only 15/25), characters 17/17 (11/17), events 10/15 (14/15),
+knowledge 3/6 (4/6), leaks 6/6, secrets 30/30, 1.80% of the 5-hour window. Event misses checked one by one: 4 of 5 were turns
+where the narrator wrote 2-3 events that didn't include the expected one (narrator variation, not a hybrid drop); 1 was a turn the
+narrator left empty and the step filled. Conclusion: hybrid clearly improves scene and cast; events and knowledge depend on the
+narrator's own lines, so the overhaul's recall and larger knowledge scenarios are the next real-model tests.
