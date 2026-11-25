@@ -242,6 +242,26 @@ function powerRule(canon,from,to){const r=arr(canon&&canon.powers).find(p=>p.fro
 /* homeUniverse(charId) and crossover-aware knowledge: in a crossover, common facts are known only within their own universe. */
 function knowsX(u,canon,charId){const multi=arr(canon&&canon.universes).length>1,home=uOfId(charId);const k=knows(u,canon,charId);return multi&&home?k.filter(r=>arr(r.knownBy).includes(charId)||arr(r.who).includes(charId)||uOfId(r.id)===home):k}
 
+/* ---------- Story creation: newCanon(u, o) -> {ok, reason, canon, summary} (pure; nothing stored) ----------
+   o: {modes:[...], start:{ch}, takeover?:charId, player?:{name, desc}, startAge?, pov?:{mode, who?}, romance?:{pref, pacing?},
+       rules?:{key:'locked'|'adaptive'|'free'}, crossover?:{with:[universeIds], link?, powers?:[...]}} */
+const RULE_VALUES=['locked','adaptive','free'],NEEDS_BODY=['takeover','transmigration','regression','reincarnation'];
+function newCanon(u,o){o=o||{};if(!u||!u.id)return{ok:false,reason:'universe missing'};const modes=arr(o.modes).filter(Boolean);
+  if(!modes.length)return{ok:false,reason:'choose at least one mode'};const bad=modes.find(m=>!Object.prototype.hasOwnProperty.call(MODE_PRESETS,m));if(bad)return{ok:false,reason:'unknown mode '+bad};
+  const body=modes.find(m=>NEEDS_BODY.includes(m)&&m!=='reincarnation');if(body&&!o.takeover)return{ok:false,reason:body+' needs a canon character to become'};
+  if(o.takeover&&!(u.chars||{})[o.takeover])return{ok:false,reason:'unknown character '+o.takeover};
+  const chs=arr(u.sources).reduce((n,x)=>n+arr(x.chapters).length,0),ch=Math.max(0,Math.round(+((o.start||{}).ch)||0));if(chs&&ch>chs)return{ok:false,reason:'start chapter is past the end of the source ('+chs+' chapters)'};
+  const pov=Object.assign({mode:'second'},o.pov||{});if(!['first','second','thirdLimited','omniscient','multi'].includes(pov.mode))return{ok:false,reason:'bad point of view'};
+  const rom=o.romance||null;if(rom&&rom.pref&&!['bl','gl','straight','any','none'].includes(rom.pref))return{ok:false,reason:'bad romance preference'};
+  const rules=defaults(modes);for(const [k,v] of Object.entries(o.rules||{})){if(!(k in rules))return{ok:false,reason:'unknown rule '+k};if(!RULE_VALUES.includes(v))return{ok:false,reason:'bad value for '+k};rules[k]=v}
+  const who=o.takeover||null,pl=o.player||{};const player={name:String(pl.name||(who?((u.chars[who]||{}).name||''):'')||'').slice(0,60),desc:String(pl.desc||'').slice(0,1000),origin:modes.includes('takeover')?'takeover':modes.includes('transmigration')?'transmigration':modes.includes('self')?'self':'oc'};
+  if(!player.name)return{ok:false,reason:'the player character needs a name'};
+  const canon={universe:u.id,rev:u.rev||0,mode:{types:modes,start:{ch,order:0},takeover:who,player,startAge:o.startAge==null?null:+o.startAge},pov:who&&!pov.who?Object.assign(pov,{who}):pov,
+    position:{ch,order:0},rules,locks:[],exceptions:[],events:{},fates:{},relationships:[],hist:[]};
+  if(rom)canon.romance=Object.assign({pref:'any',pacing:'natural'},rom);
+  const X=o.crossover;if(X&&arr(X.with).length){canon.universes=[{id:u.id,role:'primary'}].concat(arr(X.with).filter(id=>id&&id!==u.id).map(id=>({id,role:'secondary'})));canon.link=X.link||'merged';canon.powers=arr(X.powers);if(!modes.includes('crossover'))canon.mode.types=modes.concat(['crossover'])}
+  return{ok:true,reason:null,canon,summary:{universe:u.name||u.id,modes:canon.mode.types,start:ch,player:player.name,takeover:who?((u.chars[who]||{}).name||who):null,pov:canon.pov.mode,crossover:canon.universes?canon.universes.map(x=>x.id):null,locked:Object.keys(rules).filter(k=>rules[k]==='locked')}}}
+
 root.SFFan=Object.freeze({slug,hash,ids,splitChapters,candidateNames,indexSource,emptyUniverse,mergeImport,RULE_KEYS,defaults,need,evaluate,impact,cycles,ruleFor,search,
-  knows,identity,relationships,relVisibleTo,isReal,ageAt,romanceAllowed,rank,recordCompetition,setRomance,upgradePreview,upgrade,promote,demote,crossover,powerRule,knowsX,uOfId,setRule,lock,exception,setFate,eventStatus,setMode,setPosition,setPOV,setRelationship,undo,canonFor,check,validate,exportStory,restorePreview});
+  knows,identity,relationships,relVisibleTo,isReal,ageAt,romanceAllowed,rank,recordCompetition,setRomance,upgradePreview,upgrade,promote,demote,crossover,powerRule,knowsX,uOfId,newCanon,MODES:Object.freeze(Object.keys(MODE_PRESETS)),setRule,lock,exception,setFate,eventStatus,setMode,setPosition,setPOV,setRelationship,undo,canonFor,check,validate,exportStory,restorePreview});
 })(typeof window!=='undefined'?window:globalThis);

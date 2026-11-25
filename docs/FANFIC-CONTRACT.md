@@ -235,3 +235,9 @@ Engine (SFFan): `upgradePreview(u, canon, state)` -> `{from, to, newRecords, new
 Playthrough canon for crossovers: `canon.universes: [{id, role: 'primary'|'secondary'}]`, `canon.powers: [{from, to, rule, scale?, note?}]`.
 
 App adapters: `ffUpgradePreview(se)`, `ffUpgrade(se)` (undo with `ffUndo`), `ffPromote(se, record, o)`, `ffDemote(universeId, id)`, `ffCrossover([ids])` (null if any is missing), `ffPowerRule(se, from, to)`, `ffKnowsX(se, charId)`. Tests: `tests/fanfic_universe_unit.mjs`, `tests/fanfic_universe_browser.py`.
+
+### Status: story creation (Studio → Fanfiction tab)
+
+Engine: `SFFan.newCanon(u, o)` → `{ok, reason, canon, summary}` (pure). `o`: `modes` (one or more of `SFFan.MODES`), `start: {ch}`, `takeover` (charId; required for takeover / transmigration / regression), `player: {name, desc}` (required unless taking over), `startAge`, `pov: {mode: first|second|thirdLimited|omniscient|multi, who?}`, `romance: {pref, pacing}`, `rules: {key: locked|adaptive|free}` (overrides the mode presets), `crossover: {with: [universeIds], link, powers}`. The canon is pinned to the universe's current revision.
+
+App: `ffModes()`, `ffNewCanonPreview(universeId, o)` (also reports missing crossover universes), `ffCreateStory(universeId, {…o, title?, setting?})` → `{ok, applied, reason, storyId, summary}`. The story stores `fanfic: {universe, canon}`; every new playthrough (`play`) gets its own copy as `se.canon`, so the canon prompt block, checks and Universe Studio work from the first reply. With no name given, the player takes the name from the canon setup. Tests: `fanfic_create_unit.mjs` (11), `fanfic_create_browser.py` (10).

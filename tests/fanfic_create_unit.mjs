@@ -1,0 +1,20 @@
+// Fanfiction story creation: SFFan.newCanon. Run: node tests/fanfic_create_unit.mjs
+import assert from 'node:assert/strict'; import fs from 'node:fs'; import vm from 'node:vm'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
+const here = path.dirname(fileURLToPath(import.meta.url)); const ctx = {}; ctx.globalThis = ctx; vm.createContext(ctx);
+vm.runInContext(fs.readFileSync(path.join(here, '../site/fanfic-engine.js'), 'utf8'), ctx); const F = ctx.SFFan; let n = 0; const ok = (c, m) => { assert.ok(c, m); n++; };
+const U = JSON.parse(fs.readFileSync(path.join(here, 'fixtures/fanfic-ember.json'), 'utf8')).universe;
+ok(F.MODES.includes('takeover') && F.MODES.includes('crossover') && F.MODES.length >= 20, 'mode list exposed');
+let r = F.newCanon(U, { modes: ['takeover', 'fixit'], start: { ch: 2 }, takeover: 'char:ember:kael', pov: { mode: 'second' }, romance: { pref: 'none' } });
+ok(r.ok && r.canon.universe === 'ember' && r.canon.rev === U.rev && r.canon.mode.takeover === 'char:ember:kael' && r.canon.pov.who === 'char:ember:kael', 'takeover canon built and pinned to the universe revision');
+ok(r.canon.rules.fates === 'free' && r.canon.rules.history === 'locked' && r.canon.mode.player.name === (U.chars['char:ember:kael'].name), 'mode presets applied; player named after the taken-over character');
+ok(r.canon.position.ch === 2 && r.canon.romance.pref === 'none' && r.summary.takeover && r.summary.locked.includes('history'), 'start, romance and summary');
+ok(F.newCanon(U, { modes: [] }).reason === 'choose at least one mode' && F.newCanon(U, { modes: ['nope'] }).reason === 'unknown mode nope', 'modes validated');
+ok(F.newCanon(U, { modes: ['takeover'] }).reason === 'takeover needs a canon character to become' && F.newCanon(U, { modes: ['takeover'], takeover: 'char:ember:zz' }).reason.startsWith('unknown character'), 'takeover needs a real character');
+ok(F.newCanon(U, { modes: ['oc'] }).reason === 'the player character needs a name', 'original character needs a name');
+const oc = F.newCanon(U, { modes: ['oc', 'whatif'], player: { name: 'Sora', desc: 'A scribe from the south' }, pov: { mode: 'first' }, rules: { romance: 'locked' } });
+ok(oc.ok && oc.canon.mode.player.origin === 'oc' && oc.canon.rules.romance === 'locked' && oc.canon.rules.majorEvents === 'free' && !oc.canon.mode.takeover, 'original character with rule override');
+ok(F.newCanon(U, { modes: ['oc'], player: { name: 'S' }, rules: { history: 'maybe' } }).reason === 'bad value for history' && F.newCanon(U, { modes: ['oc'], player: { name: 'S' }, pov: { mode: 'fourth' } }).reason === 'bad point of view', 'bad rules and pov rejected');
+const big = F.newCanon(U, { modes: ['oc'], player: { name: 'S' }, start: { ch: 99999 } }); ok(!big.ok && big.reason.includes('past the end'), 'start beyond the source rejected');
+const x = F.newCanon(U, { modes: ['oc'], player: { name: 'S' }, crossover: { with: ['void'], link: 'portal' } });
+ok(x.ok && x.canon.universes.length === 2 && x.canon.universes[1].role === 'secondary' && x.canon.link === 'portal' && x.canon.mode.types.includes('crossover'), 'crossover canon');
+console.log(`fanfic create: ${n} checks passed`);

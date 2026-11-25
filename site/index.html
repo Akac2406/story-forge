@@ -913,6 +913,7 @@ function play(st,d){if(!hasKey()){toast("Add your OpenRouter key in Settings fir
   sd(se,st).forEach(s=>{se.stats[s.n]=num(s.v,0)});
   if(st.cast0&&st.cast0.length){se.cast={};st.cast0.forEach(c=>{se.cast[c.n]={r:c.role||"",l:[c.age?"age "+c.age:"",c.looks].filter(Boolean).join(", "),t:[],a:c.hook||"",ch:0,u:Date.now(),pic:c.th||undefined}})}
   if(st.ctr&&st.ctr.length){se.ctr={};st.ctr.forEach(c=>{se.ctr[c.n]=0})}if(st.ooc)se.fmt=Object.assign(fmtOf(se),{tag:1});
+  if(st.fanfic&&st.fanfic.canon&&window.SFFan)try{se.canon=JSON.parse(JSON.stringify(st.fanfic.canon));if(se.canon.mode&&se.canon.mode.player&&se.canon.mode.player.name&&!(d.name||"").trim())se.char.name=se.canon.mode.player.name}catch(e){}
   if(st.blueprint&&window.SFCreator)try{if(st.blueprint.game)se.game=SFCreator.gameSetup(st.blueprint.game);if(st.blueprint.director)se.director=JSON.parse(JSON.stringify(st.blueprint.director))}catch(e){}
   DB.sessions.push(se);save();view={n:"chat",id:se.id};begin(se,st)}
 function begin(se,st){if(se.sim&&se.sim.ph==="setup"){toast("Finish the setup with the guide first.");return}
@@ -2432,6 +2433,12 @@ function cvCast(se){const cv=cvState(se).cast,names=[...new Set(Object.keys(se.c
 function cvArt(se,ref){if(!ref||typeof ref!=="string")return null;let m=ref.match(/^v54:(.+)$/);if(m){const v=cvScenePresets()[m[1]];return v&&v.background||null}
   m=ref.match(/^cast:(.+)$/);if(m){const c=se&&se.cast&&se.cast[m[1]];return c&&c.pic||null}return null}
 /* Appearance (SFAppearance) on the existing v48 storage; presets in "sf.appearance.presets". Scopes: "global", "mobile", "desktop", "story" (this playthrough's story) or "story:<id>". */
+/* Fanfiction story creation (Studio): ffNewCanonPreview validates the choices; ffCreateStory adds a story whose every new playthrough starts with that canon. */
+const ffNewCanonPreview=(uid,o)=>{const u=ffUniverse(uid);if(!u)return{ok:false,reason:"universe missing"};if(o&&o.crossover&&(o.crossover.with||[]).some(id=>!ffUniverse(id)))return{ok:false,reason:"crossover universe missing"};return SFFan.newCanon(u,o)},
+  ffModes=()=>SFFan.MODES.slice();
+function ffCreateStory(univId,o){o=o||{};const r=ffNewCanonPreview(univId,o);if(!r.ok)return{ok:false,applied:false,reason:r.reason};const u=ffUniverse(univId),title=String(o.title||"").trim().slice(0,120)||(u.name+": "+r.summary.player);
+  const st={id:uid(),kind:"story",title,setting:String(o.setting||"").slice(0,4000)||("Fanfiction set in "+u.name+"."),starts:[],stats:[],endings:[],entries:[],fanfic:{universe:univId,canon:r.canon},created:Date.now()};
+  DB.stories.push(st);save();return{ok:true,applied:true,reason:null,storyId:st.id,summary:r.summary}}
 const AP_PRESETS="sf.appearance.presets";
 function apKey(){return(window.SFVisualV48&&SFVisualV48.KEY)||"sf.visual.v48"}
 function apCfg(){try{const d=JSON.parse(localStorage.getItem(apKey())||"null");return d&&d.version===1?d:SFAppearance.empty()}catch(e){return SFAppearance.empty()}}
