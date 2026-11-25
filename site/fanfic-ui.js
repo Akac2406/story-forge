@@ -195,3 +195,19 @@ function gameplay(se){window.SFFanUI.studioShell(se,"Gameplay Studio",(b,apply)=
 })}
 Object.assign(window.SFFanUI,{gameplay});
 })();
+
+(function(){
+"use strict";
+const button=(text,onclick)=>h("button",{text,onclick}),dump=x=>h("pre",{text:JSON.stringify(x,null,2)}),panel=(...kids)=>h("div",{class:"ff-panel"},...kids);
+function creator(se){
+ const st=getStory(se.storyId),body=h("div",{class:"ff-ui"}),status=h("p",{role:"status","aria-live":"polite"}),report=h("div",{}),importReport=h("div",{}),name=h("input",{}),note=h("textarea",{rows:3}),art=h("input",{type:"checkbox",disabled:!!st?.ooc}),templates=sfTemplates().map(t=>({name:t.name,box:h("input",{type:"checkbox"})}));
+ let pending=null,epoch=0;
+ function options(){return {sessionId:se.id,templates:templates.filter(t=>t.box.checked).map(t=>t.name),art:art.checked&&!st?.ooc,creator:{name:name.value,note:note.value}}}
+ function run(download){try{const r=download?crDownload(se.storyId,options()):crBuild(se.storyId,options());status.textContent=r.ok?(download?"Package prepared for download":"Preview ready"):r.reason||"Export failed";report.replaceChildren(dump({size:r.size,artBlocked:r.artBlocked,removed:r.removed,preview:r.ok?crPreview(r.package):null}))}catch(e){status.textContent=String(e.message||e)}}
+ const file=h("input",{type:"file",accept:".json,.sfcreator.json"}),openButton=button("Create new story from package",()=>{if(!pending||!confirm("Create a new story from this blueprint?"))return;try{const r=crOpen(pending);status.textContent=r.applied?"New story created: "+r.storyId:r.reason||"No change";if(r.applied){pending=null;openButton.disabled=true}importReport.append(dump(r))}catch(e){status.textContent=String(e.message||e)}});openButton.disabled=true;
+ file.addEventListener("change",()=>{epoch++;pending=null;openButton.disabled=true;importReport.replaceChildren()});
+ const preview=button("Preview import",async()=>{const ticket=++epoch;pending=null;openButton.disabled=true;importReport.replaceChildren();try{const f=file.files[0];if(!f)throw Error("Choose a package first");if(f.size>8*1024*1024)throw Error("Package exceeds 8 MB");const p=JSON.parse(await f.text());if(ticket!==epoch||!body.isConnected)return;const r=crPreview(p);importReport.append(dump(r));if(r.ok){pending=p;openButton.disabled=false}status.textContent=r.ok?"Validated. Nothing imported yet.":"Package validation failed"}catch(e){if(ticket===epoch)status.textContent=String(e.message||e)}});
+ body.append(status,panel(h("h3",{text:"Export reusable blueprint"}),h("p",{text:"Excludes playthroughs, memories, credentials and gameplay progress."}),fld("Creator name",name),fld("Creator notes",note),h("label",{},art," Include images"),st?.ooc?h("p",{text:"Images cannot be exported from OOC-imported stories."}):null,h("b",{text:"Character templates"}),...templates.map(t=>h("label",{},t.box," "+t.name)),button("Preview export",()=>run(false)),button("Download package",()=>run(true)),report),panel(h("h3",{text:"Import creator package"}),file,preview,importReport,openButton));sheet("Creator Studio",body);
+}
+Object.assign(window.SFFanUI,{creator});
+})();
