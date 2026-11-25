@@ -87,3 +87,22 @@ Branch `v87-canon`, based on v86 (`0a931cc`). Development build: not deployed, n
 - "Pin as note" (from `detectStandingOoc`);
 - safe chapter regeneration;
 - the style samples picker (suggest from an attached book, edit, remove; max 3).
+
+## v90 trial: separate memory step (2026-11-24, real DeepSeek via OpenCode Go, repair off, Phase 2 off)
+
+| | Cedar Ridge off | Cedar Ridge on | Glass Orchard off | Glass Orchard on |
+|---|---|---|---|---|
+| Memory notes recorded | 28/30 | 30/30 | 31/40 | 40/40 |
+| Scene location correct | 27/30 | 22/30 | 15/25 | 24/25 |
+| Expected characters present | 22/24 | 23/24 | 11/17 | 17/17 |
+| Expected event recorded | 16/19 | 12/19 | 14/15 | 11/15 |
+| Expected knowledge (paraphrases) | 2/4 | 1/4 | 4/6 | 3/6 |
+| No knowledge leaks / secrets kept | 4/4, 25/25 | 4/4, 25/25 | 6/6, 30/30 | 6/6, 30/30 |
+| Go 5-hour window used | 0.95% | 0.80% | 1.61% | 1.43% |
+
+Findings: the step never misses (100% notes) and is better at scene and who is present, but the
+narrator's own lines catch more events and knowledge. No late drop-off in the "off" runs this time
+(Glass Orchard: 18/20 after turn 20). Keep the switch off by default; next idea is a hybrid
+(narrator lines first, step fills scene/cast and anything missing) and giving the step the cast and
+recent memory as context. Trial-page fix: the test copy must keep short reasoning when the step is on
+(full reasoning made each step take 60–90 s and time out).
