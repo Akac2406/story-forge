@@ -303,6 +303,8 @@ body[data-ui-layout="character"] .stats,body[data-ui-layout="anime"] .stats,body
 body[data-ui-layout="academy"] .tabs button.on,body[data-ui-layout="anime"] .tabs button.on{box-shadow:0 0 16px color-mix(in srgb,var(--accent) 25%,transparent)}
 @media(max-width:600px){body[data-ui-layout]:not([data-ui-layout="classic"]) #app{max-width:100%}body[data-ui-layout]:not([data-ui-layout="classic"]) .tabs{gap:4px;padding:8px}body[data-ui-layout]:not([data-ui-layout="classic"]) .tabs button{padding:9px 5px;font-size:12px}}
 <style id="sf-ui-integrated">.sf-network{border:1px solid var(--line,#49435d);border-radius:16px;background:radial-gradient(ellipse at center,rgba(125,98,185,.22),transparent 70%);overflow:hidden;margin:12px 0}.sf-network svg{display:block;width:100%;height:auto;min-height:220px}.sf-map-link{display:flex;flex-direction:column;align-items:flex-start;width:100%;gap:5px;margin:6px 0;padding:12px;border:1px solid var(--line,#49435d);border-radius:12px;background:transparent;color:inherit;text-align:left}.sf-map-link small{opacity:.75} <style id="sf-social-v32">.sf-social{display:flex;flex-direction:column;gap:12px}.sf-relcard{width:100%;text-align:left;display:block;padding:15px;border:1px solid var(--accent,#9b7bff);border-radius:16px;background:var(--card,#211b30);color:inherit}.sf-relhead{display:flex;justify-content:space-between;gap:10px;margin-bottom:10px}.sf-relhead span{opacity:.75;font-size:.85em}.sf-relbars{display:grid;gap:6px}.sf-relbar{display:grid;grid-template-columns:80px 1fr 28px;align-items:center;gap:8px;font-size:.76em}.sf-reltrack{height:7px;border-radius:20px;background:#80808040;overflow:hidden}.sf-reltrack i{display:block;height:100%;border-radius:20px}.sf-reledit{display:grid;grid-template-columns:90px 1fr 30px;align-items:center;gap:8px;font-size:.9em}.sf-reledit input{width:100%}.sf-relevent{padding:9px;border-left:2px solid var(--accent,#9b7bff);background:#80808016;border-radius:5px;white-space:pre-wrap}
+.sf-canon-copy{overflow-wrap:anywhere;white-space:pre-wrap}
+.sheet details>summary{cursor:pointer;padding:10px 0}
 </style><link rel="stylesheet" href="cinematic-ui-v49.css"><link rel="stylesheet" href="character-ui-v50.css"><link rel="stylesheet" href="character-studio-v51.css"><link rel="stylesheet" href="relationship-map-v52.css"><link rel="stylesheet" href="cinematic-profiles-v53.css"><link rel="stylesheet" href="cinematic-scenes-v54.css">
 </style><style id="sf-social-v32">.sf-social{display:flex;flex-direction:column;gap:12px}.sf-relcard{width:100%;text-align:left;display:block;padding:15px;border:1px solid var(--accent,#9b7bff);border-radius:16px;background:var(--card,#211b30);color:inherit}.sf-relhead{display:flex;justify-content:space-between;gap:10px;margin-bottom:10px}.sf-relhead span{opacity:.75;font-size:.85em}.sf-relbars{display:grid;gap:6px}.sf-relbar{display:grid;grid-template-columns:80px 1fr 28px;align-items:center;gap:8px;font-size:.76em}.sf-reltrack{height:7px;border-radius:20px;background:#80808040;overflow:hidden}.sf-reltrack i{display:block;height:100%;border-radius:20px}.sf-reledit{display:grid;grid-template-columns:90px 1fr 30px;align-items:center;gap:8px;font-size:.9em}.sf-reledit input{width:100%}.sf-relevent{padding:9px;border-left:2px solid var(--accent,#9b7bff);background:#80808016;border-radius:5px;white-space:pre-wrap}</style>
 <style id="sf-v45-visual">
@@ -324,7 +326,7 @@ const KEY="story-forge-v2",app=document.getElementById("app"),$=s=>document.quer
 function ap(p,...k){for(const c of k.flat(4)){if(c==null||c===false)continue;p.appendChild(c.nodeType?c:document.createTextNode(String(c)))}}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const num=(v,d)=>{const n=parseFloat(v);return isFinite(n)?n:d};
-const VER=87,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
+const VER=88,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
 function fixCh(se){const c=(se.chaps||[]).filter(x=>x&&x.i>=0&&x.i<Math.max(1,se.turns.length)).sort((a,b)=>a.i-b.i),out=[];c.forEach(x=>{if(!out.length||x.i>out[out.length-1].i)out.push(x)});if(!out.length||out[0].i!==0)out.unshift({i:0,t:""});se.chaps=out;return out}
 function autoCh(se){const N=se.chapN==null?1500:se.chapN,out=[{i:0,t:""}];if(N>0){let acc=0;se.turns.forEach((t,i)=>{if(t.role==="user"&&i>0&&(N===1?acc>0:acc>=N)){out.push({i,t:""});acc=0}if(t.role==="ai")acc+=words(t.text)})}return out}
 function chapsOf(se){if(!se.chaps)se.chaps=autoCh(se);return fixCh(se)}
@@ -421,12 +423,15 @@ function loadDB(){let d=null;try{d=JSON.parse(localStorage.getItem(KEY))}catch(e
   return norm(d)}
 let DB=loadDB(),view={n:"home",tab:"discover"},busy=false,ctrl=null,tT=null;
 let idb=null,saveT=null;
+const pendingChapterRewrites=new WeakSet();
+const savedSessions=()=>DB.sessions.filter(se=>!pendingChapterRewrites.has(se));
+const savedDB=()=>({...DB,sessions:savedSessions()});
 function idbOpen(){return new Promise((res,rej)=>{try{const r=indexedDB.open("story-forge",1);r.onupgradeneeded=()=>r.result.createObjectStore("kv");r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
 function idbGet(k){return new Promise((res,rej)=>{const q=idb.transaction("kv").objectStore("kv").get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})}
 function idbDel(k){return new Promise((res,rej)=>{const tx=idb.transaction("kv","readwrite");tx.objectStore("kv").delete(k);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})}
 function idbSet(k,v){return new Promise((res,rej)=>{const tx=idb.transaction("kv","readwrite");tx.objectStore("kv").put(v,k);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error)})}
-function save(){DB.ts=Date.now();if(DB.syncAuto&&typeof syncSoon==="function")syncSoon();let ok=false;try{localStorage.setItem(KEY,JSON.stringify(DB));ok=true}catch(e){try{localStorage.removeItem(KEY)}catch(x){}}
-  if(idb){clearTimeout(saveT);saveT=setTimeout(()=>{idbSet(KEY,JSON.stringify(DB)).catch(()=>{if(!ok)toast("Could not save. Device storage may be full.")})},200)}
+function save(){DB.ts=Date.now();if(DB.syncAuto&&typeof syncSoon==="function")syncSoon();let ok=false;try{localStorage.setItem(KEY,JSON.stringify(savedDB()));ok=true}catch(e){try{localStorage.removeItem(KEY)}catch(x){}}
+  if(idb){clearTimeout(saveT);saveT=setTimeout(()=>{idbSet(KEY,JSON.stringify(savedDB())).catch(()=>{if(!ok)toast("Could not save. Device storage may be full.")})},200)}
   else if(!ok)toast("Could not save. Device storage may be full.")}
 function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(tT);tT=setTimeout(()=>t.classList.remove("on"),3800)}
 const THEMES=[["midnight","Midnight (Classic)","#0f0d17","#9b7bff"],["paper","Paper (Classic)","#f6efe2","#9b4d22"],["ink","Ink (Classic)","#000000","#5ad1c5"],["moon","Moonlit (Classic)","#121822","#8fb8ff"],["ember","Ember (Classic)","#1a0f0d","#ff7a45"],["sakura","Sakura (Classic)","#fff5f8","#d14d84"],["crimson","Crimson Eclipse","#190d16","#f05b70"],["azure","Azure Legion","#08162f","#4b95ff"],["void","Void Nexus","#140c28","#b55bff"],["spirit","Moonlit Spirit","#17182e","#a5abff"],["verdant","Verdant Wilds","#091f18","#4acb87"],["starlight","Starlight Horizon","#07172d","#48d6f2"],["bloom","Sakura Bloom","#2a1427","#f38ab7"],["thunder","Thunder Crest","#1f160e","#f6b43d"],["arcane","Arcane Veil","#1b102d","#b67bff"],["frost","Frostbound","#0a1c31","#7fc5ff"]],LIGHT={paper:1,sakura:1};
@@ -498,7 +503,7 @@ function lifeStats(st){return[{n:"Health",min:0,max:100,v:85,rule:"falls with in
 function lifeEnds(st){return[{n:"A Life Well Lived",r:"SSR",c:"the character dies of old age and Bonds >= 70 and Happiness >= 70",e:""},{n:"Name in the Histories",r:"SR",c:"the character dies or retires for good with Reputation >= 90",e:""},{n:"The Last Stand",r:"SR",c:"the character knowingly gives their life to save others",e:""},{n:"A Quiet Ending",r:"R",c:"the character dies of old age or illness after age 60",e:""},{n:"Gone Too Soon",r:"N",c:"the character dies before age 30 without having chosen it",e:""}]}
 const sd=(se,st)=>se.sdefs||st.stats||[],ed=(se,st)=>se.edefs||st.endings||[];
 function libStory(k){const p=LIB[k];if(!p)return null;
-  return{id:"lib:"+k,builtin:true,kind:"story",title:p.t,canon:p.c,starts:p.s,setting:p.set,style:p.st,lore:p.n,follow:"strict",tag:p.tag,hue:p.h,orig:!!p.orig,life:!!p.life,sim:!!p.sim,entries:p.e||[],stats:p.sim?[]:stdStats(p.p),endings:p.sim?[]:stdEnds(p.p)}}
+  return{id:"lib:"+k,builtin:true,kind:"story",title:p.t,canon:p.c,starts:p.s,setting:p.set,style:p.st,lore:p.n,follow:"strict",tag:p.tag,hue:p.h,orig:!!p.orig,life:!!p.life,sim:!!p.sim,entries:p.e||[],stats:p.sim?[]:stdStats(p.p),endings:p.sim?[]:stdEnds(p.p),...sharedFields(DB.storyCanon?.["lib:"+k]||{},["entries","canonMode"])}}
 function getStory(id){if(typeof id==="string"&&id.slice(0,4)==="lib:")return libStory(id.slice(4));return DB.stories.find(s=>s.id===id)||null}
 const foundOf=st=>(DB.found&&DB.found[st.id])||[];
 function endChips(st,list){const f=foundOf(st);return h("div",{class:"chips"},(list||st.endings||[]).map(e=>f.includes(e.n)?h("span",{class:"chip r-"+e.r,text:e.r+" · "+e.n}):h("span",{class:"chip lock",text:e.r+" · ???"})))}
@@ -870,6 +875,7 @@ function vStory(){const st=getStory(view.id);if(!st){view={n:"home",tab:"discove
   if(life)ap(m,fld("Start your life at",selC(d.age,AGES,v=>{d.age=v},"Age in years, e.g. 30","number")));
   if(st.starts&&st.starts.length)ap(m,fld(life?"When in the world’s timeline":"Starting point",selC(d.start,st.starts.map(s=>[s,s]),v=>{d.start=v},life?"e.g. The year 1995, or three years before the main story":"e.g. The night before the exam")));
   else if(!isC)ap(m,fld(life?"When in the world’s timeline (optional)":"Starting point (optional)",inp(d.start,v=>{d.start=v},"e.g. the night before the exam")));
+  if(!isC)ap(m,canonModeField(d,"Use story default"));
   if(st.canon)ap(m,fld("How closely to follow canon",selC(d.follow,[["strict","Follow canon closely"],["loose","Loose, my choices change things"]],v=>{d.follow=v},"e.g. Follow canon, but my character can save people who died")));
   ap(m,fld("Reply length",selC(d.len,LENS,v=>{d.len=String(Math.max(50,Math.min(8000,Math.round(num(v,300)))))},"Number of words, e.g. 1500","number")),h("div",{class:"row"},h("button",{class:"primary big",text:isC?"Start chat":life?"Begin life":"Start story",onclick:()=>play(st,d)})));
   ap(m,h("div",{class:"row"},st.builtin
@@ -901,6 +907,7 @@ function play(st,d){if(!hasKey()){toast("Add your OpenRouter key in Settings fir
     DB.chars=[{id:cid,...ch},...DB.chars].slice(0,30);
   }
   const se={id:uid(),storyId:st.id,start:d.start||"",follow:d.follow||"strict",char:ch,turns:[],temp:"",mems:[],note:d.storyDescription||"",stats:{},upto:0,len:d.len||"300",sugg:[],ending:null,ended:[],people:{},think:0,wstyle:"default",wcustom:"",goal:"",cid,updated:Date.now()};
+  if(d.canonMode)se.canonMode=d.canonMode;
   if(st.sim){se.sim={ph:"setup",log:[{role:"ai",text:SIMHI,g:1}],canon:"",prev:"",ready:false};se.follow="Use canon as the starting point and keep its characters true to themselves, but the player’s choices can change what happens next.";se.nmode="auto";DB.sessions.push(se);save();view={n:"chat",id:se.id};render();return}
   if(life){se.sdefs=lifeStats(st);se.edefs=lifeEnds(st);se.life={age:Math.max(0,Math.min(110,Math.round(num(d.age==="c"?d.agec:d.age,0)))),time:""};se.log=[]}
   sd(se,st).forEach(s=>{se.stats[s.n]=num(s.v,0)});
@@ -918,6 +925,73 @@ function begin(se,st){if(se.sim&&se.sim.ph==="setup"){toast("Finish the setup wi
 function rowsEd(arr,max,blank,draw,label){const box=h("div");const paint=()=>{box.textContent="";
   arr.forEach((it,i)=>ap(box,h("div",{class:"item"},draw(it),h("button",{class:"ghost",text:"Remove",onclick:()=>{arr.splice(i,1);paint()}}))));
   ap(box,h("button",{text:"Add "+label+" ("+arr.length+"/"+max+")",disabled:arr.length>=max,onclick:()=>{arr.push(blank());paint()}}))};paint();return box}
+const STYLE_SAMPLE_LIMIT=3,STYLE_SAMPLE_LENGTH=1500;
+function styleSamplesFor(st){
+  return (Array.isArray(st.styleSamples)?st.styleSamples:[])
+    .filter(sample=>sample&&typeof sample.text==="string"&&sample.text.trim())
+    .slice(0,STYLE_SAMPLE_LIMIT)
+    .map(({id,text,src})=>({id:id||uid(),text:text.slice(0,STYLE_SAMPLE_LENGTH),...(src?{src}:{})}));
+}
+function styleSamplesEditor(st){
+  const samples=styleSamplesFor(st);
+  let suggestionButtons=[];
+  if(samples.length)st.styleSamples=samples;
+  const section=h("section"),list=h("div"),suggestions=h("div"),status=h("p",{class:"sub",role:"status"});
+  const add=h("button",{text:"Add style sample",onclick:()=>addSample("")});
+  const suggest=h("button",{text:"Suggest from attached book",onclick:chooseBook});
+  function draw(){
+    list.textContent="";
+    add.disabled=suggest.disabled=samples.length>=STYLE_SAMPLE_LIMIT;
+    for(const [button,text] of suggestionButtons)button.disabled=add.disabled||samples.some(sample=>sample.text.trim()===text);
+    ap(list,samples.map((sample,i)=>{
+      const editor=area(sample.text,text=>{sample.text=text},"Paste a short sample of narration or dialogue",5);
+      editor.maxLength=STYLE_SAMPLE_LENGTH;
+      return h("div",{class:"item"},fld("Style sample "+(i+1),editor),
+        sample.src?h("p",{class:"sub",text:"From "+sample.src}):null,
+        h("button",{class:"ghost",text:"Remove sample "+(i+1),onclick:()=>{samples.splice(i,1);draw()}}));
+    }));
+  }
+  function addSample(text,src){
+    if(samples.length>=STYLE_SAMPLE_LIMIT)return;
+    if(text&&samples.some(sample=>sample.text.trim()===text.trim()))return;
+    samples.push({id:uid(),text,...(src?{src}:{})});
+    st.styleSamples=samples;
+    draw();
+  }
+  function chooseBook(){
+    const pending=new Set(st._refs||[]),linked=new Set(refsFor(st.id).map(ref=>ref.id));
+    const books=(DB.refs||[]).filter(ref=>!ref.wiki&&(linked.has(ref.id)||pending.has(ref.id)));
+    suggestions.textContent="";status.textContent="";suggestionButtons=[];
+    if(!books.length){status.textContent="Attach a book above, or paste an excerpt into a style sample.";return}
+    if(books.length===1){showSuggestions(books[0]);return}
+    ap(suggestions,h("p",{class:"sub",text:"Choose an attached book."}),
+      books.map(book=>h("button",{text:book.name,onclick:()=>showSuggestions(book)})));
+  }
+  async function showSuggestions(book){
+    suggestions.textContent="";
+    const result=h("div");
+    ap(suggestions,result);
+    status.textContent="Finding possible samples…";
+    try{
+      const {c}=await refLoad(book.id);
+      if(result.parentNode!==suggestions)return;
+      const passages=SFCanon.suggestStyleSamples(c,{n:STYLE_SAMPLE_LIMIT});
+      status.textContent=passages.length?"Review the suggested excerpts and choose which ones to use.":"No suitable samples found. You can paste an excerpt instead.";
+      ap(result,passages.map((passage,i)=>{
+        const use=h("button",{text:"Use suggestion "+(i+1),onclick:()=>addSample(passage.text,book.name)});
+        suggestionButtons.push([use,passage.text.trim()]);
+        return h("div",{class:"item"},h("p",{class:"sf-canon-copy",text:passage.text}),use);
+      }));
+      draw();
+    }catch(error){
+      if(result.parentNode===suggestions)status.textContent="Couldn’t read the attached book.";
+    }
+  }
+  ap(section,h("h2",{text:"Style samples"}),h("p",{class:"sub",text:"Add up to three excerpts, 1,500 characters each. The narrator receives them as examples of voice and rhythm."}),
+    list,h("div",{class:"row"},add,suggest),status,suggestions);
+  draw();
+  return section;
+}
 function vEdit(){let st=view.w;if(!st){const o=view.id&&DB.stories.find(s=>s.id===view.id);
     st=view.w=o?JSON.parse(JSON.stringify(o)):{id:uid(),kind:view.kind||"story",title:"",canon:"",follow:"strict",starts:[],setting:"",style:"",lore:"",charName:"",charDesc:"",greeting:"",stats:[],endings:[]}}
   st.stats=st.stats||[];st.endings=st.endings||[];st.starts=st.starts||[];st.entries=st.entries||[];const isC=st.kind==="character";
@@ -925,7 +999,7 @@ function vEdit(){let st=view.w;if(!st){const o=view.id&&DB.stories.find(s=>s.id=
   const m=h("main",{class:"page"});ap(app,m);
   function saveIt(){if(isC&&!st.charName.trim()){toast("Give the character a name.");return}if(!isC&&!st.title.trim()){toast("Give the story a title.");return}
     if(isC&&!st.title.trim())st.title=st.charName;st.stats=st.stats.filter(s=>s.n&&s.n.trim());st.endings=st.endings.filter(e=>e.n&&e.n.trim()&&e.c&&e.c.trim());
-    st.entries=st.entries.filter(e=>e.t&&e.t.trim());delete st.hue;delete st.orig;const rids=st._refs||[];delete st._refs;attachRefs(rids,st.id);st.updated=Date.now();const i=DB.stories.findIndex(s=>s.id===st.id);if(i>=0)DB.stories[i]=st;else DB.stories.unshift(st);save();go({n:"story",id:st.id})}
+    st.entries=st.entries.filter(e=>e.t&&e.t.trim());const samples=styleSamplesFor(st);if(samples.length)st.styleSamples=samples;else delete st.styleSamples;delete st.hue;delete st.orig;const rids=st._refs||[];delete st._refs;attachRefs(rids,st.id);st.updated=Date.now();const i=DB.stories.findIndex(s=>s.id===st.id);if(i>=0)DB.stories[i]=st;else DB.stories.unshift(st);save();go({n:"story",id:st.id})}
   st._refs=st._refs||[];view.imp=view.imp||{};const ewc=h("div");
   if(!isC){const fl=h("div",{class:"blog"}),say=t=>{fl.textContent+=(fl.textContent?"\n":"")+t};let rep=false,dg=null;
     const fb=h("button",{class:"primary",text:"Fill in the fields",disabled:true,onclick:async()=>{if(!dg||fb.disabled)return;if(!hasKey()){toast("Add your key in Settings first.");return}
@@ -947,12 +1021,17 @@ function vEdit(){let st=view.w;if(!st){const o=view.id&&DB.stories.find(s=>s.id=
     fld("World and premise",area(st.setting,v=>{st.setting=v},"Where and when, who is in it, what is going on…",4)),
     fld("Tone and style",inp(st.style,v=>{st.style=v},"e.g. dark, slow-burn, witty dialogue")),
     fld("Lore and rules for the narrator",area(st.lore,v=>{st.lore=v},"Power systems, key characters, things to avoid…",5)));
-  if(!isC)ap(m,eraEditor(st));
+  if(!isC)ap(m,styleSamplesEditor(st),canonModeField(st,"Use legacy canon setting"),eraEditor(st));
   ap(m,fld("Play guide (shown to you in the menu, not sent to the narrator)",area(st.guide,v=>{st.guide=v},"What kind of story this is, goals, tips…",3)));
   if(!isC)ap(m,fld("Starting points (one per line, optional)",area(st.starts.join("\n"),v=>{st.starts=v.split("\n").map(x=>x.trim()).filter(Boolean)},"Before the main plot\nA specific arc",3)));
   if(!isC)ap(m,chk("Play as a life simulator by default",!!st.life,v=>{st.life=v}));
   ap(m,h("h2",{text:"Canon notes"}),h("p",{class:"sub",text:"Facts the narrator must respect. A note is sent when one of its keywords comes up. Tick Always to send it every turn."}),
-    rowsEd(st.entries,80,()=>({k:"",t:"",a:false}),e=>[inp(e.k,v=>{e.k=v},"Keywords: name, alias"),area(e.t,v=>{e.t=v},"What the narrator should know",3),chk("Always include",!!e.a,v=>{e.a=v})],"note"));
+    rowsEd(st.entries,80,()=>({id:uid(),k:"",t:"",a:false}),e=>[
+      inp(e.k,v=>{e.id=e.id||uid();e.k=v},"Keywords: name, alias"),
+      area(e.t,v=>{e.id=e.id||uid();e.t=v},"What the narrator should know",3),
+      chk("Always include when possible",!!e.a,v=>{e.id=e.id||uid();e.a=v}),
+      chk("Lock fact and always include it",!!e.lock,v=>{e.id=e.id||uid();e.lock=v})
+    ],"note"));
   ap(m,h("h2",{text:"Stats"}),h("p",{class:"sub",text:"Gauges shown at the top of the chat. Say in plain words when each should rise or fall."}),
     rowsEd(st.stats,7,()=>({n:"",min:0,max:100,v:0,rule:""}),s=>[inp(s.n,v=>{s.n=v},"Name, e.g. Trust"),h("div",{class:"tri"},inp(s.v,v=>{s.v=num(v,0)},"Start","number"),inp(s.min,v=>{s.min=num(v,0)},"Min","number"),inp(s.max,v=>{s.max=num(v,100)},"Max","number")),inp(s.rule,v=>{s.rule=v},"Rises when… falls when…")],"stat"),
     h("h2",{text:"Endings"}),h("p",{class:"sub",text:"Conditions can use turns and stats, e.g. turn >= 15 and Trust >= 80, or plain words."}),
@@ -1595,8 +1674,8 @@ function buildMsgs(se,st,hist,action,days=0){if(se.sim)st=Object.assign({},st,{t
   const tp=g("TOPICS");if(rsOn(se)&&tp&&!none.test(tp))tp.split(";").map(x=>x.trim().replace(/^["“]|["”.]$/g,"")).filter(x=>x&&x.length<80).slice(0,2).forEach(x=>rsAdd(se,x,true));
   const dd=g("DEAD");if(dd&&!none.test(dd)){se.dead=se.dead||[];dd.split(";").map(x=>x.replace(/^[-*\s"“]+|[*"”.\s]+$/g,"").slice(0,48)).filter(x=>x&&!dash(x)&&!se.dead.includes(x)&&x.toLowerCase()!==me).forEach(x=>se.dead.push(x))}
   se.sugg=g("NEXT").split("|").map(x=>x.replace(/^\s*(?:\d+[.)]|[-•])\s*/,"").trim()).filter(Boolean).slice(0,3)}
-async function send(text,hide,show,days=0){const se=DB.sessions.find(s=>s.id===view.id);if(!se||busy)return;PRE.cancel=false;const st=getStory(se.storyId);text=(text||"").trim();if(!st||!text)return;
-  if(!hide&&!show&&text[0]==="/"){const m=text.match(/^\/(\w+)\s*([\s\S]*)$/),c=m?m[1].toLowerCase():"",arg=m?m[2].trim():"";const clr=()=>{view.draft="";const ta=$("#input");if(ta)ta.value=""};
+async function send(text,hide,show,days=0,replay=null){const se=DB.sessions.find(s=>s.id===view.id);if(!se||busy)return;PRE.cancel=false;const st=getStory(se.storyId);text=(text||"").trim();if(!st||!text)return;
+  if(!replay&&!hide&&!show&&text[0]==="/"){const m=text.match(/^\/(\w+)\s*([\s\S]*)$/),c=m?m[1].toLowerCase():"",arg=m?m[2].trim():"";const clr=()=>{view.draft="";const ta=$("#input");if(ta)ta.value=""};
     if(c==="ooc"){if(!arg){toast("Type your note after /ooc");return}text="(OOC: "+arg+")"}
     else if(c==="summary"){clr();summarySheet(se,st);return}
     else if(c==="status"&&!(st.cmds||[]).some(x=>x.c.toLowerCase()==="/status")){clr();worldSheet(se,st);return}
@@ -1611,38 +1690,47 @@ async function send(text,hide,show,days=0){const se=DB.sessions.find(s=>s.id===v
   if(PRE.cancel){PRE.cancel=false;toast("Cancelled.");return}
   if(recP||needRec(se)){busy=true;toast("Checking the story so far…");try{await recWait(se)}catch(e){}finally{busy=false}}
   if(needSum(se)){busy=true;toast("Tidying the story’s memory first…");try{await summarize(se)}finally{busy=false}}
-  const myRefs=refsFor(st.id).concat(refsFor(se.id));let rp="";if(myRefs.length){busy=true;try{rp=await refPick(se,st,text)}catch(e){}finally{busy=false}}
+  const myRefs=[...new Set(refsFor(st.id).concat(refsFor(se.id),replay?refsFor(replay.sourceId):[]))];let rp="";if(myRefs.length){busy=true;try{rp=await refPick(se,st,text,myRefs)}catch(e){}finally{busy=false}}
   let wn="";const wb=wikiOf(se,st);if(wb&&DB.wikiOn!==false&&!(se.sim&&se.sim.ph==="setup")&&!myRefs.some(r=>r.wiki===wb)){busy=true;try{wn=await wikiPick(se,st,text,wb)}catch(e){}finally{busy=false}}
   if(PRE.cancel){PRE.cancel=false;toast("Cancelled.");return}
   const REG=REGV;const hist=se.turns.slice(),u={role:"user",text},ai={role:"ai",text:"",ps:Object.assign({},se.stats)};if(hide)u.hide=true;if(show)u.show=show;if(days&&REG)u.worldDays=days;
   if(se.life){ai.pl=Object.assign({},se.life);ai.ln=(se.log||[]).length}
   ai.md=modelOf(DB.modes[DB.mode]||DB.modes[0]);
   let nc=false;if(st.kind!=="character"){const C=chapsOf(se),N=se.chapN==null?1500:se.chapN;if(!se.turns.length)nc=true;else if(N>0){let w=0;for(let j=C[C.length-1].i;j<se.turns.length;j++)if(se.turns[j].role==="ai")w+=words(se.turns[j].text);nc=N===1?w>0:w>=N}}
+  if(replay)nc=replay.chapterStart;
   if(st.kind!=="character"&&view.och){const L=chapsOf(se).length-1;delete view.och[L];delete view.och[L+1];se.och=Object.assign({},view.och)}delete se.pos;
-  se.nc=nc;se.rp=rp;se.wn=wn;const msgs=buildMsgs(se,st,hist,text,days);delete se.nc;delete se.rp;delete se.wn;delete se.imp;{const PR=PREPORT.get(se);if(PR&&PR.mandatoryOver){toast("Your must-follow notes and locked canon are too long to send ("+PR.mandatoryChars.toLocaleString()+" of "+PR.mandatoryCap.toLocaleString()+" characters). Shorten them or mark some as Should.");return}}const ui=se.turns.length;se.turns.push(u,ai);REGV=null;if(RBK&&RBK.sid===se.id)RBK=null;if(nc&&ui>0)se.chaps.push({i:ui,t:""});se.sugg=[];se.delta={};busy=true;ctrl=new AbortController();if(!hide&&!show)view.draft="";render();
-  let raw="";
+  se.nc=nc;se.rp=rp;se.wn=wn;const msgs=buildMsgs(se,st,hist,text,days);delete se.nc;delete se.rp;delete se.wn;delete se.imp;{const PR=PREPORT.get(se);if(PR&&PR.mandatoryOver){toast("Your protected instructions are too long to send ("+PR.mandatoryChars.toLocaleString()+" of "+PR.mandatoryCap.toLocaleString()+" characters). Shorten notes, narrow their scope, or unlock an entry. See Prompt inspector for details.");return}}const ui=se.turns.length;se.turns.push(u,ai);REGV=null;if(nc&&ui>0&&!se.chaps.some(ch=>ch.i===ui))se.chaps.push({i:ui,t:""});se.sugg=[];se.delta={};busy=true;ctrl=new AbortController();if(!hide&&!show)view.draft="";render();
+  let raw="",committed=false;
   try{const r=await ask(msgs,{signal:ctrl.signal,se,think:se.think||0,max:Math.min(16000,Math.round((+se.len||300)*2.2)+900),onText:t=>{raw=t;ai.text=vis(t);paintLast(se,ai.text)}});
-    raw=r.text;if(days&&(vis(raw)||raw.trim()))u.worldDays=days;ai.text=vis(raw)||raw.trim();{const mi=metaAt(raw);if(mi>=0)ai.mt=raw.slice(mi,mi+1500).trim();else delete ai.mt}delete se.newc;if(r.usage)ai.u={i:r.usage.prompt_tokens||0,o:r.usage.completion_tokens||0,c:typeof r.usage.cost==="number"?r.usage.cost:null};if(isOC())ai.gp=ocPct();applyMeta(se,st,raw);memRecord(se,st,ai,raw);canonRecord(se,st,ai,raw);if((DB.metaRepair||se.metaRepair)&&metaAt(raw)<0&&memOn(se)&&st.kind!=="character"&&!RPQ.has(se.id)){const pr=metaRepair(se,st,ai).finally(()=>RPQ.delete(se.id));RPQ.set(se.id,pr)}if(se.newc){ai.newc=se.newc;delete se.newc}ai.st2=Object.assign({},se.stats);if(se.info){ai.info=se.info;delete se.info}if(REG){ai.vs=REG.concat([{t:ai.text,s:ai.st2,sg:(se.sugg||[]).slice(),mx:ai.mx,mt:ai.mt}]).slice(-6);ai.vi=ai.vs.length-1}}
-  catch(e){const ab=e&&e.name==="AbortError";if(ab&&vis(raw))ai.text=vis(raw);else if(REG){const o=REG[REG.length-1];ai.text=o.t;if(o.mt)ai.mt=o.mt;else delete ai.mt;if(o.mx){ai.mx=o.mx;if(se.mem&&window.SFMemory)try{SFMemory.apply(se.mem,o.mx)}catch(x){}}if(o.s)se.stats=Object.assign({},o.s);ai.st2=o.s;if(REG.length>1){ai.vs=REG;ai.vi=REG.length-1}if(!ab)toast(errMsg(e)+" Your earlier version is kept.")}else{const k=se.turns.indexOf(ai);if(k>0)se.turns.splice(k-1,2);if(!hide&&!show&&view.id===se.id)view.draft=text;if(!ab)toast(errMsg(e))}}
+    raw=r.text;
+    if(replay&&!vis(raw))throw Error("No chapter reply was returned.");
+    if(days&&(vis(raw)||raw.trim()))u.worldDays=days;ai.text=vis(raw)||raw.trim();{const mi=metaAt(raw);if(mi>=0)ai.mt=raw.slice(mi,mi+1500).trim();else delete ai.mt}delete se.newc;if(r.usage)ai.u={i:r.usage.prompt_tokens||0,o:r.usage.completion_tokens||0,c:typeof r.usage.cost==="number"?r.usage.cost:null};if(isOC())ai.gp=ocPct();applyMeta(se,st,raw);memRecord(se,st,ai,raw);canonRecord(se,st,ai,raw);if((DB.metaRepair||se.metaRepair)&&metaAt(raw)<0&&memOn(se)&&st.kind!=="character"&&!RPQ.has(se.id)){const pr=metaRepair(se,st,ai).finally(()=>RPQ.delete(se.id));RPQ.set(se.id,pr)}if(se.newc){ai.newc=se.newc;delete se.newc}ai.st2=Object.assign({},se.stats);if(se.info){ai.info=se.info;delete se.info}if(REG){ai.vs=REG.concat([{t:ai.text,s:ai.st2,sg:(se.sugg||[]).slice(),mx:ai.mx,mt:ai.mt,tid:ai.tid}]).slice(-6);ai.vi=ai.vs.length-1}committed=true;if(RBK?.sid===se.id)RBK=null}
+  catch(e){const ab=e&&e.name==="AbortError";
+    if(REG&&RBK?.sid===se.id){se.turns.splice(ui,2);regenRollback(se);if(!ab)toast(errMsg(e)+" Your earlier version is kept.")}
+    else if(ab&&vis(raw)&&!replay)ai.text=vis(raw);else if(REG){const o=REG[REG.length-1];ai.text=o.t;if(o.mt)ai.mt=o.mt;else delete ai.mt;if(o.mx){ai.mx=o.mx;if(se.mem&&window.SFMemory)try{SFMemory.apply(se.mem,o.mx)}catch(x){}}if(o.s)se.stats=Object.assign({},o.s);ai.st2=o.s;if(REG.length>1){ai.vs=REG;ai.vi=REG.length-1}if(!ab)toast(errMsg(e)+" Your earlier version is kept.")}else{const k=se.turns.indexOf(ai);if(k>0)se.turns.splice(k-1,2);if(!hide&&!show&&view.id===se.id)view.draft=text;if(!ab)toast(errMsg(e))}}
   finally{busy=false;ctrl=null;se.updated=Date.now();save();if(view.n==="chat"&&view.id===se.id)rerender()}
-  summarize(se);recAfter(se,st)}
+  if(!replay&&(!REG||committed)){summarize(se);recAfter(se,st)}
+  return committed;
+}
 let RBK=null;const PRE={cancel:false};
 /* Puts back everything regen() changed if the new request never started. */
 function regenRollback(se){const r=RBK;RBK=null;REGV=null;if(!r||r.sid!==se.id)return;
   if(!se.turns.includes(r.a)){const at=Math.min(r.i-1,se.turns.length);se.turns.splice(at,0,r.u,r.a)}
   se.stats=r.stats;se.facts=r.facts;se.fprev=r.fprev;se.ending=r.ending;se.sugg=r.sugg;if(r.life)se.life=r.life;if(r.log)se.log=r.log;
-  if(r.lc&&se.chaps&&se.chaps[r.lk])se.chaps[r.lk]=r.lc;delete se.imp;
+  if(r.chaps)se.chaps=r.chaps;else delete se.chaps;
+  for(const key of ["pos","och","delta"]){if(r[key]===undefined)delete se[key];else se[key]=r[key]}
+  delete se.imp;
   if(r.a.mx&&se.mem&&window.SFMemory)try{SFMemory.apply(se.mem,r.a.mx)}catch(e){}
   save();if(view.n==="chat"&&view.id===se.id&&!busy)rerender()}
 async function regen(){const se=DB.sessions.find(s=>s.id===view.id);if(!se||busy)return;
   if(se.sim&&se.sim.ph==="setup"){const L=se.sim.log,n=L.length;if(n<3||L[n-1].role!=="ai"){toast("Nothing to regenerate yet.");return}const u=L[n-2];L.splice(n-2,2);simSend(se,getStory(se.storyId),u.text);return}const i=se.turns.length-1;
   if(i<1||se.turns[i].role!=="ai"||se.turns[i-1].role!=="user"){toast("Nothing to regenerate yet.");return}
   const st0=getStory(se.storyId);if(memOn(se)&&!se.mem&&st0&&st0.kind!=="character"&&!(se.memSnap&&se.memSnap.ok)){busy=true;try{await memSnapshot(se)}finally{busy=false}}
-  const u=se.turns[i-1],a=se.turns[i],cp=x=>x==null?x:JSON.parse(JSON.stringify(x)),lk=se.chaps&&se.chaps.length?se.chaps.length-1:-1;
-  RBK={sid:se.id,i,u,a,stats:cp(se.stats),facts:cp(se.facts),fprev:cp(se.fprev),ending:se.ending,sugg:cp(se.sugg),life:cp(se.life),log:cp(se.log),lk,lc:lk>=0?cp(se.chaps[lk]):null,imp:se.imp};
+  const u=se.turns[i-1],a=se.turns[i],cp=x=>x==null?x:JSON.parse(JSON.stringify(x));
+  RBK={sid:se.id,i,u,a,stats:cp(se.stats),facts:cp(se.facts),fprev:cp(se.fprev),ending:se.ending,sugg:cp(se.sugg),life:cp(se.life),log:cp(se.log),chaps:cp(se.chaps),pos:cp(se.pos),och:cp(se.och),delta:cp(se.delta)};
   if(a.ps)se.stats=a.ps;
   if(se.chaps&&se.chaps.length){const lk=se.chaps.length-1,lc=se.chaps[lk];if(lc.sum&&se.fprev&&se.fprev.k===lk)se.facts=se.fprev.f.slice();delete lc.sum;delete lc.conf;delete lc.try}if(a.pl&&se.life){se.life=a.pl;if(se.log)se.log.length=Math.min(se.log.length,a.ln||0)}
-  if(a.mx&&se.mem&&window.SFMemory)try{SFMemory.undo(se.mem,a.mx)}catch(x){}REGV=a.vs?a.vs.slice():[{t:a.text,s:a.st2||null,sg:(se.sugg||[]).slice(),mx:a.mx,mt:a.mt}];se.turns.splice(i-1,2);se.ending=null;
+  if(a.mx&&se.mem&&window.SFMemory)try{SFMemory.undo(se.mem,a.mx)}catch(x){}REGV=a.vs?a.vs.slice():[{t:a.text,s:a.st2||null,sg:(se.sugg||[]).slice(),mx:a.mx,mt:a.mt,tid:a.tid}];se.turns.splice(i-1,2);se.ending=null;
   try{await send(u.text,u.hide,u.show,u.worldDays||0)}catch(e){console.warn(e);toast(errMsg(e)+" Your earlier reply is kept.")}finally{if(RBK&&RBK.sid===se.id)regenRollback(se)}}
 const SIMF=[["world","World","WORLD"],["role","Your role","ROLE"],["start","Starting point","TIMELINE"],["genre","Genre and keywords","GENRE"],["len","Reply length","LENGTH"],["goal","Short-term goal","GOAL"],["rules","Additional rules","RULES"]];
 function simVal(se,k){return k==="len"?(se.lenSet?lenLabel(se.len):""):String(se[k]||"")}
@@ -1856,7 +1944,7 @@ async function syncNow(manual){if(SYNC.busy)return;if(!DB.syncPass||!ocBase()){i
     if(r.status===501)throw new Error("Your connector has no storage yet. Add a KV namespace named SF to the Worker (steps in Settings).");
     let changed=false;if(r.ok){const txt=await r.text();if(txt){let rem;try{rem=await syncOpen(k,txt)}catch(e){throw new Error("That passphrase doesn’t match the one your other device uses.")}const before=JSON.stringify([DB.sessions.length,DB.stories.length,DB.sessions.map(x=>x.updated)]);syncMerge(rem);changed=before!==JSON.stringify([DB.sessions.length,DB.stories.length,DB.sessions.map(x=>x.updated)])}}
     else if(r.status!==404)throw new Error("The connector answered with an error ("+r.status+"). Update the connector code.");
-    const kp={on:!!DB.syncKeys,at:DB.keysAt||0};if(DB.syncKeys&&DB.ocKey)kp.ocKey=DB.ocKey;     const body=await syncPack(k,{v:1,at:Date.now(),keys:kp,sessions:DB.sessions,stories:DB.stories,chars:DB.chars,found:DB.found||{},libWiki:DB.libWiki||{},del:DB.del||{}});
+    const kp={on:!!DB.syncKeys,at:DB.keysAt||0};if(DB.syncKeys&&DB.ocKey)kp.ocKey=DB.ocKey;     const body=await syncPack(k,{v:1,at:Date.now(),keys:kp,sessions:savedSessions(),stories:DB.stories,chars:DB.chars,found:DB.found||{},libWiki:DB.libWiki||{},del:DB.del||{}});
     const w=await fetch(url,{method:"PUT",headers:Object.assign({"content-type":"text/plain"},hd),body});if(!w.ok)throw new Error(w.status===413?"Your data is too large to sync.":w.status===404||w.status===405?"Your connector is out of date. Paste the latest connector code from Settings into your Worker and deploy it.":"Couldn’t save to the connector ("+w.status+").");
     DB.syncAt=Date.now();SYNC.busy=false;save();if(changed&&!busy&&!$("#sheetbg")&&view.n!=="chat"&&view.n!=="edit")render();if(SYNC.gotKey){SYNC.gotKey=false;toast("Synced. Your OpenCode key arrived from your other device.");if(!busy&&view.n!=="chat")render()}else if(manual)toast(changed?"Synced. Stories from your other devices are here now.":"Synced.")}
   catch(e){if(manual)toast(errMsg(e));else DB.syncErr=String(e.message||e)}finally{SYNC.busy=false}}
@@ -1900,8 +1988,8 @@ async function portrait(se,k,btn,style){if(style===undefined)return chooseImageS
   try{const v=visFor(se,k),refs=[];if(v){try{const u=await idbGet("img:"+v.id);if(u)refs.push(u)}catch(e){}}
     const url=await genImage("Create a character portrait, head and shoulders, of "+k+(st&&st.title?" from "+(se.sim&&se.sim.canon||st.title):"")+". Style: "+(DB.imgStyle||"detailed anime illustration")+". "+[c.r&&"Role: "+c.r,c.l&&"Looks: "+c.l,(c.t||[]).length&&"Personality: "+c.t.join(", ")].filter(Boolean).join(". ")+(v&&v.desc?". Reference description: "+v.desc:"")+"."+eraPrompt(st,se.turns)+PICRULE,refs,se,style);
     c.pic=await shrinkURL(url,256,0.82);const id=uid();await idbSet("gen:"+id,url);c.picId=id;save();toast("Portrait made.")}catch(e){toast(errMsg(e))}btn.disabled=false;btn.textContent="Make a portrait"}
-const WORLD_SHARE_FIELDS="kind title canon follow starts setting storyDescription style lore charName charDesc greeting stats endings life entries desc tags guide prologue info info0 ctr cmds author cast0 coverT bannerT wiki ooc worldEra".split(" ");
-const WORLD_PLAY_FIELDS="id parent root bname start follow char turns chaps temp mems note stats upto len sugg ending ended people cast think wstyle wcustom goal life log sdefs edefs ctr status statusOn quests rules world role genre nmode lenSet dead facts saga mem memv2 memSnap relationshipLinks worldSchedule sceneReviews progression".split(" ");
+const WORLD_SHARE_FIELDS="kind title canon follow starts setting storyDescription style lore charName charDesc greeting stats endings life entries desc tags guide prologue info info0 ctr cmds author cast0 coverT bannerT wiki ooc worldEra canonMode styleSamples".split(" ");
+const WORLD_PLAY_FIELDS="id parent root bname start follow char turns chaps temp mems note stats upto len sugg ending ended people cast think wstyle wcustom goal life log sdefs edefs ctr status statusOn quests rules world role genre nmode lenSet dead facts saga mem memv2 memSnap relationshipLinks worldSchedule sceneReviews progression notes canonMode divergences ctl agency adv advN autoMe".split(" ");
 const sharedFields=(source,fields)=>Object.fromEntries(fields.filter(key=>Object.hasOwn(source,key)).map(key=>[key,source[key]]));
 const shareImage=value=>typeof value==="string"&&/^data:image\/(?:png|jpeg|webp|gif);base64,[a-z0-9+/=]+$/i.test(value)?value:undefined;
 function portableStory(source){
@@ -1997,7 +2085,7 @@ function worldSharingSheet(){
     ]:null,fld("Import world package",file));
   sheet("Share a world",box);
 }
-const STORY_TEMPLATE_FIELDS="title canon follow starts setting storyDescription style lore stats endings life entries desc tags tag guide prologue info info0 ctr cmds author wiki ooc worldEra".split(" ");
+const STORY_TEMPLATE_FIELDS="title canon follow starts setting storyDescription style lore stats endings life entries desc tags tag guide prologue info info0 ctr cmds author wiki ooc worldEra canonMode styleSamples".split(" ");
 function storyTemplateData(st){
   const data=sharedFields(st,STORY_TEMPLATE_FIELDS);
   if(Array.isArray(st.cast0))data.cast0=st.cast0.filter(character=>character&&typeof character.n==="string")
@@ -2237,17 +2325,18 @@ let REGV=null;const ADV={on:false,stop:false};
 const CONT="Continue from exactly where your last reply stopped. Move events forward with new actions, dialogue and developments. Do not recap, do not re-describe the setting, and do not retell the same moment from another point of view.";
 const ADVS=[["beat","To the next moment"],["scene","To the next scene"],["big","To the next big event"]];
 function advText(se){const k=se.adv||"beat";return(k==="scene"?"Move the story on to the next scene without any input from me: close the current moment in a line or two, then cut to what happens next.":k==="big"?"Move the story forward to the next major event without any input from me: cover the time in between in a few lines, then play out the new event.":"Move the story forward to the next meaningful moment without any input from me.")
-  +" Let time pass where it should, skip travel and waiting, and have other characters act and things happen. "+(se.autoMe==="full"?"You may write my character’s actions and dialogue, true to their personality and the story so far, but stop before any big, irreversible decision so I can make it.":"My character can take small, obvious actions that fit what they were already doing, but leave big decisions and important lines to me.")
+  +" Let time pass where it should, skip travel and waiting, and have other characters act and things happen. "+(se.agency?AGENCY_OPTIONS.find(x=>x[0]===se.agency)?.[2]||"":se.autoMe==="full"?"You may write my character’s actions and dialogue, true to their personality and the story so far, but stop before any big, irreversible decision so I can make it.":"My character can take small, obvious actions that fit what they were already doing, but leave big decisions and important lines to me.")
   +" Do not re-describe the current scene, recap what already happened, or replay the same moment from another point of view. Start from a new moment."}
 async function advance(se){if(busy||ADV.on)return;const n=Math.max(1,Math.min(5,+se.advN||1));ADV.on=true;ADV.stop=false;
   try{for(let k=0;k<n;k++){if(ADV.stop||se.ending||view.n!=="chat"||view.id!==se.id)break;const before=se.turns.length;await send(advText(se),true);if(se.turns.length===before)break}}finally{ADV.on=false;ADV.stop=false;if(view.n==="chat"&&view.id===se.id&&!busy)rerender()}}
-function verSw(se,t){const go2=d=>{const k=Math.max(0,Math.min(t.vs.length-1,(t.vi==null?t.vs.length-1:t.vi)+d));if(k===t.vi)return;const v=t.vs[k];memSwap(se,t,v);t.vi=k;t.text=v.t;if(v.mt)t.mt=v.mt;else delete t.mt;if(v.s){se.stats=Object.assign({},v.s);t.st2=v.s}se.sugg=(v.sg||[]).slice();save();rerender()};
+function verSw(se,t){const go2=d=>{const k=Math.max(0,Math.min(t.vs.length-1,(t.vi==null?t.vs.length-1:t.vi)+d));if(k===t.vi)return;const v=t.vs[k];memSwap(se,t,v);t.vi=k;t.text=v.t;if(v.tid)t.tid=v.tid;else delete t.tid;if(v.mt)t.mt=v.mt;else delete t.mt;if(v.s){se.stats=Object.assign({},v.s);t.st2=v.s}se.sugg=(v.sg||[]).slice();save();rerender()};
   const cur=(t.vi==null?t.vs.length-1:t.vi)+1;return h("span",{class:"vsw"},h("button",{class:"ghost","aria-label":"Previous version",text:"‹",onclick:()=>go2(-1)}),cur+"/"+t.vs.length,h("button",{class:"ghost","aria-label":"Next version",text:"›",onclick:()=>go2(1)}))}
 const CTL=[["pace","Pacing",["Linger in every moment","Unhurried","Balanced","Brisk","Fast, skip ahead often"]],["detail","Description",["Spare","Light","Balanced","Rich","Lush"]],["combat","Action and combat",["Avoid fighting","Rare","Balanced","Frequent","Constant"]],["romance","Romance",["None","Hints only","Balanced","Strong","Central to the story"]],["humor","Humor",["Serious","Light touches","Balanced","Playful","Comedy"]],["dark","Darkness",["Gentle","Mild","Balanced","Grim","Brutal"]],["danger","Danger to my character",["Safe","Low","Balanced","High","Deadly"]]];
 function ctlText(se){const c=se.ctl||{};return CTL.filter(x=>c[x[0]]!=null&&+c[x[0]]!==2).map(x=>x[1]+": "+x[2][+c[x[0]]]).join("; ")}
 function ctlSheet(se){se.ctl=se.ctl||{};const box=h("div");
   ap(box,h("p",{class:"sub",text:"Tune the story without writing notes. The middle of each slider means the narrator decides."}),
     CTL.map(x=>{const v=se.ctl[x[0]]==null?2:+se.ctl[x[0]],lab=h("em",{text:x[2][v]});return h("div",{class:"ctl"},h("label",null,x[1],lab),h("input",{type:"range",min:"0",max:"4",step:"1",value:String(v),"aria-label":x[1],oninput:e=>{se.ctl[x[0]]=+e.target.value;lab.textContent=x[2][+e.target.value];save()}}))}),
+    fld("Player character agency",sel(se.agency||"",[["","Use existing auto-advance setting"],...AGENCY_OPTIONS],v=>{if(v)se.agency=v;else delete se.agency;save()})),
     h("h3",{text:"Move the story on (the ⏩ button)"}),h("p",{class:"sub",text:"The ⏩ button next to Continue moves the story forward without any input from you."}),
     fld("Each tap moves",sel(se.adv||"beat",ADVS,v=>{se.adv=v;save()})),
     fld("Replies per tap",sel(String(se.advN||1),[["1","1 reply"],["2","2 replies in a row"],["3","3 replies in a row"],["5","5 replies in a row"]],v=>{se.advN=+v;save()})),
@@ -2267,7 +2356,7 @@ function branchAt(se,i,o){o=o||{};const n=JSON.parse(JSON.stringify(se)),root=se
   const last=n.turns[cut-1];if(last&&last.st2)n.stats=Object.assign({},last.st2);
   if(se.life){const nx=se.turns.slice(cut).find(t=>t.pl);if(nx){n.life=Object.assign({},nx.pl);n.log=(se.log||[]).slice(0,nx.ln||0)}}
   (n.saves||[]);n.sugg=[];n.ending=null;n.updated=Date.now();delete n.pos;delete n.och;n.use={};
-  if(o.prep)o.prep(n);DB.sessions.push(n);save();go({n:"chat",id:n.id});toast(o.msg||"New branch started. The original playthrough is unchanged.");return n}
+  if(o.prep)o.prep(n);DB.sessions.push(n);if(!o.staged)save();go({n:"chat",id:n.id});toast(o.msg||"New branch started. The original playthrough is unchanged.");return n}
 function saveSheet(se,st){const box=h("div"),C=st.kind==="character"?null:chapsOf(se),root=se.root||se.id;
   const pts=se.turns.map((t,i)=>({t,i})).filter(x=>x.t.save);
   const fam=DB.sessions.filter(x=>x.id!==se.id&&((x.root||x.id)===root));
@@ -2347,6 +2436,11 @@ function menuSheet(se,st){closeSheet(true);const ends=ed(se,st),fo=foundOf(st),n
     drow("Play guide",()=>guideSheet(se,st)),
     drow("Avatars",()=>avatarSheet(se),se.char.name||""),
     drow("User notes",()=>noteSheet(se)),
+    st.kind!=="character"?drow("Canon mode",()=>canonModeSheet(se,st),CANON_MODES.find(x=>x[0]===SFCanon.mode(se,st))?.[1]):null,
+    drow("Canon Bible",()=>canonBible(se,st),String((st.entries||[]).length)),
+    drow("Prompt inspector",()=>promptCoverageSheet(se,st)),
+    drow("Source coverage",()=>promptCoverageSheet(se,st,true)),
+    st.kind!=="character"?drow("Canon warnings",()=>canonWarningSheet(se,st),String(visibleCanonWarnings(se).filter(e=>e.status==="open").length)):null,
     drow("Visual references",()=>visSheet(se,st),String((se.vis||[]).length)),
     drow("Length & depth",()=>depthSheet(se),(LENS.some(x=>x[0]===String(se.len))?li[1].split(" ")[0]:"~"+se.len+" words")+(se.think?" · "+THINK[se.think][0]:"")),
     drow("Save money",()=>saverSheet(se,st),SAVER[DB.saver||0][0]),
@@ -2365,7 +2459,11 @@ function menuSheet(se,st){closeSheet(true);const ends=ed(se,st),fo=foundOf(st),n
 const SAVER=[["Full detail","Sends the most canon notes, memories and past turns."],["Recommended","Leaner prompts with little loss: fewer old turns, notes and memories each turn."],["Maximum","The leanest prompts. Also stops tracking people and goals."]];
 function cheapId(){if(isOC())return OC_MODEL;let best="",bc=Infinity;DB.modes.forEach(m=>{const p=DB.price&&DB.price[m.id];if(m.id&&p){const c=4500*p[0]+650*p[1];if(c<bc){bc=c;best=m.id}}});return best||DB.modes[0].id||(DB.modes[DB.mode]||DB.modes[0]).id}
 function tokEst(se,st){const mid=(DB.modes[DB.mode]||DB.modes[0]).id,k=/^anthropic\//.test(mid)?1.35:1,p=DB.price&&DB.price[mid];
-  const inp=Math.round(buildMsgs(se,st,se.turns.slice(),"I look around and decide what to do next.").reduce((a,m)=>a+m.content.length,refsFor(st.id).length?RBUD():0)/4*k),out=Math.round(((+se.len||300)*1.34+180)*k/(1-THINK[se.think||0][2]));
+  const previous=promptReport(se);
+  let messages;
+  try{messages=buildMsgs(se,st,se.turns.slice(),"I look around and decide what to do next.")}
+  finally{if(previous)PREPORT.set(se,previous);else PREPORT.delete(se)}
+  const inp=Math.round(messages.reduce((a,m)=>a+m.content.length,refsFor(st.id).length?RBUD():0)/4*k),out=Math.round(((+se.len||300)*1.34+180)*k/(1-THINK[se.think||0][2]));
   return{inp,out,cost:p?(inp*p[0]+out*p[1])/1e6:null}}
 function saverSheet(se,st){const box=h("div");
   const draw=()=>{box.textContent="";const cur=DB.saver||0,mid=(DB.modes[DB.mode]||DB.modes[0]).id,priced=!!(DB.price&&DB.price[mid]);
@@ -2416,7 +2514,7 @@ async function addRef(name,text,sid){if(!idb)throw new Error("This browser can�
   let cut=false;if(text.length>2e7){text=text.slice(0,2e7);cut=true}const c=chunkText(text),id=uid();await idbSet("ref:"+id,JSON.stringify(c));REFC[id]={c};
   DB.refs=DB.refs||[];const r={id,name:String(name||"").trim().slice(0,60)||"Reference "+(DB.refs.length+1),w:words(text),n:c.length,for:sid?[sid]:[]};DB.refs.push(r);save();return{r,cut}}
 function refTerms(text,skip){const t={};(String(text).match(/[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’-]{2,}/g)||[]).forEach(w=>{const lw=w.toLowerCase().replace(/['’]s$/,"");if(lw.length<3||STOPW.has(lw)||skip[lw])return;const cap=/^[A-ZÀ-Þ]/.test(w);if(!cap&&lw.length<5)return;t[lw]=Math.max(t[lw]||0,cap?3:1)});return t}
-async function refPick(se,st,action){const refs=refsFor(st.id).concat(refsFor(se.id));if(!refs.length)return"";const skip={};String(se.char.name||"").toLowerCase().split(/\s+/).forEach(x=>{if(x)skip[x]=1});
+async function refPick(se,st,action,refs=refsFor(st.id).concat(refsFor(se.id))){if(!refs.length)return"";const skip={};String(se.char.name||"").toLowerCase().split(/\s+/).forEach(x=>{if(x)skip[x]=1});
   const q=refTerms(action+" "+se.turns.slice(-2).map(t=>t.text.slice(-1800)).join(" ")+" "+Object.keys(se.cast||{}).join(" ")+" "+(se.goal||"")+" "+(se.turns.length<3?(se.start||""):""),skip);
   const terms=Object.keys(q).sort((a,b)=>q[b]-q[a]||b.length-a.length).slice(0,26);if(!terms.length)return"";const cand=[];
   for(const r of refs){const d=await refLoad(r.id),N=d.c.length;if(!N)continue;const has=terms.map(()=>new Uint8Array(N)),df=terms.map(()=>0);
@@ -2774,6 +2872,55 @@ function listenSheet(se){const C=chapsOf(se),st=getStory(se.storyId),pick=new Se
       h("p",{class:"sub",text:"In Safari, tap the page menu at the left of the address bar, then Listen to Page. If the button opens the page inside the app instead of Safari, use Copy link and paste it into Safari."}))};
   draw();sheet("Listen to chapters",box)}
 function readCh(se,k){const C=chapsOf(se),c=C[k];if(!c)return;const end=k+1<C.length?C[k+1].i:se.turns.length,tx=[];for(let j=c.i;j<end;j++){const t=se.turns[j];if(!t.hide&&t.text)tx.push(t.show||t.text)}ttsStart(["Chapter "+(k+1)+(c.t?". "+c.t:"")+"."].concat(tx),chName(c,k))}
+function chapterReplayActions(se,start,end){
+  return se.turns.slice(start,end).filter(t=>t.role==="user"&&t.text?.trim());
+}
+function chapterReplaySheet(se,k){
+  const chapters=chapsOf(se),chapter=chapters[k];
+  if(busy||ADV.on||!chapter)return;
+  const end=chapters[k+1]?.i??se.turns.length;
+  const actions=chapterReplayActions(se,chapter.i,end);
+  if(!actions.length)return;
+  sheet("Regenerate "+chName(chapter,k),h("div",null,
+    h("p",{class:"sub",text:"Replay this chapter’s "+actions.length+(actions.length===1?" player message":" player messages")+" in a new branch using your current story settings. Later chapters stay in the original story."}),
+    h("p",{class:"sub",text:"Each reply uses your configured narrator. If a reply fails or you tap Stop, return to the original story."}),
+    h("div",{class:"row"},h("button",{class:"primary",text:"Regenerate in a new branch",onclick:()=>replayChapter(se,chapter,k,actions)}),
+      h("button",{text:"Back to chapters",onclick:()=>chapSheet(se)}))));
+}
+async function replayChapter(se,chapter,k,actions){
+  if(busy||ADV.on)return;
+  if(!hasKey()){toast("Add your model key in Settings first.");return}
+  const sourceView=view;
+  const branch=branchAt(se,chapter.i-1,{msg:"Regenerating a chapter in a new branch.",staged:true,prep:n=>{
+    pendingChapterRewrites.add(n);
+    n.bname="Chapter "+(k+1)+" rewrite";
+    const first=se.turns.slice(chapter.i).find(t=>t.role==="ai");
+    if(first?.ps)n.stats=JSON.parse(JSON.stringify(first.ps));
+    if(!chapter.i){n.facts=[];delete n.saga;delete n.fprev;n.temp="";n.mems=[];n.upto=0}
+  }});
+  let completed=false;
+  try{
+    for(const [i,action] of actions.entries()){
+      if(view.n!=="chat"||view.id!==branch.id)return;
+      const committed=await send(action.text,action.hide,action.show,action.worldDays||0,{sourceId:se.id,chapterStart:i===0});
+      if(!committed||view.n!=="chat"||view.id!==branch.id)return;
+      if(i===0){const current=chapsOf(branch).find(c=>c.i===chapter.i);if(current)current.t=chapter.t||""}
+    }
+    for(const ref of refsFor(se.id)){if(!ref.for.includes(branch.id))ref.for.push(branch.id)}
+    pendingChapterRewrites.delete(branch);
+    completed=true;
+    save();
+    if(view.n==="chat"&&view.id===branch.id)rerender();
+    toast("Chapter regenerated in a new branch.");
+  }catch(error){console.warn(error)}finally{
+    if(!completed){
+      DB.sessions=DB.sessions.filter(n=>n!==branch);
+      save();
+      if(view.n==="chat"&&view.id===branch.id)go(sourceView);
+      toast("Chapter rewrite stopped. Your original chapter is kept.");
+    }
+  }
+}
 function chapSheet(se){let ed=-1;const box=h("div");
   const titleAll=async ev=>{const b=ev.currentTarget,C=chapsOf(se),need=C.map((c,k)=>({c,k})).filter(x=>!x.c.t).slice(0,40);if(!need.length){toast("Every chapter already has a title.");return}
     b.disabled=true;b.textContent="Thinking of titles…";
@@ -2786,7 +2933,8 @@ function chapSheet(se){let ed=-1;const box=h("div");
       C.map((c,k)=>{const end=k+1<C.length?C[k+1].i:se.turns.length;let w=0;for(let j=c.i;j<end;j++)if(se.turns[j]&&se.turns[j].role==="ai")w+=words(se.turns[j].text);
         return ed===k?h("div",{class:"row tight"},inp(c.t,v=>{c.t=v.slice(0,60);save()},"Title for chapter "+(k+1)),h("button",{text:"Done",onclick:()=>{ed=-1;draw()}}))
           :h("div",{class:"row tight"},h("button",{class:"sessbtn",onclick:()=>{view.och=view.och||{};view.och[k]=1;view.jump=k;closeSheet()}},h("b",{text:chName(c,k)}),h("small",{text:w.toLocaleString()+" words"})),
-            h("button",{class:"chsay","aria-label":"Read "+chName(c,k)+" aloud",onclick:()=>{closeSheet();readCh(se,k)}},ic("speak")),h("button",{class:"chsay","aria-label":"Rename "+chName(c,k),onclick:()=>{ed=k;draw()}},ic("edit")))}),
+            h("button",{class:"chsay","aria-label":"Read "+chName(c,k)+" aloud",onclick:()=>{closeSheet();readCh(se,k)}},ic("speak")),h("button",{class:"chsay","aria-label":"Rename "+chName(c,k),onclick:()=>{ed=k;draw()}},ic("edit")),
+            chapterReplayActions(se,c.i,end).length?h("button",{class:"chsay","aria-label":"Regenerate "+chName(c,k)+" in a new branch",onclick:()=>chapterReplaySheet(se,k)},ic("regen")):null)}),
       fld("Start a new chapter",selC(String(se.chapN==null?1500:se.chapN),[["1","After every reply"],["1500","About every 1,500 words"],["3000","About every 3,000 words"],["0","Only when I choose"]],v=>{se.chapN=Math.max(0,Math.round(num(v,1500)));save()},"About how many words per chapter, e.g. 2000","number")),
       h("div",{class:"row"},h("button",{class:"primary",text:"Listen to chapters",onclick:()=>listenSheet(se)})),h("div",{class:"row"},h("button",{text:"Suggest titles",onclick:titleAll}),confirmBtn("Re-split the whole story",()=>{se.chaps=autoCh(se);save();draw()},"")),
       h("p",{class:"sub",text:"To start or join a chapter at a certain message, open that message’s menu."}))};
@@ -3172,7 +3320,202 @@ function visSheet(se,st){se.vis=se.vis||[];const box=h("div");const d={kind:"cre
         try{await idbSet("img:"+x.id,pend.full)}catch(e){toast("Couldn’t save the picture on this device.");return}se.vis.push(x);pend=null;d.name="";d.note="";save();run(x)}}),h("button",{text:"Cancel",onclick:()=>{pend=null;draw()}})))}};
   draw();sheet("Visual references",box)}
 function visFor(se,name){const n=String(name||"").toLowerCase(),f=n.split(/\s+/)[0];return(se.vis||[]).find(x=>x.thumb&&x.name&&(x.kind==="character"||x.kind==="creature")&&(x.name.toLowerCase()===n||x.name.toLowerCase().split(/\s+/)[0]===f))}
-function noteSheet(se){sheet("User notes",h("div",null,h("p",{class:"sub",text:"The narrator always follows these."}),fld("For this story",area(se.note,v=>{se.note=v;save()},"Preferences, facts, things to avoid…",6)),fld("For every story",area(DB.globalNote,v=>{DB.globalNote=v;save()},"e.g. Avoid cliché names. Other characters can refuse or lie.",4))))}
+const CANON_MODES=[
+  ["strict","Strict","Keep the established timeline, rules and characterization. Only an explicit player choice may change a canon event. Carry the consequences forward."],
+  ["adaptive","Adaptive","Start from established canon. Let player choices and their consequences change events while keeping the world's rules and character motivations consistent."],
+  ["au","Alternate universe","Treat the base work as inspiration. Follow this playthrough's established history when it differs from the source, and keep changes consistent across scenes."],
+  ["creative","Creative","Develop the world and plot freely within this playthrough's established facts and the player's instructions. Use base canon only where it fits."]
+];
+const NOTE_PRIORITIES=[["must","Must follow"],["should","Should follow"],["style","Style preference"]];
+const NOTE_SCOPES=[["always","Always"],["keyword","Keywords in the scene"],["character","Characters in the scene"],["chapter","Chapter numbers"],["turns","Player turn numbers"]];
+const AGENCY_OPTIONS=[
+  ["player","I control my character","Leave my character's actions, thoughts, dialogue and choices to me. Advance the world and other characters around me."],
+  ["routine","Allow routine actions during auto-advance","During auto-advance, keep my character's actions small, reversible and implied by the current situation. Leave dialogue, thoughts and decisions to me. On my normal turns, narrate only actions I've supplied."],
+  ["dialogue","Allow routine actions and dialogue during auto-advance","During auto-advance, brief in-character dialogue and reversible actions are allowed. Leave private thoughts and consequential choices to me. On my normal turns, narrate only actions I've supplied."]
+];
+function canonModePrompt(se,st){
+  const mode=CANON_MODES.find(x=>x[0]===SFCanon.mode(se,st));
+  return "Canon mode — "+mode[1]+". Use this mode to interpret the base-story guidance above. "+mode[2]+" Respect locked and player-confirmed facts and the world era in every mode.";
+}
+function paceAgencyPrompt(se){
+  const pace=[
+    "Stay in the current moment and resolve it beat by beat.",
+    "Give important scenes room to unfold. Let transitions happen after the current beat resolves.",
+    "",
+    "Move briskly through transitions while playing out important decisions.",
+    "Condense routine transitions. Stop before skipping over a decision, deadline or unresolved immediate consequence."
+  ][se.ctl?.pace]||"";
+  const agency=AGENCY_OPTIONS.find(x=>x[0]===se.agency);
+  return [pace,agency?.[2]].filter(Boolean).join(" ");
+}
+function canonModeField(owner,inherit,onSave){
+  return fld("Canon mode",sel(owner.canonMode||"",[["",inherit],...CANON_MODES],v=>{
+    if(v)owner.canonMode=v;else delete owner.canonMode;
+    if(onSave)onSave();
+  }));
+}
+function canonModeSheet(se,st){
+  sheet("Canon mode",h("div",null,canonModeField(se,"Use story default",save),
+    h("p",{class:"sub",text:"Locked entries, confirmed facts and the world era apply in every mode."}),
+    CANON_MODES.map(([,label,text])=>h("div",{class:"item"},h("b",{text:label}),h("p",{class:"sub",text})))));
+}
+function noteSheet(se){
+  const box=h("div");
+  const draw=()=>{
+    box.textContent="";
+    ap(box,h("p",{class:"sub",text:"Must-follow notes have priority. Use scope to apply an instruction only where it belongs."}),
+      fld("For this story",area(se.note,v=>{se.note=v;save()},"Premise, facts or permanent rules…",5)),
+      fld("For every story",area(DB.globalNote,v=>{DB.globalNote=v;save()},"Standing instructions for all stories…",3)));
+    for(const [owner,title] of [[se,"Story instructions"],[DB,"Global instructions"]]){
+      const notes=Array.isArray(owner.notes)?owner.notes.filter(n=>n&&typeof n.text==="string"):[];
+      ap(box,h("h3",{text:title}),notes.map(n=>h("div",{class:"item"},
+        h("p",{class:"sf-canon-copy",text:n.text}),
+        h("p",{class:"sub",text:[NOTE_PRIORITIES.find(x=>x[0]===n.pri)?.[1]||"Must follow",NOTE_SCOPES.find(x=>x[0]===n.scope?.type)?.[1]||"Always",n.scope?.value,n.on===false?"Off":"On"].filter(Boolean).join(" · ")}),
+        h("button",{text:"Edit note",onclick:()=>editCanonNote(se,owner,n,"")}))),
+        h("button",{text:owner===se?"Add story note":"Add global note",onclick:()=>editCanonNote(se,owner,null,"")}));
+    }
+  };
+  draw();sheet("User notes",box);
+}
+function editCanonNote(se,owner,n,prefill){
+  const values={id:n?.id||uid(),text:n?.text||prefill,pri:n?.pri||"must",on:n?.on!==false,created:n?.created||Date.now(),scope:{type:"always",value:"",...n?.scope}};
+  const scopeValue=h("div"),notice=h("p",{class:"sub",role:"status"});
+  const drawScope=()=>{
+    scopeValue.textContent="";
+    const type=values.scope.type;
+    if(type==="always")return;
+    const label=type==="chapter"?"Chapter or range":type==="turns"?"Starting turn or range":type==="character"?"Character names":"Keywords";
+    const example=type==="chapter"?"3 or 3-5":type==="turns"?"5 onward, or 5-8":type==="character"?"Mira, Captain Vale":"harbor, audit";
+    ap(scopeValue,fld(label,inp(values.scope.value,v=>{values.scope.value=v},example)));
+  };
+  drawScope();
+  sheet(n?"Edit note":"Add note",h("div",null,fld("Instruction",area(values.text,v=>{values.text=v},"What should the narrator follow?",5)),
+    fld("Priority",sel(values.pri,NOTE_PRIORITIES,v=>{values.pri=v})),
+    fld("Scope",sel(values.scope.type,NOTE_SCOPES,v=>{values.scope={type:v,value:""};drawScope()})),scopeValue,
+    chk("Enabled",values.on,v=>{values.on=v}),notice,
+    h("div",{class:"row"},
+      h("button",{class:"primary",text:"Save note",onclick:()=>{
+        const {type}=values.scope,value=String(values.scope.value||"").trim(),range=value.match(/^([1-9][0-9]*)(?:\s*-\s*([1-9][0-9]*))?$/);
+        if(!values.text.trim())return void(notice.textContent="Enter an instruction.");
+        if(values.text.length>100000)return void(notice.textContent="Use 100,000 characters or fewer.");
+        if(["chapter","turns"].includes(type)&&(!range||(range[2]&&+range[2]<+range[1])))return void(notice.textContent="Enter a positive number or a range in ascending order.");
+        if(["keyword","character"].includes(type)&&!value.split(",").some(s=>s.trim()))return void(notice.textContent="Enter at least one name or keyword.");
+        values.scope.value=type==="always"?"":value;
+        owner.notes=Array.isArray(owner.notes)?owner.notes:[];
+        if(n)Object.assign(n,values);else owner.notes.push(values);
+        save();noteSheet(se);
+      }}),
+      h("button",{text:"Back to notes",onclick:()=>noteSheet(se)}),
+      n?confirmBtn("Remove note",()=>{owner.notes=owner.notes.filter(x=>x!==n);save();noteSheet(se)},"ghost"):null)));
+}
+const CANON_KINDS=["character","place","rule","event","item","term","relationship"];
+function storyCanonFields(st,update){
+  if(st.builtin){
+    const custom=DB.storyCanon??={};
+    const settings=custom[st.id]??={};
+    Object.assign(settings,update);Object.assign(st,update);
+  }else Object.assign(st,update,{updated:Date.now()});
+  save();
+}
+function canonBible(se,st){
+  const box=h("div"),results=h("div"),search=inp("",draw,"Name, description or alias","search");
+  search.setAttribute("aria-label","Search Canon Bible");
+  function draw(){
+    results.textContent="";
+    const query=search.value.trim().toLowerCase();
+    const entries=(st.entries||[]).filter(e=>e&&(!query||[e.k,e.t,e.aliases].some(s=>String(s||"").toLowerCase().includes(query))));
+    ap(results,entries.length?entries.map(e=>h("div",{class:"item"},
+      h("b",{text:e.k||"Untitled fact"}),
+      h("p",{class:"sub",text:[e.kind,e.lock?"Locked":e.a?"Always include":"When relevant",e.src].filter(Boolean).join(" · ")}),
+      h("p",{class:"sf-canon-copy",text:e.t}),
+      h("button",{text:"Edit "+(e.k||"fact"),onclick:()=>canonEntryEditor(st,e,()=>canonBible(se,st))})))
+      :h("p",{class:"sub",text:query?"No matching entries.":"No canon entries yet."}));
+  }
+  const suggest=h("button",{text:"Find suggestions in reference texts",onclick:async()=>{
+    suggest.disabled=true;
+    const section=h("div");
+    sheet("Source suggestions",section);
+    ap(section,h("p",{class:"sub",text:"Looking for recurring names in your reference texts…"}));
+    try{
+      const refs=[...new Set([...refsFor(st.id),...refsFor(se.id)].map(r=>r.id))];
+      const chunks=(await Promise.all(refs.map(id=>refLoad(id)))).flatMap(r=>Array.isArray(r.c)?r.c:[]);
+      const drafts=SFCanon.suggestEntries(chunks,st.entries);
+      section.textContent="";
+      ap(section,h("button",{text:"Back to Canon Bible",onclick:()=>canonBible(se,st)}),
+        drafts.length?drafts.map(entry=>h("div",{class:"item"},h("b",{text:entry.k}),h("p",{class:"sf-canon-copy",text:entry.t}),
+          h("button",{text:"Review "+entry.k,onclick:()=>canonEntryEditor(st,null,()=>canonBible(se,st),entry)})))
+          :h("p",{class:"sub",text:"No new suggestions. Attach a reference text with recurring names to find more."}));
+    }catch(error){
+      section.textContent="";
+      ap(section,h("p",{class:"sub",text:"Could not read the reference texts."}),h("button",{text:"Back to Canon Bible",onclick:()=>canonBible(se,st)}));
+    }finally{suggest.disabled=false}
+  }});
+  ap(box,h("p",{class:"sub",text:"These entries apply across playthroughs of this story. Locked facts are sent with every reply."}),
+    h("div",{class:"row"},h("button",{class:"primary",text:"Add canon entry",onclick:()=>canonEntryEditor(st,null,()=>canonBible(se,st))}),suggest),search,results);
+  draw();sheet("Canon Bible",box);
+}
+function canonEntryEditor(st,entry,backTo,draft={}){
+  const value={k:"",t:"",kind:"term",pri:2,src:"manual",...draft,...entry};
+  delete value.count;
+  const aliases=Array.isArray(value.aliases)?value.aliases.join(", "):value.aliases||"";
+  const notice=h("p",{class:"sub",role:"status"});
+  const field=(label,key,ph)=>fld(label,inp(value[key],v=>{value[key]=v},ph));
+  sheet(entry?"Edit canon entry":"Add canon entry",h("div",null,
+    field("Name","k","A person, place, rule or event"),fld("Fact",area(value.t,v=>{value.t=v},"Write the exact fact the narrator should use.",5)),
+    fld("Category",sel(value.kind,CANON_KINDS.map(k=>[k,k[0].toUpperCase()+k.slice(1)]),v=>{value.kind=v})),
+    fld("Priority",sel(String(value.pri),[["1","Low"],["2","Normal"],["3","High"]],v=>{value.pri=+v})),
+    fld("Aliases",inp(aliases,v=>{value.aliases=v.split(",").map(a=>a.trim()).filter(Boolean)},"Separate names with commas")),
+    field("Applies from","after","Optional date or event"),field("Applies until","before","Optional date or event"),
+    chk("Always include when possible",!!value.a,v=>{value.a=v}),
+    chk("Lock fact and always include it",!!value.lock,v=>{value.lock=v}),notice,
+    h("div",{class:"row"},h("button",{class:"primary",text:"Save entry",onclick:()=>{
+      if(!value.k.trim()||!value.t.trim())return void(notice.textContent="Enter a name and a fact.");
+      if(value.t.length>100000)return void(notice.textContent="Use 100,000 characters or fewer.");
+      value.k=value.k.trim();value.id=value.id||uid();
+      const entries=st.entries||[];
+      storyCanonFields(st,{entries:entry?entries.map(e=>e===entry?value:e):entries.concat(value)});backTo();
+    }}),h("button",{text:"Back",onclick:backTo}),
+    entry?confirmBtn("Remove entry",()=>{storyCanonFields(st,{entries:(st.entries||[]).filter(e=>e!==entry)});backTo()},"ghost"):null)));
+}
+function promptCoverageSheet(se,st,sourcesOnly=false){
+  const r=promptReport(se);
+  const body=h("div",null);
+  sheet(sourcesOnly?"Source coverage":"Prompt inspector",body);
+  if(!r){ap(body,h("p",{class:"sub",text:"Send a story message to see what the narrator received."}));return}
+  const counts=(n,m)=>n.toLocaleString()+" / "+m.toLocaleString()+" characters";
+  const coverage=(label,included,reason)=>h("div",{class:"item"},
+    h("b",{class:"sf-canon-copy",text:label}),h("p",{class:"sub",text:(included?"Included":"Omitted")+(reason?" · "+reason:"")}));
+  const sourceRows=r.sources.map(s=>coverage(s.label,s.included,s.reason));
+  if(sourcesOnly){ap(body,sourceRows.length?sourceRows:h("p",{class:"sub",text:"No reference passages or wiki notes were selected in the last prompt."}));
+    ap(body,h("div",{class:"row"},h("button",{text:"Prompt inspector",onclick:()=>promptCoverageSheet(se,st)}),h("button",{text:"Reference texts",onclick:()=>refSheet(st.id)})));return}
+  const entries=new Map((st.entries||[]).map((e,i)=>[canonEntryId(st,e,i),e?.k||"Untitled fact"]));
+  const notes=new Map(SFCanon.allNotes(DB,se).map(n=>[String(n.id),n.text]));
+  const dropped=new Map(r.canon.dropped.map(e=>[e.id,e.reason]));
+  ap(body,h("p",{class:"sub",text:"Last prompt built · "+new Date(r.at).toLocaleTimeString()+" · "+r.mode}),
+    h("h3",{text:"Protected instructions budget"}),
+    h("p",{class:r.mandatoryOver?"notice":"sub",text:counts(r.mandatoryChars,r.mandatoryCap)+(r.mandatoryOver?" · This prompt was blocked.":"")}),
+    h("p",{class:"sub",text:"System sections: "+counts(r.total,r.cap)+" · "+r.historyTurnsSent+" history messages sent · "+r.trimmedTurns+" omitted"}),
+    h("details",null,h("summary",{text:"Prompt sections"}),r.sections.map(s=>coverage(s.name,s.sent,s.chars.toLocaleString()+" characters"))),
+    h("details",null,h("summary",{text:"Notes and standing directions"}),r.notes.map(n=>coverage(notes.get(n.id)||n.id,n.included,n.reason)),r.standingOoc.map(t=>coverage(t,true,"Earlier OOC direction"))),
+    h("details",null,h("summary",{text:"Canon coverage"}),
+      r.canon.locked.map(id=>coverage(entries.get(id)||id,true,"Locked")),
+      r.canon.included.filter(id=>!dropped.has(id)).map(id=>coverage(entries.get(id)||id,true,"Relevant entry")),
+      r.canon.dropped.map(e=>coverage(entries.get(e.id)||e.id,false,e.reason))),
+    h("div",{class:"row"},h("button",{text:"Source coverage",onclick:()=>promptCoverageSheet(se,st,true)})));
+}
+function visibleCanonWarnings(se){
+  return (Array.isArray(se.divergences)?se.divergences:[]).filter(e=>e?.tid&&se.turns[e.turn]?.tid===e.tid);
+}
+function canonWarningSheet(se,st){
+  const list=visibleCanonWarnings(se).slice().reverse();
+  sheet("Canon warnings",h("div",null,h("p",{class:"sub",text:"Review possible canon conflicts and deliberate departures in the visible replies."}),
+    list.length?list.map(e=>h("div",{class:"item"},
+      h("b",{text:(e.entry||"Canon change")+" · Message "+(e.turn+1)}),h("p",{class:"sf-canon-copy",text:e.text}),
+      h("p",{class:"sub",text:[String(e.kind||"change").replaceAll("-"," "),e.status].join(" · ")}),
+      h("div",{class:"row"},[["open","Reopen"],["accepted","Accept departure"],["fixed","Mark corrected"]].filter(([id])=>id!==e.status).map(([id,label])=>h("button",{text:label,onclick:()=>{e.status=id;save();canonWarningSheet(se,st)}})),
+        h("button",{text:"Canon Bible",onclick:()=>canonBible(se,st)}))))
+      :h("p",{class:"sub",text:"No canon warnings in the visible story."})));
+}
 function ideaPrompt(st,ch,start,note,type,extra){return"You are a creative collaborator designing material for an interactive story"+(st.canon?" based on: "+st.canon:"")+(start?" (starting point: "+start+")":"")+".\n"+(st.setting?"Premise: "+st.setting+"\n":"")+(ch.name||ch.desc?"Player character: "+(ch.name||"unnamed")+(ch.desc?" — "+ch.desc:"")+(ch.trait?" Trait: "+ch.trait+".":"")+"\n":"")+(st.style?"Tone: "+st.style+"\n":"")+(note?"Existing notes:\n"+note+"\n":"")+eraPrompt(st)+"\nTask: "+(GEN[type]?GEN[type][1]:"Create this for the story: "+type)+(extra?"\nExtra direction: "+extra:"")+"\n\nRules: avoid clichés (no secret royal bloodlines, no chosen-one prophecies, no default tragic orphan) and avoid the most common fantasy or anime names; prefer specific, slightly odd, grounded details. "+(st.canon?"Respect canon: do not contradict established characters, events or rules; explain how the OC plausibly fits in. ":"")+"Plain text, short bullets, under 300 words. Do not include sexual content involving minors."}
 function ideaSheet(se,st){let type="oc",extra="";const out=area("",()=>{},"Results appear here. Edit, then add what you like.",8);
   const gb=h("button",{class:"primary",text:"Generate",onclick:async()=>{if(gb.disabled)return;gb.disabled=true;gb.textContent="Generating…";
@@ -3181,11 +3524,11 @@ function ideaSheet(se,st){let type="oc",extra="";const out=area("",()=>{},"Resul
   const addTo=k=>{const t=out.value.trim();if(!t)return;if(k==="note")se.note=(se.note?se.note.trim()+"\n\n":"")+t;else se.char.desc=(se.char.desc?se.char.desc.trim()+"\n\n":"")+t;save();toast("Added.")};
   sheet("Generate ideas",h("div",null,fld("What to create",selC(type,Object.keys(GEN).map(k=>[k,GEN[k][0]]),v=>{type=v},"e.g. A rival who wants the same thing I do")),fld("Direction (optional)",inp("",v=>{extra=v},"e.g. gloomy, rival-to-ally")),h("div",{class:"row"},gb),h("div",{class:"row"},out),
     h("div",{class:"row"},h("button",{text:"Add to my note",onclick:()=>addTo("note")}),h("button",{text:"Add to character",onclick:()=>addTo("char")}))))}
-function turnMenu(se,i){if(busy)return;const t=se.turns[i],ta=area(t.text,()=>{},"",8),fix=h("input",{placeholder:"e.g. her eyes are green, not blue"}),stt=getStory(se.storyId),chOK=!!stt&&stt.kind!=="character";
+function turnMenu(se,i){if(busy)return;const t=se.turns[i],standing=t.role==="user"?detectStandingOoc(t.text):[],ta=area(t.text,()=>{},"",8),fix=h("input",{placeholder:"e.g. her eyes are green, not blue"}),stt=getStory(se.storyId),chOK=!!stt&&stt.kind!=="character";
   const C=chOK?chapsOf(se):[],ci=i>0&&t.role==="ai"&&se.turns[i-1].role==="user"?i-1:i,isStart=C.some(c=>c.i===ci);
-  sheet("Message",h("div",null,ta,h("div",{class:"row"},h("button",{class:"primary",text:"Save edit",onclick:()=>{const v=ta.value.trim();if(v){t.text=v;save()}closeSheet()}}),
-    confirmBtn("Delete message",()=>{memDrop(se,[i]);se.turns.splice(i,1);shiftProgressionAfterDeletion(se,i);if(se.mem&&window.SFMemory)SFMemory.shiftTurns(se.mem,i,-1);if(i<se.upto)se.upto--;(se.chaps||[]).forEach(c=>{if(c.i>i)c.i--});if(chOK)fixCh(se);save();closeSheet()},""),
-    confirmBtn("Rewind to here",()=>{memDrop(se,se.turns.map((_,j)=>j).filter(j=>j>i));se.turns.splice(i+1);trimProgression(se,se.turns.length);se.upto=Math.min(se.upto,se.turns.length);se.ending=null;se.sugg=[];if(chOK)fixCh(se);save();closeSheet()},"")),
+  sheet("Message",h("div",null,ta,standing.length?h("button",{text:"Pin as note",onclick:()=>editCanonNote(se,se,null,standing.join("\n"))}):null,h("div",{class:"row"},h("button",{class:"primary",text:"Save edit",onclick:()=>{const v=ta.value.trim();if(v){t.text=v;save()}closeSheet()}}),
+    confirmBtn("Delete message",()=>{memDrop(se,[i]);se.turns.splice(i,1);shiftProgressionAfterDeletion(se,i);if(Array.isArray(se.divergences))se.divergences=se.divergences.filter(e=>e.turn!==i).map(e=>e.turn>i?{...e,turn:e.turn-1}:e);if(se.mem&&window.SFMemory)SFMemory.shiftTurns(se.mem,i,-1);if(i<se.upto)se.upto--;(se.chaps||[]).forEach(c=>{if(c.i>i)c.i--});if(chOK)fixCh(se);save();closeSheet()},""),
+    confirmBtn("Rewind to here",()=>{memDrop(se,se.turns.map((_,j)=>j).filter(j=>j>i));se.turns.splice(i+1);trimProgression(se,se.turns.length);SFCanon.trimForBranch(se,se.turns.length);se.upto=Math.min(se.upto,se.turns.length);se.ending=null;se.sugg=[];if(chOK)fixCh(se);save();closeSheet()},"")),
     h("p",{class:"sub",text:"Edits and deletions change what the narrator remembers. Rewind removes everything after this message."}),
     chOK?h("div",{class:"row"},!isStart?h("button",{text:"Start a new chapter here",onclick:()=>{se.chaps.push({i:ci,t:""});fixCh(se);save();closeSheet()}}):ci>0?h("button",{text:"Join with the previous chapter",onclick:()=>{se.chaps=se.chaps.filter(c=>c.i!==ci);fixCh(se);save();closeSheet()}}):null):null,
     t.role==="ai"&&chOK?h("div",{class:"row"},h("button",{text:t.img?"Paint this scene again":"Picture this scene",onclick:()=>{closeSheet(true);scenePic(se,i)}}),t.img?confirmBtn("Remove picture",async()=>{try{if(t.img.indexOf(":")<0)await idbDel("gen:"+t.img)}catch(e){}delete t.img;save();closeSheet()},""):null):null,
@@ -3220,12 +3563,17 @@ function vSettings(){ap(app,h("header",null,back(()=>go({n:"home",tab:"discover"
         ?" Scene artwork could not be saved. Browser storage may be full.":"";
       if(merge){const n=norm(d),add=(a,b)=>{let c=0;(b||[]).forEach(x=>{if(x&&x.id&&!a.some(y=>y.id===x.id)){a.push(x);c++}});return c};
         const incomingSessions=new Set(n.sessions.filter(s=>s&&s.id).map(s=>s.id));
-        const c1=add(DB.stories,n.stories),c2=add(DB.sessions,n.sessions);add(DB.chars,n.chars);add(DB.storyTemplates??=[],Array.isArray(n.storyTemplates)?n.storyTemplates:[]);DB.found=DB.found||{};Object.keys(n.found||{}).forEach(k=>{DB.found[k]=Array.from(new Set((DB.found[k]||[]).concat(n.found[k]||[])))});
+        const c1=add(DB.stories,n.stories),c2=add(DB.sessions,n.sessions);add(DB.chars,n.chars);add(DB.storyTemplates??=[],Array.isArray(n.storyTemplates)?n.storyTemplates:[]);
+        if(n.storyCanon&&typeof n.storyCanon==="object"){
+          DB.storyCanon=DB.storyCanon||{};
+          for(const [id,settings] of Object.entries(n.storyCanon))if(id.startsWith("lib:")&&!Object.hasOwn(DB.storyCanon,id))DB.storyCanon[id]=settings;
+        }
+        DB.found=DB.found||{};Object.keys(n.found||{}).forEach(k=>{DB.found[k]=Array.from(new Set((DB.found[k]||[]).concat(n.found[k]||[])))});
         save();const sceneNotice=restoreScenes(DB.sessions.filter(s=>incomingSessions.has(s.id)));
         render();toast("Added "+c2+" playthrough"+(c2===1?"":"s")+" and "+c1+" world"+(c1===1?"":"s")+"."+sceneNotice)}
       else{DB=norm(Object.assign({},d,{key:DB.key,ocKey:DB.ocKey,ocProxy:DB.ocProxy,prov:DB.prov,syncPass:DB.syncPass,syncKeys:DB.syncKeys,keysAt:DB.keysAt,refs:DB.refs||[],migrated:true}));save();const sceneNotice=restoreScenes(DB.sessions);applyFs();render();toast("Backup restored."+sceneNotice)}}catch(x){toast("That file is not a Story Forge backup.")}};rd.readAsText(fl)}});
-  const backup=async()=>{const d=Object.assign({},DB);delete d.key;delete d.ocKey;delete d.syncPass;delete d.ocProxy;delete d.price;delete d.quirk;delete d.refs;
-    const presets=window.SFScenesV54?.exportPresets(DB.sessions);
+  const backup=async()=>{const d=savedDB();delete d.key;delete d.ocKey;delete d.syncPass;delete d.ocProxy;delete d.price;delete d.quirk;delete d.refs;
+    const presets=window.SFScenesV54?.exportPresets(d.sessions);
     if(presets&&Object.keys(presets).length)d.scenePresets=presets;
     const blob=new Blob([JSON.stringify(d)],{type:"application/json"}),name="story-forge-backup.json";
     try{const f=new File([blob],name,{type:"application/json"});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:"Story Forge backup"});return}}catch(x){if(x&&x.name==="AbortError")return}
@@ -3538,7 +3886,7 @@ async function checkUpdate(manual){if(!/^https?:$/.test(location.protocol)){if(m
 function autoChk(){let last=0;try{last=+localStorage.getItem("sf-chk")||0}catch(e){}if(Date.now()-last<216e5)return;try{localStorage.setItem("sf-chk",String(Date.now()))}catch(e){}checkUpdate(false)}
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)autoChk()});setTimeout(autoChk,4000);
 if(ttsOK()){speechSynthesis.onvoiceschanged=()=>{if(view.n==="settings"&&!$("#sheetbg"))soft()};addEventListener("pagehide",()=>speechSynthesis.cancel())}
-addEventListener("pagehide",()=>{if(idb){clearTimeout(saveT);idbSet(KEY,JSON.stringify(DB)).catch(()=>{})}});
+addEventListener("pagehide",()=>{if(idb){clearTimeout(saveT);idbSet(KEY,JSON.stringify(savedDB())).catch(()=>{})}});
 (async()=>{try{idb=await idbOpen();const v=await idbGet(KEY);if(v){const d=JSON.parse(v);let l=null;try{l=JSON.parse(localStorage.getItem(KEY))}catch(e){}if(!l||(l.ts&&(d.ts||0)>l.ts))DB=norm(d)}}catch(e){idb=null}
   applyFs();save();render();if(DB.syncAuto&&DB.syncPass)setTimeout(()=>syncNow(false),1500)})();
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&DB.syncAuto&&DB.syncPass&&!busy)syncNow(false)});

@@ -5,6 +5,7 @@ import vm from "node:vm";
 
 const html = readFileSync(new URL("../site/index.html", import.meta.url), "utf8");
 const scenes = readFileSync(new URL("../site/cinematic-scenes-v54.js", import.meta.url), "utf8");
+const persistence = html.slice(html.indexOf("const pendingChapterRewrites="), html.indexOf("function idbOpen("));
 const settings = html.slice(html.indexOf("function vSettings(){"));
 const setup = settings.slice(0, settings.indexOf('  ap(m,h("h2",{text:"AI service"})'));
 const controls = settings.split("\n").find(line => line.includes('text:"Save or send a backup"'));
@@ -64,7 +65,7 @@ function device(sessions, presets = {}) {
   });
   vm.runInContext(scenes, context);
   // Evaluate the real input and action callbacks without unrelated Settings controls.
-  vm.runInContext(setup + "ap(m," + controls + "\nvSettings();", context);
+  vm.runInContext(persistence + setup + "ap(m," + controls + "\nvSettings();", context);
   return {
     seedSetup(stories, chars, storyTemplates) { Object.assign(context.DB, {stories, chars, storyTemplates}); },
     async backup() {
