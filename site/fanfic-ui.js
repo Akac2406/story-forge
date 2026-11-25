@@ -326,6 +326,9 @@ Object.assign(window.SFFanUI,{createFanfiction});
 (function(){
 "use strict";
 function fanfictionHome(root){
+ function cover(st,fallback="✧"){return h("span",{class:"ff-cover"},st?readerCover(st):h("span",{text:fallback}))}
+ function universeCover(id){return cover(DB.stories.find(st=>st.fanfic?.universe===id&&(st.cover||st.img||st.banner))||DB.stories.find(st=>st.fanfic?.universe===id))}
+
  const el=(tag,attrs,...kids)=>h(tag,attrs,...kids),button=(text,onclick)=>h("button",{text,onclick});
  let section="home";
  function wizard(uid="",draft=""){root.replaceChildren();root.append(h("button",{class:"ff-back",text:"‹ Fanfiction Studio",onclick:()=>{if(confirm("Return to Studio? Save your draft first to retain unfinished changes."))draw("home")}}));window.SFFanUI.createFanfiction(root,uid,draft)}
@@ -347,9 +350,9 @@ function fanfictionHome(root){
  wrap.append(h("div",{class:"ff-dashboard-grid"},...tiles.map(([id,icon,label,count])=>h("button",{class:"ff-dashboard-tile","aria-pressed":String(tab===id),onclick:()=>draw(id)},h("span",{class:"ff-tile-icon",text:icon}),h("strong",{text:label}),h("small",{text:count+" saved"})))));
  const title=tab==="stories"?"My fanfiction":tab==="drafts"?"Saved drafts":tab==="templates"?"Reusable setups":"Your universes";
  wrap.append(h("div",{class:"ff-section-head"},h("h3",{text:title}),tab!=="home"?button("Overview",()=>draw("home")):null));
- if(tab==="stories"){wrap.append(...stories.map(st=>h("button",{class:"ff-universe-card",onclick:()=>go({n:"story",id:st.id})},h("span",{class:"ff-cover",text:"▤"}),h("div",{},h("strong",{text:st.title}),h("small",{text:ffUniverse(st.fanfic.universe)?.name||"Fanfiction"})),h("span",{text:"›"}))));if(!stories.length)wrap.append(h("p",{class:"sub",text:"No fanfiction stories yet."}))}
+ if(tab==="stories"){wrap.append(...stories.map(st=>h("button",{class:"ff-universe-card",onclick:()=>go({n:"story",id:st.id})},cover(st,"▤"),h("div",{},h("strong",{text:st.title}),h("small",{text:ffUniverse(st.fanfic.universe)?.name||"Fanfiction"})),h("span",{text:"›"}))));if(!stories.length)wrap.append(h("p",{class:"sub",text:"No fanfiction stories yet."}))}
  else if(tab==="drafts"||tab==="templates"){wrap.append(h("p",{class:"sub",text:tab==="templates"?"Reuse a saved setup in the creation wizard.":"Continue a saved configuration."}),...drafts.map(d=>h("button",{class:"ff-universe-card",onclick:()=>wizard(d.universe||"",d.id)},h("span",{class:"ff-cover",text:"✎"}),h("div",{},h("strong",{text:d.name}),h("small",{text:"Select Resume draft in the wizard"})),h("span",{text:"›"}))));if(!drafts.length)wrap.append(h("p",{class:"sub",text:"No saved setups yet."}))}
- else{wrap.append(...list.map(u=>h("button",{class:"ff-universe-card",onclick:()=>universePage(u.id)},h("span",{class:"ff-cover",text:"✧"}),h("div",{},h("strong",{text:u.name}),h("small",{text:(u.chapters||0)+" chapters · "+(u.events||0)+" events"}),h("small",{text:"Explore universe and create stories"})),h("span",{text:"›"}))));wrap.append(button("+ Import a universe",()=>wizard()));if(!list.length)wrap.append(h("p",{class:"sub",text:"Import your first source to begin."}))}
+ else{wrap.append(...list.map(u=>h("button",{class:"ff-universe-card",onclick:()=>universePage(u.id)},universeCover(u.id),h("div",{},h("strong",{text:u.name}),h("small",{text:(u.chapters||0)+" chapters · "+(u.events||0)+" events"}),h("small",{text:"Explore universe and create stories"})),h("span",{text:"›"}))));wrap.append(button("+ Import a universe",()=>wizard()));if(!list.length)wrap.append(h("p",{class:"sub",text:"Import your first source to begin."}))}
  }
  draw("home");
 }
