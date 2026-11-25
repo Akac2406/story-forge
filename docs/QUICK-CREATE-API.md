@@ -21,6 +21,12 @@ Every part is checked by the real engine; anything refused is left out **and rep
 - **`appearance`** `{layout, preset?, cinematic?: {lighting, overlay, transition, dialogueBox, narration, textReveal, …}, theme?, uiLayout?, format?, colors?: {bg, card, accent, text}}`. `layout`/`preset`/`cinematic` go through `SFCinema` (preset first, then each setting on its own); the result is the first playthrough's `se.cv`. `theme`/`uiLayout`/`format`/`colors` go through `SFAppearance` and are saved in the story's appearance scope at commit (rolled back with the stories if the commit fails). The setup prompt lists the engines' real layouts, presets, cinematic values and themes.
 - **`styleProfile`** adds `balance: narration|balanced|dialogue`, `innerMonologue: none|light|frequent`, `humor: none|dry|light|frequent`, `suspense: low|medium|high`, `rhythm: short|varied|long|flowing` to `pov, tense, pacing, dialogue, description, tone, structure`. All reach the narrator's SOURCE STYLE section.
 
+## Commit safety (extension 5, implemented)
+- `qcCommit(bp, {idempotencyKey?})` runs in stages: universe → story → setup → appearance → save. A failure at any stage, including full storage (appearance settings, or the story DB when there's no IndexedDB fallback), restores stories, universes and appearance settings exactly, returns `{ok:false, applied:false, reason}` and **keeps the session**, so the player can retry.
+- `save()` now returns `true` when the data was stored (localStorage, or IndexedDB pending) and `false` otherwise; commit treats `false` as "storage full: the story was not saved".
+- **No duplicates.** The idempotency key (default: the blueprint id) is stored as `st.fanfic.quick.key`. Committing the same key again (double click, retry after a lost response, a re-loaded draft) returns `{ok:true, applied:false, duplicate:true, reason:"already created", storyId}`; the UI should open that story. Pass a new `idempotencyKey` to make an intentional copy.
+- Test hook: `window.__qcFailAt = "universe"|"story"|"setup"|"appearance"|"save"` (tests only).
+
 ## Guarantees (tested)
 
 - Retrieved and imported text, and the player's request, are quoted as data; the model may only cite facts by id. Unknown citations, canon ids and careers are removed **and reported** in `issues`; unknown fields are reported in `unsupported` (never silently dropped).

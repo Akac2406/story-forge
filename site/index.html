@@ -432,7 +432,8 @@ function idbDel(k){return new Promise((res,rej)=>{const tx=idb.transaction("kv",
 function idbSet(k,v){return new Promise((res,rej)=>{const tx=idb.transaction("kv","readwrite");tx.objectStore("kv").put(v,k);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error)})}
 function save(localTimestamp){DB.ts=localTimestamp??Date.now();if(DB.syncAuto&&typeof syncSoon==="function")syncSoon();let ok=localTimestamp!==undefined;if(!ok)try{localStorage.setItem(KEY,JSON.stringify(savedDB()));ok=true}catch(e){try{localStorage.removeItem(KEY)}catch(x){}}
   if(idb){clearTimeout(saveT);saveT=setTimeout(()=>{idbSet(KEY,JSON.stringify(savedDB())).catch(()=>{if(!ok)toast("Could not save. Device storage may be full.")})},200)}
-  else if(!ok)toast("Could not save. Device storage may be full.")}
+  else if(!ok)toast("Could not save. Device storage may be full.");
+  return ok||!!idb}
 function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(tT);tT=setTimeout(()=>t.classList.remove("on"),3800)}
 const THEMES=[["midnight","Midnight (Classic)","#0f0d17","#9b7bff"],["paper","Paper (Classic)","#f6efe2","#9b4d22"],["ink","Ink (Classic)","#000000","#5ad1c5"],["moon","Moonlit (Classic)","#121822","#8fb8ff"],["ember","Ember (Classic)","#1a0f0d","#ff7a45"],["sakura","Sakura (Classic)","#fff5f8","#d14d84"],["crimson","Crimson Eclipse","#190d16","#f05b70"],["azure","Azure Legion","#08162f","#4b95ff"],["void","Void Nexus","#140c28","#b55bff"],["spirit","Moonlit Spirit","#17182e","#a5abff"],["verdant","Verdant Wilds","#091f18","#4acb87"],["starlight","Starlight Horizon","#07172d","#48d6f2"],["bloom","Sakura Bloom","#2a1427","#f38ab7"],["thunder","Thunder Crest","#1f160e","#f6b43d"],["arcane","Arcane Veil","#1b102d","#b67bff"],["frost","Frostbound","#0a1c31","#7fc5ff"]],LIGHT={paper:1,sakura:1};
 const UI_LAYOUTS=[["classic","Classic Story Forge"],["premium","Premium Cinematic"],["modern","Modern Anime"],["adventure","Adventure Hub"],["character","Character RPG"],["world","World Map"],["guild","Guild Console"],["chronicle","Chronicle"],["academy","Academy"],["fantasy","Fantasy RPG"],["anime","Modern Anime RPG"],["jrpg","Classic JRPG"],["action","Action RPG"],["visual","Visual Novel RPG"],["kingdom","Strategy / Kingdom RPG"],["illustrated","Illustrated Reader"]];
@@ -2624,21 +2625,26 @@ function qcLoadDraft(id){const raw=(DB.qcDrafts||{})[id];if(!raw)return{ok:false
   if(d.blueprint){const raw2=Object.assign({},d.blueprint);if(!raw2.id)raw2.id="qc"+Date.now().toString(36)+"-"+(++QC.seq);const v=SFQuick.validate(raw2,qcCtx(u,facts));bp=v.blueprint;issues=v.issues;QC.cur=bp.id;QC.hist[bp.id]={undo:[],redo:[],now:bp}}
   return{ok:true,reason:null,draft:Object.assign({id},d),blueprint:bp,issues}}
 function qcDeleteDraft(id){if(!(DB.qcDrafts||{})[id])return{ok:false,applied:false,reason:"not found"};const D=Object.assign({},DB.qcDrafts);delete D[id];DB.qcDrafts=D;save();return{ok:true,applied:true,reason:null}}
-/* Atomic: everything or nothing. */
-function qcCommit(bp){if(!QC.ctx)return{ok:false,applied:false,reason:"preview first"};qcSettle(bp);const ctx=qcCtx(QC.ctx.universe,QC.ctx.facts),v=SFQuick.validate(bp,ctx);if(!v.ok)return{ok:false,applied:false,reason:v.issues[0]||"invalid setup"};
+/* Atomic: everything or nothing. Stages: universe → story → setup → appearance → save; a failure at any stage (including full storage)
+   restores stories, universes and the appearance settings, and keeps the session so the player can retry. o.idempotencyKey (default: the
+   blueprint id) is stored on the story; committing the same key again returns {duplicate: true, storyId} instead of a second story. */
+function qcCommit(bp,o){o=o||{};if(!QC.ctx)return{ok:false,applied:false,reason:"preview first"};qcSettle(bp);
+  const key=String(o.idempotencyKey||(bp&&bp.id)||"").slice(0,80),dup=key&&DB.stories.find(s=>s.fanfic&&s.fanfic.quick&&s.fanfic.quick.key===key);
+  if(dup)return{ok:true,applied:false,duplicate:true,reason:"already created",storyId:dup.id};
+  const fail=stage=>{if(window.__qcFailAt===stage||(stage==="setup"&&window.__qcFailAfterStory)||(stage==="appearance"&&window.__qcFailAfterAppearance))throw new Error("simulated failure at "+stage)};const ctx=qcCtx(QC.ctx.universe,QC.ctx.facts),v=SFQuick.validate(bp,ctx);if(!v.ok)return{ok:false,applied:false,reason:v.issues[0]||"invalid setup"};
   const B=v.blueprint,u=QC.ctx.universe,snap=JSON.stringify({stories:DB.stories,universes:DB.universes||{}});let apSnap=null,apTouched=false;try{apSnap=localStorage.getItem(apKey())}catch(e){}
-  let uid0=u.id;try{if(!QC.ctx.imported){DB.universes=DB.universes||{};let n=2;while(DB.universes[uid0])uid0=u.id+"-"+n++;DB.universes[uid0]=Object.assign({},u,{id:uid0})}
+  let uid0=u.id;try{if(!QC.ctx.imported){DB.universes=DB.universes||{};let n=2;while(DB.universes[uid0])uid0=u.id+"-"+n++;DB.universes[uid0]=Object.assign({},u,{id:uid0})}fail("universe");
     const o={};for(const k of ["modes","takeover","start","pov","romance","rules","locks","exceptions","fates","foreknowledge"])if(B[k]!==undefined)o[k]=B[k];if(B.player)o.player={name:B.player.name,desc:B.player.desc};if(B.player&&B.player.age!=null)o.startAge=B.player.age;
-    const r=ffCreateStory(uid0,Object.assign(o,{title:B.title,setting:[B.premise,B.opening].filter(Boolean).join("\n\n")}));if(!r.applied)throw new Error(r.reason);
+    const r=ffCreateStory(uid0,Object.assign(o,{title:B.title,setting:[B.premise,B.opening].filter(Boolean).join("\n\n")}));if(!r.applied)throw new Error(r.reason);fail("story");
     const st=getStory(r.storyId);let game=null;if(window.SFGame){const gb=SFQuick.buildGame(B.gameplay,SFGame);if(gb.issues.length)throw new Error(gb.issues[0]);game=gb.game}
     let director=null;if(B.director&&window.SFDirector){const d=SFDirector.set(SFDirector.defaults(),B.director);if(d.applied===false&&d.reason)throw new Error("director: "+d.reason);director={enabled:true,settings:d.settings}}
     if(game||director)st.blueprint={game,director};const M=B.memory||{},cb=SFQuick.buildCinema(B.appearance,window.SFCinema);if(cb.issues.length)throw new Error(cb.issues[0]);
     st.fanfic.setup={memoryRecall:!!M.recall,memoryMode:M.mode||"app",memoryNotes:M.notes||[],layout:B.appearance&&B.appearance.layout||null,cv:cb.cv||null};if(B.styleProfile&&Object.keys(B.styleProfile).length)st.fanfic.styleProfile=B.styleProfile;
-    st.fanfic.quick={characters:B.characters,notes:B.notes,sources:(QC.ctx.facts||[]).filter(f=>B.sources.includes(f.id)).map(f=>f.source),uncertain:B.uncertain};
-    if(window.__qcFailAfterStory)throw new Error("simulated failure");
+    st.fanfic.quick={key:key||null,characters:B.characters,notes:B.notes,sources:(QC.ctx.facts||[]).filter(f=>B.sources.includes(f.id)).map(f=>f.source),uncertain:B.uncertain};
+    fail("setup");
     const P=SFQuick.appearancePatch(B.appearance);if(Object.keys(P).length&&window.SFAppearance){const a=SFAppearance.set(apCfg(),P,"story:"+r.storyId,apCatalog());if(!a.applied)throw new Error("appearance: "+a.reason);apTouched=true;if(!apWrite(a.cfg))throw new Error("storage full")}
-    if(window.__qcFailAfterAppearance)throw new Error("simulated failure");
-    save();QC.ctx=null;QC.prop=null;QC.hist={};QC.cur=null;return{ok:true,applied:true,reason:null,storyId:r.storyId}}
+    fail("appearance");
+    if(window.__qcFailAt==="save"||save()===false)throw new Error("storage full: the story was not saved");QC.ctx=null;QC.prop=null;QC.hist={};QC.cur=null;return{ok:true,applied:true,reason:null,storyId:r.storyId}}
   catch(e){const p=JSON.parse(snap);DB.stories=p.stories;DB.universes=p.universes;save();if(apTouched)try{if(apSnap==null)localStorage.removeItem(apKey());else localStorage.setItem(apKey(),apSnap);window.SFVisualV48&&SFVisualV48.reload&&SFVisualV48.reload()}catch(x){}
     return{ok:false,applied:false,reason:String(e&&e.message||e)}}}
 const AP_PRESETS="sf.appearance.presets";
