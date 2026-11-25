@@ -34,3 +34,23 @@ Engine: `site/character-engine.js` (`SFChar`, pure). Adapter globals in index.ht
 Relationship web (directional arrows, labels, history on tap), character journal, NPC agenda view, and voice warnings in the Continuity Center (`ai.voice` next to `ai.ffc`).
 
 Player-recorded development notes (justify growth): `se.chDev[name] = [text]`; memory character state `development` and `mood` are also used.
+
+## Added for ChatGPT's screens (2026-11-25)
+| Function | Returns / notes |
+|---|---|
+| `chSetNpc(se, name, {goals:[string or {id?, text, priority 1-5, term short|long, conflictsWith[]}], schedule:[{day >= 0, where, doing}]})` | `{ok, applied, reason}`; reasons: needs a name, empty goal, schedule days must be 0 or more, unchanged |
+| `chRemoveNpc(se, name)` | `{ok, applied, reason}` |
+| `chAddDevelopment(se, name, text)` / `chRemoveDevelopment(se, name, index)` | `{ok, applied, reason}`; notes justify growth in the voice check |
+| `chDevelopments(se, name)` | `{developments[], mood}` |
+| `chJournal(se, name)` | uses **display names** (memory records store names); for fanfiction characters pass the character's `name` from `ffIdentity(se, charId).canon.name` |
+| `MEM_RESOLVE_CHOICES` | `["keep-narrator","keep-step","edited","dismissed"]` for `memResolve` (free text is still accepted) |
+
+## Story Director adapter (phase 12)
+Engine `site/director-engine.js` (`SFDirector`), now loaded. Off by default for every story.
+| Function | Returns / notes |
+|---|---|
+| `dirSettings(se)` | `{enabled, focus{mainPlot, characters, worldbuilding, relationships, everyday, mystery, progression}, pacing, dialogue, humor, suspense, description, timeSkips, subplots, canonSpeed}` |
+| `dirEnable(se, on)` | `{ok, applied, reason}` |
+| `dirSet(se, patch)` | `{ok, applied, reason}`; focus levels off|low|secondary|balanced|high; pacing slow|natural|fast; timeSkips ask|allowed|never; subplots none|allowed|encouraged; canonSpeed slow|natural|fast |
+| `dirAnalyze(se)` | `{replies, avgWords, dialogueShare, turnsSincePlot, neglected[], openThreads, humorShare, tensionShare}` (heuristic indicators) |
+When enabled, the prompt gets a short STORY DIRECTOR guidance block (never overrides the player). Tests: `tests/director_engine_unit.mjs` (10), `tests/director_app_browser.py` (14).
