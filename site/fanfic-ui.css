@@ -1,1 +1,37 @@
 .ff-ui{display:grid;gap:12px;min-width:0}.ff-ui .ff-panel{border:1px solid currentColor;border-radius:10px;padding:12px;overflow-wrap:anywhere}.ff-ui summary{cursor:pointer;font-weight:600}.ff-ui pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:220px;overflow:auto}.ff-ui input,.ff-ui select{max-width:100%;min-width:0}.ff-ui .row{flex-wrap:wrap}
+
+/* Presentation tokens from the existing v48/v49 hooks. */
+html[data-sf-spacing=compact] .page{padding:8px}
+html[data-sf-spacing=roomy] .page{padding:24px}
+html[data-sf-spacing=compact] .ff-ui{gap:6px}
+html[data-sf-spacing=roomy] .ff-ui{gap:20px}
+html .ff-panel,html .turn,html .sf-studio-tile{border-radius:var(--sf-radius,10px)}
+html[data-sf-borders=none] :is(.ff-panel,.turn,.sf-studio-tile){border-width:0}
+html[data-sf-borders=bold] :is(.ff-panel,.turn,.sf-studio-tile){border-width:2px}
+html #log .body{font-size:calc(var(--fs,17px)*var(--sf-fontScale,1))}
+html[data-sf-nav=top] #app>.tabs{order:-1}
+html[data-sf-nav=floating] #app>.tabs{margin:8px 12px;border-radius:20px}
+@media(min-width:900px){html[data-sf-nav=side] #app>.tabs{position:fixed;left:12px;top:20%;width:88px;flex-direction:column;z-index:20}}
+html[data-sf-icons=rounded] .look-icon svg{stroke-linecap:round;stroke-linejoin:round;stroke-width:2.5}
+html[data-sf-icons=solid] .look-icon svg path{fill:currentColor;stroke:currentColor}
+html[data-sf-icons=pixel] .look-icon svg{shape-rendering:crispEdges;stroke-linecap:square}
+html[data-sf-icons=neon] .look-icon svg{filter:drop-shadow(0 0 4px var(--accent))}
+html[data-sf-icons=blueprint] .look-icon svg{stroke-dasharray:3 2;stroke-width:1.5}
+html[data-sf-contrast=high] :is(.ff-panel,.turn,.sf-studio-tile){border-color:currentColor}
+html[data-sf-reduced-motion=true] *,html[data-sf-cv-reduced=true] #log *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+html[data-sf-cv-layout] #log{background-size:cover;background-position:center;background-attachment:local}
+html[data-sf-cv-layout=chat] #log .turn{max-width:85%;border-radius:20px}
+html[data-sf-cv-layout=chat] #log .turn.user{margin-left:auto}
+html[data-sf-cv-layout=screenplay] #log .body{font-family:monospace;max-width:62ch;margin:auto}
+html[data-sf-cv-layout=cinematic] #log{border-block:12px solid #080808}
+html[data-sf-cv-layout=immersive] .sf49-viewbar{display:none}
+html[data-sf-cv-layout=visual-novel] #log .turn.ai{border:1px solid var(--accent);background:var(--card)}
+html[data-sf-cv-dialogue=glass] #log .turn.ai{background:color-mix(in srgb,var(--card) 75%,transparent);backdrop-filter:blur(8px)}
+html[data-sf-cv-dialogue=terminal] #log .turn.ai .body{font-family:monospace}
+html[data-sf-cv-dialogue=minimal] #log .turn.ai{border:0;box-shadow:none}
+html[data-sf-cv-narration=italic] #log .turn.ai .body{font-style:italic}
+html[data-sf-cv-narration=centered] #log .turn.ai .body{text-align:center}
+html[data-sf-cv-lighting=night] #log{box-shadow:inset 0 0 80px #071b4666}
+html[data-sf-cv-lighting=candle] #log{box-shadow:inset 0 0 80px #b46b2033}
+html[data-sf-cv-overlay=vignette] #log{box-shadow:inset 0 0 90px #0009}
+html[data-sf-cv-overlay=scanlines] #log .turn.ai{background-image:repeating-linear-gradient(0deg,transparent 0 3px,#0002 3px 4px)}
