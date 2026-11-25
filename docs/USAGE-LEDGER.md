@@ -10,5 +10,6 @@ Sources: **Dashboard** = Anna's OpenCode usage page (authoritative). **Estimate*
 | 2026-11-24 | Claude | Phase 2 A/B (4 runs), earlier today | ~4.5% total | — | — | Estimate |
 | 2026-11-24 | Claude | Separate-step A/B (4 runs + 1 stopped run) | ~5% total | ~2% | ~1% | Estimate |
 | 2026-11-24 21:12 | Anna | Reading at authorization | 5% | 5% | **4%** | Dashboard (reported by Anna) |
+| 2026-11-24 21:35 | Claude | Hybrid A/B: Cedar Ridge, hybrid on (30 turns, live v91 trial page) | 1.09% | 0.44% | 0.22% | Estimate |
 
-Running total toward the 45% stop: **4%** monthly.
+Running total toward the 45% stop: **about 4.2%** monthly (4% dashboard + 0.22% estimate since). Next dashboard reading will replace the estimate.

@@ -106,3 +106,18 @@ narrator's own lines catch more events and knowledge. No late drop-off in the "o
 (narrator lines first, step fills scene/cast and anything missing) and giving the step the cast and
 recent memory as context. Trial-page fix: the test copy must keep short reasoning when the step is on
 (full reasoning made each step take 60–90 s and time out).
+
+## v91 hybrid trial (2026-11-24, Cedar Ridge, real DeepSeek, Phase 2 off)
+
+| | Narrator only (v90 run) | Separate step (v90 run) | Hybrid (v91) |
+|---|---|---|---|
+| Memory checked / notes saved | 28/30 | 30/30 | 30/30 checked; narrator lines 27/30 |
+| Scene location correct | 27/30 | 22/30 | 27/30 |
+| Expected characters present | 22/24 | 23/24 | 23/24 |
+| Expected event recorded | 16/19 | 12/19 | 16/19 |
+| Expected knowledge (paraphrases) | 2/4 | 1/4 | 1/4 |
+| Leaks / secrets | 4/4, 25/25 | 4/4, 25/25 | 4/4, 25/25 |
+| Go 5-hour window | 0.95% | 0.80% | 1.09% |
+
+Hybrid keeps the narrator's event accuracy and the step's cast accuracy. Knowledge (4 checks) is too small a sample to judge; the
+overhaul campaign adds larger knowledge scenarios. Glass Orchard hybrid run still to do.
