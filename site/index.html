@@ -326,7 +326,7 @@ const KEY="story-forge-v2",app=document.getElementById("app"),$=s=>document.quer
 function ap(p,...k){for(const c of k.flat(4)){if(c==null||c===false)continue;p.appendChild(c.nodeType?c:document.createTextNode(String(c)))}}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const num=(v,d)=>{const n=parseFloat(v);return isFinite(n)?n:d};
-const VER=100,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
+const VER=101,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
 function fixCh(se){const c=(se.chaps||[]).filter(x=>x&&x.i>=0&&x.i<Math.max(1,se.turns.length)).sort((a,b)=>a.i-b.i),out=[];c.forEach(x=>{if(!out.length||x.i>out[out.length-1].i)out.push(x)});if(!out.length||out[0].i!==0)out.unshift({i:0,t:""});se.chaps=out;return out}
 function autoCh(se){const N=se.chapN==null?1500:se.chapN,out=[{i:0,t:""}];if(N>0){let acc=0;se.turns.forEach((t,i)=>{if(t.role==="user"&&i>0&&(N===1?acc>0:acc>=N)){out.push({i,t:""});acc=0}if(t.role==="ai")acc+=words(t.text)})}return out}
 function chapsOf(se){if(!se.chaps)se.chaps=autoCh(se);return fixCh(se)}

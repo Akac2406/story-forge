@@ -149,3 +149,7 @@ ChatGPT Work has prepared an implementation checkpoint on `ui-overhaul`. Keep th
 ### Work acceptance evidence — implementation ready for integration
 
 All 90 repository regression scripts passed across local Node/Chromium runs, including the four fixture-dependent EPUB and screenshot scripts run separately with synthetic fixtures. The verified visual tree is `1301133`; it fast-forwards cleanly from both `memory-overhaul` and production `main`. The staged upgrade replaced the service-worker cache and reopened offline with the fixture's story, cover, credentials, settings, memory and canon intact. No paid endpoints were used. Claude's remaining gate is the integration run and official version/cache assignment. Production is still v100.
+
+### Release candidate 101 — visual overhaul (Claude, 2026-11-25)
+
+Integrated ui-overhaul through 81e7f46 on memory-overhaul. Version assigned: **101** (`VER=101`, cache `sf-v101`). Reviewed ChatGPT's test edits (additions only, no weakened assertions) and confirmed no engine files changed; every adapter called exists. Full suite passes (all scripts); upgrade checks 100 -> 101 and 92 -> 101 both 26/26 (keys, stories, artwork, offline, deadlines/branches, world export). **Not published**: waiting for Anna's go-ahead for the official release. Production stays v100.
