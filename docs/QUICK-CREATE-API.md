@@ -27,6 +27,18 @@ Every part is checked by the real engine; anything refused is left out **and rep
 - **No duplicates.** The idempotency key (default: the blueprint id) is stored as `st.fanfic.quick.key`. Committing the same key again (double click, retry after a lost response, a re-loaded draft) returns `{ok:true, applied:false, duplicate:true, reason:"already created", storyId}`; the UI should open that story. Pass a new `idempotencyKey` to make an intentional copy.
 - Test hook: `window.__qcFailAt = "universe"|"story"|"setup"|"appearance"|"save"` (tests only).
 
+## Change preview for a story in play (extension 6, implemented)
+Works on one playthrough `se`. Nothing changes until `qcChangeApply`.
+- `qcStoryView(se)` → what can change: `romance, rules, fates {charId: target}, locks, exceptions, pov, director (settings), gameplay {career, stats [{…, value}], quests [{…, status}], milestones, rules}, memory {mode, recall, notes (protected memories)}, appearance {cinematic}, styleProfile`, plus `frozen {pastEvents, upcomingEvents, turns, start}`. Past events = source events at or before the playthrough's position.
+- `qcEstimateChange(se, instruction)`; `qcChangePreview(se, instruction, {signal})` (one model request, max 900 output tokens) or `qcChangePreviewPatch(se, {set, remove})` (the player's own change, no request) → `{ok, staged, proposalId, changes: [{path, from, to}], refused: [{path, reason}]}`. Paths are on the view (`appearance.colors.*`/`theme`/`uiLayout`/`format` show as `appearance.story.*`).
+- Rules (refused parts are listed, the rest still applies):
+  - The start is frozen: `title, premise, modes, player, takeover, start, opening, characters, notes, sources, uncertain` → "already played".
+  - Locks and exceptions only on upcoming events; approved exceptions aren't removed here.
+  - `gameplay.stats/quests/milestones/rules` and `memory.notes` can only be added to; existing entries, current values, quest progress and the career don't change.
+  - `memory.mode` can only be turned on. Canon changes go through `SFFan` (setRomance, setRule, setFate, setPOV, lock, exception), director through `SFDirector`, cinematic through `SFCinema`, story appearance through `SFAppearance`, style through `SFQuick.cleanStyle`.
+- `qcChangeApply(se, proposalId)` applies everything or nothing. Refused with "the story changed since the preview; preview again" if the playthrough changed after the preview. Never touches `se.turns`. `qcChangeReject(proposalId)`.
+- `qcChangeHistory(se)` (last 10, newest first) and `qcChangeUndo(se)`: restores what the last change touched (playthrough parts and story appearance) if nothing changed since; otherwise "the story changed since that change; undo the settings one by one".
+
 ## Guarantees (tested)
 
 - Retrieved and imported text, and the player's request, are quoted as data; the model may only cite facts by id. Unknown citations, canon ids and careers are removed **and reported** in `issues`; unknown fields are reported in `unsupported` (never silently dropped).

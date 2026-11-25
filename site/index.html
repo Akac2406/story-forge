@@ -2611,6 +2611,88 @@ function qcEstimatePreview(input,o){o=o||{};input=input||{};const u=o.universeId
   const facts=SFQuick.spoilerFilter(o.facts||(o.universeId?SFQuick.factsFromUniverse(u):[]),input.maxChapter).facts;return Object.assign({ok:true,reason:null,requests:1},SFQuick.estimate(SFQuick.prompt(input,facts,qcPromptOpts(u)),SFQuick.MAX_OUT.preview))}
 function qcEstimateEdit(bp,instruction){return Object.assign({ok:true,reason:null,requests:1},SFQuick.estimate(SFQuick.editPrompt(bp,instruction||""),SFQuick.MAX_OUT.edit))}
 function qcEstimateRegenerate(bp,section,o){o=o||{};if(!QC.ctx)return{ok:false,reason:"preview first"};const c=SFQuick.canRegenerate(bp,section);if(!c.ok)return c;return Object.assign({ok:true,reason:null,requests:1},SFQuick.estimate(SFQuick.regeneratePrompt(bp,section,QC.ctx.input,QC.ctx.facts,{instruction:o.instruction}),SFQuick.MAX_OUT.regenerate))}
+/* Changing a story already in play (docs/QUICK-CREATE-API.md "Change preview"). Works on one playthrough. A change is planned from a patch
+   (AI or the player's own), shown as a preview, and applied only on qcChangeApply. Turns, past events and recorded outcomes are never
+   touched; gameplay and protected memories can only be added to. qcChangeUndo restores the parts a change touched if nothing changed since. */
+const QCS={prop:null,seq:0};
+function qcPastEvents(se){const u=se&&se.canon?ffU(se):null,pos=se&&se.canon&&se.canon.position&&se.canon.position.order||0;return(u&&u.events||[]).filter(e=>e.order<=pos).map(e=>e.id)}
+function qcStoryView(se){if(!se)return null;const st=getStory(se.storyId),c=se.canon||null,G=se.game||null,u=c?ffU(se):null,past=qcPastEvents(se);
+  const notes=window.SFMem2?SFMem2.query(memView(se),{}).filter(r=>r.src==="player"&&r.lock&&r.pin&&!r.deleted).map(r=>({text:r.text,who:r.who||[]})):[];
+  const v={position:c?c.position:null,romance:c?c.romance||{}:null,rules:c?c.rules:null,fates:c?Object.fromEntries(Object.entries(c.fates||{}).map(([k,x])=>[k,x&&x.target||x])):null,locks:c?c.locks||[]:null,exceptions:c?c.exceptions||[]:null,pov:c?c.pov:null,
+    director:se.director&&se.director.settings||null,
+    gameplay:G?{career:G.career&&G.career.id||G.career||null,stats:Object.values(G.stats||{}).map(x=>({id:x.id,name:x.name,min:x.min,max:x.max,value:x.value,hidden:!!x.hidden})),quests:(G.quests||[]).map(q=>({id:q.id,title:q.title,steps:(q.steps||[]).map(x=>x.text||x),status:q.status})),
+      milestones:(G.rules||[]).filter(r=>String(r.id).startsWith("milestone:")).map(r=>({id:r.id.slice(10),title:String(r.note||"").replace(/^Milestone reached: /,""),when:r.when})),rules:(G.rules||[]).filter(r=>!String(r.id).startsWith("milestone:")).map(r=>({id:r.id,when:r.when,effect:r.effect,note:r.note,repeat:!!r.repeat}))}:{stats:[],quests:[],milestones:[],rules:[]},
+    memory:{mode:se.memv2?"on":"app",recall:!!se.memRecall,notes},appearance:{cinematic:se.cv&&se.cv.settings||{}},styleProfile:se.styleProfile||(st&&st.fanfic&&st.fanfic.styleProfile)||{},
+    frozen:{pastEvents:past,upcomingEvents:(u&&u.events||[]).filter(e=>!past.includes(e.id)).map(e=>e.id),turns:(se.turns||[]).length,start:c?{modes:c.mode&&c.mode.types,takeover:c.mode&&c.mode.takeover,player:c.mode&&c.mode.player&&c.mode.player.name}:null}};
+  return JSON.parse(JSON.stringify(v))}
+/* The parts of a playthrough a change can touch, for snapshots and staleness checks. */
+const qcSeParts=se=>JSON.parse(JSON.stringify({canon:se.canon||null,director:se.director||null,game:se.game||null,memRecall:se.memRecall||false,memv2:se.memv2||false,memEdits:se.memEdits||null,cv:se.cv||null,styleProfile:se.styleProfile||null}));
+function qcSetParts(se,P){for(const [k,v] of Object.entries(P)){if(v===null||v===false&&(k==="memRecall"||k==="memv2"))delete se[k];else se[k]=JSON.parse(JSON.stringify(v))}}
+/* Plan a change from a patch on the view. Returns {next (parts after), changes [{path, from, to}], refused [{path, reason}], apPatch}. Pure. */
+function qcPlanChange(se,patch){const view=qcStoryView(se),P=patch||{},refused=[],touched=new Set(),B=JSON.parse(JSON.stringify(view));
+  const want=[...Object.entries(P.set||{}).map(([p,v])=>({p,v})),...(P.remove||[]).map(p=>({p:String(p),v:undefined,rm:true}))];
+  for(const w of want){const top=w.p.split(".")[0];if(SFQuick.FROZEN_FIELDS.includes(top)){refused.push({path:w.p,reason:"already played: the start of the story can't change"});continue}
+    if(!SFQuick.CHANGE_FIELDS.includes(top)){refused.push({path:w.p,reason:"unknown field"});continue}
+    if(w.p==="memory.mode"&&w.v!=="on"){refused.push({path:w.p,reason:"structured memory can only be turned on"});continue}
+    if(w.rm&&/^(gameplay|memory\.notes)/.test(w.p)){refused.push({path:w.p,reason:"can only be added to"});continue}
+    const ks=w.p.split(".");let a=B;for(let i=0;i<ks.length-1;i++){if(a[ks[i]]==null||typeof a[ks[i]]!=="object")a[ks[i]]=/^\d+$/.test(ks[i+1])?[]:{};a=a[ks[i]]}
+    if(w.rm){if(Array.isArray(a))a.splice(+ks[ks.length-1],1);else delete a[ks[ks.length-1]]}else a[ks[ks.length-1]]=JSON.parse(JSON.stringify(w.v));touched.add(top)}
+  const cur=qcSeParts(se),next=JSON.parse(JSON.stringify(cur)),past=new Set(view.frozen.pastEvents),u=se.canon?ffU(se):null,evIds=new Set((u&&u.events||[]).map(e=>e.id)),apPatch={};
+  const step=(path,r)=>{if(r&&r.applied)return true;if(r&&r.reason!=="unchanged"&&r.reason!=="no change")refused.push({path,reason:(r&&r.reason)||"refused"});return false};
+  if(["romance","rules","fates","locks","exceptions","pov"].some(k=>touched.has(k))){if(!next.canon)refused.push({path:"canon",reason:"not a fanfiction playthrough"});else{let c=next.canon;const run=(path,r)=>{if(step(path,r))c=r.canon};
+      if(touched.has("romance")&&JSON.stringify(B.romance)!==JSON.stringify(view.romance))run("romance",SFFan.setRomance(c,B.romance||{}));
+      if(touched.has("rules"))for(const [k,v] of Object.entries(B.rules||{}))if(view.rules[k]!==v)run("rules."+k,SFFan.setRule(c,k,v));
+      if(touched.has("fates"))for(const [k,v] of Object.entries(B.fates||{}))if(view.fates[k]!==v)run("fates."+k,SFFan.setFate(c,k,typeof v==="string"?v:v&&v.target));
+      if(touched.has("pov")&&JSON.stringify(B.pov)!==JSON.stringify(view.pov))run("pov",SFFan.setPOV(c,B.pov||{}));
+      if(touched.has("locks")){const key=l=>l.kind+":"+l.id,old=new Set((view.locks||[]).map(key)),nw=new Set((B.locks||[]).map(key));
+        for(const l of B.locks||[])if(!old.has(key(l))){if(l.kind==="event"&&(!evIds.has(l.id)||past.has(l.id)))refused.push({path:"locks",reason:(past.has(l.id)?"already happened: ":"unknown event: ")+l.id});else run("locks",SFFan.lock(c,l.kind,l.id,true))}
+        for(const l of view.locks||[])if(!nw.has(key(l))){if(l.kind==="event"&&past.has(l.id))refused.push({path:"locks",reason:"already happened: "+l.id});else run("locks",SFFan.lock(c,l.kind,l.id,false))}}
+      if(touched.has("exceptions")){const old=new Set((view.exceptions||[]).map(x=>x.id));if((view.exceptions||[]).some(x=>!(B.exceptions||[]).some(y=>y.id===x.id)))refused.push({path:"exceptions",reason:"approved exceptions can't be removed here"});
+        for(const x of B.exceptions||[])if(!x.id||!old.has(x.id)){if(!evIds.has(x.target)&&!(u&&u.chars&&u.chars[x.target]))refused.push({path:"exceptions",reason:"unknown target "+x.target});else if(past.has(x.target))refused.push({path:"exceptions",reason:"already happened: "+x.target});else run("exceptions",SFFan.exception(c,x.target,x.text))}}
+      next.canon=c}}
+  if(touched.has("director")&&window.SFDirector){const r=SFDirector.set(next.director&&next.director.settings||SFDirector.defaults(),B.director||{});if(r.applied!==false)next.director={enabled:true,settings:r.settings};else step("director",r)}
+  if(touched.has("gameplay")&&window.SFGame){let G=next.game||SFGame.defaults();const gv=view.gameplay,gb=B.gameplay||{},same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+    const added=(list,old,path,fn)=>{(list||[]).forEach((x,i)=>{const o=(old||[]).find(y=>y.id===(x&&x.id));if(o){if(!same(o,x))refused.push({path:path+"."+i,reason:"existing entries and current values can't change"});return}if(i<(old||[]).length&&!o){refused.push({path:path+"."+i,reason:"existing entries can't be replaced"});return}fn(x,path+"."+i)})};
+    if(gb.career!==undefined&&(gb.career||null)!==(gv.career||null))refused.push({path:"gameplay.career",reason:"the career is set once"});
+    added(gb.stats,gv.stats,"gameplay.stats",(x,p)=>{const r=SFGame.defineStat(G,{id:x.id,name:x.name||x.id,min:+x.min||0,max:x.max!=null?+x.max:100,start:x.start!=null?+x.start:(+x.min||0),hidden:!!x.hidden});if(step(p,r))G=r.game});
+    added(gb.quests,gv.quests,"gameplay.quests",(x,p)=>{const r=SFGame.addQuest(G,{id:x.id,title:x.title,steps:(x.steps||[]).map(String),reward:x.reward});if(step(p,r))G=r.game});
+    added(gb.milestones,gv.milestones,"gameplay.milestones",(x,p)=>{const r=SFGame.addRule(G,{id:"milestone:"+x.id,when:x.when,effect:{},note:"Milestone reached: "+x.title});if(step(p,r))G=r.game});
+    added(gb.rules,gv.rules,"gameplay.rules",(x,p)=>{const r=SFGame.addRule(G,{id:x.id,when:x.when,effect:x.effect||{},note:x.note||"",repeat:!!x.repeat});if(step(p,r))G=r.game});
+    if(JSON.stringify(G)!==JSON.stringify(next.game||SFGame.defaults())){if(!G.enabled){const e=SFGame.set(G,{enabled:true});if(e.applied)G=e.game}next.game=G}}
+  if(touched.has("memory")){const m=B.memory||{};if(m.recall!==view.memory.recall){next.memRecall=!!m.recall;if(m.recall)next.memv2=true}if(m.mode==="on")next.memv2=true;
+    const old=view.memory.notes||[],nn=m.notes||[];if(nn.length<old.length||old.some((x,i)=>JSON.stringify(x)!==JSON.stringify(nn[i])))refused.push({path:"memory.notes",reason:"protected memories can only be added to"});
+    else if(nn.length>old.length&&window.SFMem2){let E=next.memEdits||SFMem2.emptyEdits();const base=(E.ops||[]).length;nn.slice(old.length).slice(0,10).forEach((n,i)=>{const t=String(n&&n.text||"").trim().slice(0,300);if(!t)return;E=SFMem2.add(E,{id:"qcnote-c"+base+"-"+i,layer:"permanent",kind:"fact",text:t,who:(n.who||[]).slice(0,6).map(String),pin:true,lock:true,src:"player",t:(se.turns||[]).length})});next.memEdits=E}}
+  if(touched.has("appearance")){const ap=B.appearance||{},cb=SFQuick.buildCinema({preset:ap.preset,layout:ap.layout,cinematic:Object.fromEntries(Object.entries(ap.cinematic||{}).filter(([k,v])=>JSON.stringify(v)!==JSON.stringify((view.appearance.cinematic||{})[k])))},window.SFCinema&&{applyPreset:(cv,id)=>SFCinema.applyPreset(next.cv,id),set:(cv,p)=>SFCinema.set(cv||next.cv,p)});
+    cb.issues.forEach(i=>refused.push({path:"appearance",reason:i.replace(/^appearance: /,"")}));if(cb.cv)next.cv=Object.assign({},next.cv||{},cb.cv,{scene:(next.cv||{}).scene||{},cast:(next.cv||{}).cast||{}});
+    const pa=SFQuick.appearancePatch(ap);if(Object.keys(pa).length&&window.SFAppearance){for(const [k,v] of Object.entries(pa)){const r=SFAppearance.set(SFAppearance.empty(),{[k]:v},"story:check",apCatalog());if(r.applied)apPatch[k]=v;else refused.push({path:"appearance."+k,reason:r.reason})}}}
+  if(touched.has("styleProfile")){const cs=SFQuick.cleanStyle(B.styleProfile||{});cs.issues.concat(cs.unsupported.map(x=>x+": unknown")).forEach(i=>refused.push({path:"styleProfile",reason:i}));if(JSON.stringify(cs.clean)!==JSON.stringify(view.styleProfile))next.styleProfile=cs.clean}
+  const after=qcStoryViewOf(se,next),changes=SFQuick.diff(Object.assign({},view,{frozen:null}),Object.assign({},after,{frozen:null}));for(const [k,v] of Object.entries(apPatch))changes.push({path:"appearance.story."+k,from:null,to:v});
+  return{next,changes,refused,apPatch,view}}
+function qcStoryViewOf(se,parts){const tmp=Object.assign({},se,JSON.parse(JSON.stringify(parts)));for(const k of Object.keys(parts))if(parts[k]===null||parts[k]===false)delete tmp[k];return qcStoryView(tmp)}
+function qcChangeStage(se,plan,instruction){const id="sc"+(++QCS.seq);QCS.prop={id,seId:se.id,base:JSON.stringify(qcSeParts(se)),turns:(se.turns||[]).length,plan,instruction:String(instruction||"").slice(0,500)};
+  return{ok:true,reason:plan.changes.length?null:"no change",proposalId:plan.changes.length?id:null,changes:plan.changes,refused:plan.refused,staged:plan.changes.length>0}}
+/* Preview a change: from the player's own patch (no request), or from a plain-words request (one model request). */
+function qcChangePreviewPatch(se,patch){if(!se)return{ok:false,reason:"no playthrough"};return qcChangeStage(se,qcPlanChange(se,patch),"")}
+function qcEstimateChange(se,instruction){return Object.assign({ok:true,reason:null,requests:1},SFQuick.estimate(SFQuick.changePrompt(qcStoryView(se),instruction||""),SFQuick.MAX_OUT.change))}
+async function qcChangePreview(se,instruction,o){o=o||{};if(!se)return{ok:false,reason:"no playthrough"};if(!String(instruction||"").trim())return{ok:false,reason:"Describe the change"};
+  try{qcAbort(o.signal);const r=await ask(SFQuick.changePrompt(qcStoryView(se),instruction),{max:SFQuick.MAX_OUT.change,temp:0.2,signal:o.signal,lite:true});qcAbort(o.signal);const p=SFQuick.parse(r.text);if(!p.ok)return{ok:false,reason:p.reason};
+    return qcChangeStage(se,qcPlanChange(se,p.value),instruction)}catch(e){return{ok:false,reason:qcCancelled(e)?"cancelled":String(e&&e.message||e)}}}
+function qcChangeReject(id){if(!QCS.prop||(id&&QCS.prop.id!==id))return{ok:false,reason:"no such proposal"};QCS.prop=null;return{ok:true,reason:null}}
+/* Apply atomically. Refused if the playthrough changed since the preview. Records one undo step in se.qcChanges (last 10). */
+function qcChangeApply(se,id){const P=QCS.prop;if(!P||P.id!==id||!se||P.seId!==se.id)return{ok:false,applied:false,reason:"no such proposal"};
+  if(JSON.stringify(qcSeParts(se))!==P.base||(se.turns||[]).length!==P.turns){QCS.prop=null;return{ok:false,applied:false,reason:"the story changed since the preview; preview again"}}
+  const before=qcSeParts(se),turns=JSON.stringify(se.turns||[]),hist=JSON.stringify(se.qcChanges||[]);let apSnap=null,apTouched=false;try{apSnap=localStorage.getItem(apKey())}catch(e){}
+  try{qcSetParts(se,P.plan.next);if(Object.keys(P.plan.apPatch).length){const a=SFAppearance.set(apCfg(),P.plan.apPatch,"story:"+se.storyId,apCatalog());if(!a.applied)throw new Error("appearance: "+a.reason);apTouched=true;if(!apWrite(a.cfg))throw new Error("storage full")}
+    if(window.__qcChangeFail)throw new Error("simulated failure");
+    se.qcChanges=(se.qcChanges||[]).concat([{at:Date.now(),instruction:P.instruction,changes:P.plan.changes,before,after:JSON.stringify(qcSeParts(se)),ap:apTouched?apSnap:undefined,apTouched}]).slice(-10);
+    if(JSON.stringify(se.turns||[])!==turns)throw new Error("internal: turns changed");if(save()===false)throw new Error("storage full: the change was not saved");QCS.prop=null;return{ok:true,applied:true,reason:null,changes:P.plan.changes}}
+  catch(e){qcSetParts(se,before);se.qcChanges=JSON.parse(hist);if(!se.qcChanges.length)delete se.qcChanges;if(apTouched)try{if(apSnap==null)localStorage.removeItem(apKey());else localStorage.setItem(apKey(),apSnap);window.SFVisualV48&&SFVisualV48.reload&&SFVisualV48.reload()}catch(x){}save();
+    return{ok:false,applied:false,reason:String(e&&e.message||e)}}}
+function qcChangeHistory(se){return(se&&se.qcChanges||[]).map(c=>({at:c.at,instruction:c.instruction,changes:c.changes})).reverse()}
+function qcChangeUndo(se){const H=se&&se.qcChanges||[],last=H[H.length-1];if(!last)return{ok:false,applied:false,reason:"nothing to undo"};
+  if(JSON.stringify(qcSeParts(se))!==last.after)return{ok:false,applied:false,reason:"the story changed since that change; undo the settings one by one"};
+  qcSetParts(se,last.before);if(last.apTouched)try{if(last.ap==null)localStorage.removeItem(apKey());else localStorage.setItem(apKey(),last.ap);window.SFVisualV48&&SFVisualV48.reload&&SFVisualV48.reload()}catch(e){}
+  se.qcChanges=H.slice(0,-1);save();return{ok:true,applied:true,reason:null}}
 /* Quick Create drafts: DB.qcDrafts {id: {id, name, updated, v, input, universeId, facts, maxChapter, blueprint}}. Stored in the DB, so they
    travel with backups. Up to 20 drafts. Loading re-validates the blueprint against its source and starts a fresh history for it. */
 const QC_DRAFT_MAX=20;
