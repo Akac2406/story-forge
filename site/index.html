@@ -1708,14 +1708,16 @@ async function send(text,hide,show,days=0,replay=null){const se=DB.sessions.find
   if(st.kind!=="character"&&view.och){const L=chapsOf(se).length-1;delete view.och[L];delete view.och[L+1];se.och=Object.assign({},view.och)}delete se.pos;
   se.nc=nc;se.rp=rp;se.wn=wn;const msgs=buildMsgs(se,st,hist,text,days);delete se.nc;delete se.rp;delete se.wn;delete se.imp;{const PR=PREPORT.get(se);if(PR&&PR.mandatoryOver){toast("Your protected instructions are too long to send ("+PR.mandatoryChars.toLocaleString()+" of "+PR.mandatoryCap.toLocaleString()+" characters). Shorten notes, narrow their scope, or unlock an entry. See Prompt inspector for details.");return}}const ui=se.turns.length;se.turns.push(u,ai);REGV=null;if(nc&&ui>0&&!se.chaps.some(ch=>ch.i===ui))se.chaps.push({i:ui,t:""});se.sugg=[];se.delta={};busy=true;ctrl=new AbortController();if(!hide&&!show)view.draft="";render();
   let raw="",committed=false;
-  try{const r=await ask(msgs,{signal:ctrl.signal,se,think:se.think||0,max:Math.min(16000,Math.round((+se.len||300)*2.2)+900),onText:t=>{raw=t;ai.text=vis(t);paintLast(se,ai.text)}});
+  /* Stall watchdog: a reply stream that sends nothing for DB.stallWait seconds (default 300) is stopped the same way as the Stop button. */
+  const myCtrl=ctrl;let lastTick=Date.now(),stalled=false;const stallT=setInterval(()=>{if(Date.now()-lastTick>num(DB.stallWait,300)*1000){clearInterval(stallT);stalled=true;myCtrl.abort()}},Math.min(5000,num(DB.stallWait,300)*250));
+  try{const r=await ask(msgs,{signal:ctrl.signal,se,think:se.think||0,max:Math.min(16000,Math.round((+se.len||300)*2.2)+900),onTick:()=>{lastTick=Date.now()},onText:t=>{lastTick=Date.now();raw=t;ai.text=vis(t);paintLast(se,ai.text)}});
     raw=r.text;
     if(replay&&!vis(raw))throw Error("No chapter reply was returned.");
     if(days&&(vis(raw)||raw.trim()))u.worldDays=days;ai.text=vis(raw)||raw.trim();{const mi=metaAt(raw);if(mi>=0)ai.mt=raw.slice(mi,mi+1500).trim();else delete ai.mt}delete se.newc;if(r.usage)ai.u={i:r.usage.prompt_tokens||0,o:r.usage.completion_tokens||0,c:typeof r.usage.cost==="number"?r.usage.cost:null};if(isOC())ai.gp=ocPct();applyMeta(se,st,raw);memRecord(se,st,ai,raw);canonRecord(se,st,ai,raw);if(se.canon&&window.SFFan)try{const fi=ffCheck(se,ai.text);if(fi.length)ai.ffc=fi;else delete ai.ffc}catch(e){}if(window.SFChar)try{chEvolve(se);chAdvance(se,ai);const vi=chCheckVoice(se,ai.text);if(vi.length)ai.voice=vi;else delete ai.voice}catch(e){}if(memOn(se)&&st.kind!=="character"&&(se.memExtract?true:((DB.metaRepair||se.metaRepair)&&metaAt(raw)<0&&!RPQ.has(se.id)))){const prev=RPQ.get(se.id)||Promise.resolve();const pr=prev.catch(()=>{}).then(()=>metaRepair(se,st,ai,{extract:!!se.memExtract,hybrid:se.memExtract==="hybrid"})).finally(()=>{if(RPQ.get(se.id)===pr)RPQ.delete(se.id)});RPQ.set(se.id,pr)}if(se.newc){ai.newc=se.newc;delete se.newc}ai.st2=Object.assign({},se.stats);if(se.info){ai.info=se.info;delete se.info}if(REG){ai.vs=REG.concat([{t:ai.text,s:ai.st2,sg:(se.sugg||[]).slice(),mx:ai.mx,mt:ai.mt,tid:ai.tid}]).slice(-6);ai.vi=ai.vs.length-1}committed=true;if(RBK?.sid===se.id)RBK=null}
-  catch(e){const ab=e&&e.name==="AbortError";
+  catch(e){const ab=e&&e.name==="AbortError";if(ab&&stalled)toast("The reply stopped arriving, so it was cancelled. Nothing was lost; try sending again.");
     if(REG&&RBK?.sid===se.id){se.turns.splice(ui,2);regenRollback(se);if(!ab)toast(errMsg(e)+" Your earlier version is kept.")}
     else if(ab&&vis(raw)&&!replay)ai.text=vis(raw);else if(REG){const o=REG[REG.length-1];ai.text=o.t;if(o.mt)ai.mt=o.mt;else delete ai.mt;if(o.mx){ai.mx=o.mx;if(se.mem&&window.SFMemory)try{SFMemory.apply(se.mem,o.mx)}catch(x){}}if(o.s)se.stats=Object.assign({},o.s);ai.st2=o.s;if(REG.length>1){ai.vs=REG;ai.vi=REG.length-1}if(!ab)toast(errMsg(e)+" Your earlier version is kept.")}else{const k=se.turns.indexOf(ai);if(k>0)se.turns.splice(k-1,2);if(!hide&&!show&&view.id===se.id)view.draft=text;if(!ab)toast(errMsg(e))}}
-  finally{busy=false;ctrl=null;se.updated=Date.now();save();if(view.n==="chat"&&view.id===se.id)rerender()}
+  finally{clearInterval(stallT);busy=false;ctrl=null;se.updated=Date.now();save();if(view.n==="chat"&&view.id===se.id)rerender()}
   if(!replay&&(!REG||committed)){summarize(se);recAfter(se,st)}
   return committed;
 }
@@ -4025,7 +4027,7 @@ async function ask(messages,o){o=o||{};if(!hasKey()){const e=new Error("no key")
   else{const rd=res.body.getReader(),dec=new TextDecoder();let buf="";
     for(;;){const x=await rd.read();if(x.done)break;buf+=dec.decode(x.value,{stream:true});const lines=buf.split("\n");buf=lines.pop();
       for(const l of lines){if(l.indexOf("data:")!==0)continue;const d=l.slice(5).trim();if(!d||d==="[DONE]")continue;let j;try{j=JSON.parse(d)}catch(e){continue}
-        if(j.error)throw new Error(j.error.message||"Model error");if(j.usage)usage=j.usage;const ch=j.choices&&j.choices[0];if(ch&&ch.finish_reason)fin=ch.finish_reason;const c=ch&&ch.delta&&ch.delta.content;if(c){text+=c;o.onText(text)}}}}
+        if(j.error)throw new Error(j.error.message||"Model error");if(j.usage)usage=j.usage;const ch=j.choices&&j.choices[0];if(ch&&ch.finish_reason)fin=ch.finish_reason;if(o.onTick)o.onTick();const c=ch&&ch.delta&&ch.delta.content;if(c){text+=c;o.onText(text)}}}}
   tally(usage,o.se,oc);
   if(!text.trim()&&fin==="length"&&!o._r)return ask(messages,Object.assign({},o,{_r:1,think:0,max:Math.min(32000,max*3+6000)}));
   if(!text.trim())throw new Error(fin==="length"?"The model used its whole reply budget on thinking before it wrote anything. Lower the thinking depth or switch mode.":"The model sent back an empty reply. Try again or switch mode.");return{text,usage}}
