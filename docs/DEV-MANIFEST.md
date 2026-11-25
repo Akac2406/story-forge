@@ -19,7 +19,7 @@ Paid testing: the memory-overhaul OpenCode authorization (stop at 45% monthly, l
 
 | | |
 |---|---|
-| Live (production) | **99** (released 2026-11-25): Studio > Fanfiction creation wizard (ChatGPT) on ffCreateStory; initial locks/exceptions/fates/foreknowledge; creation drafts. 98: stabilization + refinements |
+| Live (production) | **100** (released 2026-11-25): Fanfiction wizard steps for locks, exceptions, fates and foreknowledge; saved and resumed creation drafts (ChatGPT). 99: Fanfiction creation wizard |
 | Test address | https://deploy-preview-7--celebrated-brigadeiros-580c41.netlify.app (draft PR #7 = `memory-overhaul`) |
 | Integration branch | `memory-overhaul`: Claude merges, runs the full suite, pushes |
 | ChatGPT branch | `ui-overhaul` (fast-forwarded to `memory-overhaul` after each integration) |
@@ -76,6 +76,8 @@ Workflow per batch: ChatGPT commits to `ui-overhaul`; Claude merges into `memory
 | 2026-11-25 | 12b6c3e, ddcdc08 | ui-overhaul refinements | **bug fixed:** NPC Agenda crashed for a character with no plan (chAgenda returns null); menu test now ignores the favorites manager's checkbox copies; full suite pass; upgrade 97 -> 98 26/26 |
 | 2026-11-25 | 3fe6f12, 6e04129, 56437b9 | ui-overhaul: Fanfiction creation wizard + Studio tab | no fixes needed; `fanfic_wizard_browser.py` 18; creation extended per ChatGPT's requests (15 unit + 16 browser) |
 | 2026-11-25 | release 99 | wizard + creation extensions | full suite pass; upgrade 98 -> 99 check 26/26 |
+| 2026-11-25 | 4ba0f6f | ui-overhaul: wizard canon targets, foreknowledge, drafts | no fixes needed; wizard test extended (draft save/resume); smoke8's faked update version made always newer (it broke at VER 99) |
+| 2026-11-25 | release 100 | wizard extensions | full suite pass; upgrade 99 -> 100 check 26/26 |
 
 ## Known issues / notes
 

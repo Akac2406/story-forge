@@ -67,7 +67,7 @@ with sync_playwright() as p:
     pg.click("button.back");pg.click("text=Settings");pg.wait_for_selector("text=Reading aloud")
     print("voices:",pg.locator("label.fld:has-text('Voice') option").all_inner_texts(),"|",pg.locator("p.sub:has-text('version')").inner_text())
     pg.click("text=Check for update");pg.wait_for_selector("#toast.on");print("update toast:",pg.inner_text("#toast"))
-    pg.route("**/index.html?v=*",lambda r:r.fulfill(status=200,content_type="text/html",body="<script>const VER=99;</script>"))
+    pg.route("**/index.html?v=*",lambda r:r.fulfill(status=200,content_type="text/html",body="<script>const VER=999999;</script>"))
     with pg.expect_navigation(): pg.click("text=Check for update")
     pg.wait_for_selector(".cta");print("reloaded after update; stories kept:",len(db(pg)["sessions"]))
     print("overflow-x:",pg.evaluate("document.documentElement.scrollWidth>window.innerWidth"))
