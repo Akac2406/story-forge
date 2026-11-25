@@ -83,7 +83,7 @@ function competition(se){screen(se,"Competition Studio",(b,s,apply)=>{
  b.append(h("p",{class:"sub",text:"Simulated results only. Existing results cannot be overwritten here."}),fld("Competition ID",id),fld("Seed",seed),...factors.map((k,i)=>fld(k,weights[i])),fld("Random variation",random),fld("Contestant factors",entries),button("Preview rankings",preview),out,h("b",{text:"Recorded results"}),dump(se.canon.competitions||{}));
 })}
 function continuity(se){screen(se,"Continuity Center",(b,s)=>{
- b.append(panel(h("b",{text:"Event conflicts"}),dump(s.conflicts||[])),panel(h("b",{text:"Validation"}),dump(ffValidate(se))),panel(h("b",{text:"Reply warnings"}),...se.turns.flatMap((t,i)=>(t.ffc||[]).map(w=>h("p",{text:"Turn "+(i+1)+" · "+w.kind+": "+w.text}))).slice(-100)));
+ b.append(panel(h("b",{text:"Event conflicts"}),dump(s.conflicts||[])),panel(h("b",{text:"Validation"}),dump(ffValidate(se))),panel(h("b",{text:"Reply warnings"}),...se.turns.flatMap((t,i)=>[...(t.ffc||[]),...(t.voice||[])].map(w=>h("p",{text:"Turn "+(i+1)+" · "+w.kind+(w.name?" · "+w.name:"")+": "+w.text}))).slice(-100)));
 })}
 Object.assign(window.SFFanUI,{studio,canon,timeline,inspector,romance,realworld,competition,continuity});
 })();
@@ -99,7 +99,7 @@ window.SFFanUI.polishMenu=function(bg,se){
  let searching=false;
  function drawFavorites(){favorites.replaceChildren();const chosen=rows.filter(r=>fav.includes(r.id));if(chosen.length)favorites.append(h("p",{class:"sub",text:"Favorites"}),...chosen.map(r=>h("button",{text:r.name,onclick:()=>{if(r.el.tagName==="BUTTON")r.el.click();else{r.g.open=true;r.el.scrollIntoView({block:"nearest"})}}})))}
  const manage=h("details",{class:"ff-menu-favorites"},h("summary",{text:"Manage favorites"}),...rows.map(r=>chk(r.name,fav.includes(r.id),v=>{fav=v?[...new Set([...fav,r.id])]:fav.filter(x=>x!==r.id);write(favKey,JSON.stringify(fav));drawFavorites()})));
- drawer.insertBefore(h("div",{class:"ff-menu-search"},search,favorites,manage),groups[0]);drawFavorites();
+ drawer.insertBefore(h("div",{class:"ff-menu-search"},search,favorites),groups[0]);(groups.find(g=>groupName(g)==="Advanced & Settings")||groups[groups.length-1]).append(manage);drawFavorites();
  for(const g of groups){if(groupName(g)===last)g.open=true;g.addEventListener("toggle",()=>{if(!searching&&g.open)write(key,groupName(g))})}
  search.addEventListener("input",()=>{const q=search.value.trim().toLowerCase();searching=!!q;for(const g of groups){const matches=rows.filter(r=>r.g===g);for(const r of matches)r.el.hidden=!!q&&!r.name.toLowerCase().includes(q)&&!groupName(g).toLowerCase().includes(q);g.hidden=!!q&&matches.every(r=>r.el.hidden);if(q)g.open=false}if(q){const first=groups.find(g=>!g.hidden);if(first)first.open=true}else{for(const g of groups)g.open=groupName(g)===read(key)}});
 };
@@ -133,8 +133,14 @@ function journal(se){open(se,"Character Journal",(b,apply)=>{
 })}
 function agenda(se){open(se,"NPC Agenda",(b,apply)=>{
  const ns=names(se),pick=sel(ns[0]||"",ns.map(n=>[n,n]),()=>draw()),out=h("div",{class:"ff-ui"}),day=chStoryDay(se);
- function draw(){out.replaceChildren();if(!pick.value)return;const n=pick.value,a=chAgenda(se,n,day,day+7);out.append(panel(h("b",{text:"Current and upcoming commitments"}),dump(a)),panel(h("b",{text:"Recorded off-screen developments"}),dump(chAgendaLog(se).filter(x=>x.name===n))));const p=chNpcs(se)[n]||{goals:[],schedule:[]},edit=h("textarea",{rows:8});edit.value=JSON.stringify(p,null,2);out.append(panel(fld("Edit goals and schedule (JSON)",edit),btn("Save plan",()=>apply(()=>{const v=JSON.parse(edit.value);return chSetNpc(se,n,v)}))))}
- b.append(h("p",{text:"Story day "+day+" · Viewing does not advance time."}),fld("Character",pick),out);draw();
+ function draw(){out.replaceChildren();if(!pick.value)return;const n=pick.value,a=chAgenda(se,n,day,day+7),p=chNpcs(se)[n]||{goals:[],schedule:[]};
+ const goals=h("div",{class:"ff-ui"}),schedule=h("div",{class:"ff-ui"}),gr=[],sr=[];
+ function goal(g={}){if(typeof g==="string")g={text:g};const text=h("textarea",{rows:2,value:g.text||""}),priority=h("input",{type:"number",min:1,max:5,value:g.priority||3}),term=sel(g.term||"short",opts(["short","long"]),()=>{}),conflicts=h("input",{value:(g.conflictsWith||[]).join(", ")});const row={read:()=>({...g,text:text.value.trim(),priority:Number(priority.value),term:term.value,conflictsWith:conflicts.value.split(",").map(x=>x.trim()).filter(Boolean)})};const el=panel(fld("Goal",text),fld("Priority (1–5)",priority),fld("Duration",term),fld("Conflicting goal IDs",conflicts),btn("Remove from draft",()=>{gr.splice(gr.indexOf(row),1);el.remove()}));gr.push(row);goals.append(el)}
+ function slot(v={}){const d=h("input",{type:"number",min:0,value:v.day??day}),where=h("input",{value:v.where||""}),doing=h("input",{value:v.doing||""});const row={read:()=>({...v,day:Number(d.value),where:where.value,doing:doing.value})};const el=panel(fld("Story day",d),fld("Location",where),fld("Activity",doing),btn("Remove from draft",()=>{sr.splice(sr.indexOf(row),1);el.remove()}));sr.push(row);schedule.append(el)}
+ (p.goals||[]).forEach(goal);(p.schedule||[]).forEach(slot);
+ out.append(panel(h("b",{text:"Current activity"}),h("p",{text:[a.where,a.doing].filter(Boolean).join(" · ")||"No scheduled activity"}),...(a.developments||[]).map(x=>h("p",{text:"Day "+x.day+" · "+x.text}))),panel(h("b",{text:"Recorded off-screen developments"}),...chAgendaLog(se).filter(x=>x.name===n).map(x=>h("p",{text:"Day "+x.day+" · "+x.text}))),h("h3",{text:"Goals"}),goals,btn("Add goal",()=>goal()),h("h3",{text:"Schedule"}),schedule,btn("Add commitment",()=>slot()),btn("Save plan",()=>apply(()=>chSetNpc(se,n,{goals:gr.map(x=>x.read()).filter(x=>x.text),schedule:sr.map(x=>x.read())}))));
+ }
+ b.append(h("p",{text:"Story day "+day+" · Viewing does not advance time. Draft edits are saved only when you select Save plan."}),fld("Character",pick),out);draw();
 })}
 function memory(se){open(se,"Memory Studio",(b,apply)=>{
  const layers=["permanent","working","episodic","semantic","character","relationship","temporal","world","universe"],q=h("input",{placeholder:"Search memories"}),layer=sel("",[["","All layers"],...opts(layers)],()=>draw()),deleted=sel("active",opts(["active","deleted","all"]),()=>draw()),out=h("div",{class:"ff-ui"});let limit=30;
