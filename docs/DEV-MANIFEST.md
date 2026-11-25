@@ -19,7 +19,7 @@ Paid testing: the memory-overhaul OpenCode authorization (stop at 45% monthly, l
 
 | | |
 |---|---|
-| Live (production) | **91** (`main` 194d8f7): hybrid memory opt-in. Untouched by overhaul work. |
+| Live (production) | **92** (released 2026-11-25 with Anna's approval): menu reorganisation, fanfiction engine + first screens, real-world/romance/competition, memory v2 engine + opt-in recall, living characters engine. |
 | Test address | https://deploy-preview-7--celebrated-brigadeiros-580c41.netlify.app (draft PR #7 = `memory-overhaul`) |
 | Integration branch | `memory-overhaul`: Claude merges, runs the full suite, pushes |
 | ChatGPT branch | `ui-overhaul` (fast-forwarded to `memory-overhaul` after each integration) |
@@ -59,6 +59,7 @@ Workflow per batch: ChatGPT commits to `ui-overhaul`; Claude merges into `memory
 | Date | Commit | What | Result |
 |---|---|---|---|
 | 2026-11-24 | b2b10ed | ui-overhaul e35a6e6 (menu) + fanfic-engine | full suite pass; menu parity 50/50; 17 old tests adapted via `tests/menu_helper.py` |
+| 2026-11-25 | release 92 | memory-overhaul b083875 + version bump | full suite pass; upgrade 91 -> 92 check 26/26 (keys, stories, art, offline, deadlines/branches, world export) |
 | 2026-11-25 | 66e674c | ui-overhaul c69ceb5 (10 commits: Source Library, management screens, competition, favorites, search, last category) | **bug fixed:** `fanfic-ui.js` missing `}` in drawFavorites (whole UI file failed to load); added `tests/js_syntax_check.mjs`, `tests/fanfic_ui_screens.py` (16 checks); helper adapted for favorites panel; full suite pass |
 
 ## Known issues / notes

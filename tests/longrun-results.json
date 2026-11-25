@@ -2,9 +2,9 @@
  {
   "turns": 30,
   "records": 88,
-  "build_ms": 1.4,
-  "recall_ms": 3.1,
-  "checks_ms": 1.6,
+  "build_ms": 1.5,
+  "recall_ms": 3.4,
+  "checks_ms": 1.8,
   "prompt_chars": 2143,
   "planted_rank": 1,
   "store_kb": 11
@@ -13,8 +13,8 @@
   "turns": 100,
   "records": 274,
   "build_ms": 0.9,
-  "recall_ms": 4.5,
-  "checks_ms": 0.8,
+  "recall_ms": 6.1,
+  "checks_ms": 1,
   "prompt_chars": 2221,
   "planted_rank": 1,
   "store_kb": 35
@@ -22,9 +22,9 @@
  {
   "turns": 250,
   "records": 630,
-  "build_ms": 2.5,
-  "recall_ms": 10.5,
-  "checks_ms": 2.3,
+  "build_ms": 2.9,
+  "recall_ms": 15.8,
+  "checks_ms": 5.9,
   "prompt_chars": 2329,
   "planted_rank": 1,
   "store_kb": 88
@@ -32,9 +32,9 @@
  {
   "turns": 500,
   "records": 1223,
-  "build_ms": 5.1,
-  "recall_ms": 17.5,
-  "checks_ms": 7.8,
+  "build_ms": 7.5,
+  "recall_ms": 27,
+  "checks_ms": 12.4,
   "prompt_chars": 2353,
   "planted_rank": 1,
   "store_kb": 176
@@ -42,9 +42,9 @@
  {
   "turns": 1000,
   "records": 2350,
-  "build_ms": 15.4,
-  "recall_ms": 34,
-  "checks_ms": 33.2,
+  "build_ms": 14.7,
+  "recall_ms": 40.1,
+  "checks_ms": 28.5,
   "prompt_chars": 2515,
   "planted_rank": 1,
   "store_kb": 348
