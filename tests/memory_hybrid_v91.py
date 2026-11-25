@@ -90,6 +90,13 @@ try:
     ok(pg.evaluate("(DB.sessions[0].turns.filter(t=>t.role==='ai').pop().msrc||{}).events") == "step", "previous version: its sources restored too")
     n_ev = len(pg.evaluate(M)["ev"])
     ok(n_ev == 2, f"no abandoned or duplicate events after regenerate and back ({n_ev})")
+    # --- status and retry helpers for the UI
+    stt = pg.evaluate("memStatus(DB.sessions[0])")
+    ok(stt["mode"] == "hybrid" and stt["pending"] is False and stt["checked"] >= 3 and stt["ok"] == stt["checked"] and stt["last"]["src"], f"memStatus summarises mode, checks and sources: {dict((k, stt[k]) for k in ('mode','checked','ok'))}")
+    ok(any(c["items"] for c in stt["conflicts"]), "memStatus lists flagged conflicts")
+    n0 = len(steps()); t = pg.evaluate("DB.sessions[0].turns.length-1")
+    r = pg.evaluate(f"memRetry(DB.sessions[0],{t})")
+    ok(r["ok"] and len(steps()) == n0 + 1 and len(pg.evaluate(M)["ev"]) == n_ev, "memRetry re-checks one reply without duplicating events")
     # --- full separate mode still skips the narrator's lines; off asks no checks
     pg.evaluate("DB.sessions[0].memExtract=true;save()"); n0 = len(steps())
     send(pg, "Next.", 4)

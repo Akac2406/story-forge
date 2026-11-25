@@ -2300,6 +2300,13 @@ function memReconcile(nat,step){nat=nat||{};step=step||{};const ne=nat.events||[
   if(ns&&ss&&ns.where&&ss.where&&ns.where.toLowerCase()!==ss.where.toLowerCase())conflicts.push("scene: narrator said "+ns.where+", step said "+ss.where);
   const key=l=>String(l.who||"").toLowerCase().split(/\s+/)[0];if(nl.length&&sl.length){const nw=new Set(nl.map(key));sl.forEach(l=>{if(!nw.has(key(l)))conflicts.push("learned: step also noted "+l.who+": "+String(l.text).slice(0,80))})}
   return{rec:{events:ne.length?ne:se,learned:nl.length?nl:sl,scene,dropped:step.dropped},src,conflicts}}
+/* UI contract (v91): memory status and retry for one reply. See docs/MEMORY-CONTRACT.md. */
+function memStatus(se){const d=(se&&se.memDiag)||[],rp=d.filter(x=>x.rp),last=rp.slice(-1)[0];
+  return{mode:se.memExtract===true?"step":se.memExtract==="hybrid"?"hybrid":"narrator",pending:RPQ.has(se.id),checked:rp.length,ok:rp.filter(x=>x.rp.ok).length,
+    failed:rp.filter(x=>!x.rp.ok&&se.turns[x.t]&&se.turns[x.t].role==="ai").map(x=>({t:x.t,why:x.rp.why||"error"})),conflicts:rp.filter(x=>(x.rp.conflicts||[]).length).map(x=>({t:x.t,items:x.rp.conflicts.slice()})),
+    last:last?{t:last.t,ok:last.rp.ok,why:last.rp.why||null,ms:last.rp.ms,src:last.rp.src||null}:null}}
+function memRetry(se,t){const ai=se&&se.turns[t],st=se&&getStory(se.storyId);if(!ai||ai.role!=="ai"||!st||!memOn(se))return Promise.resolve({ok:false,why:"not a reply"});
+  const prev=RPQ.get(se.id)||Promise.resolve();const pr=prev.catch(()=>{}).then(()=>metaRepair(se,st,ai,{extract:true,hybrid:se.memExtract==="hybrid"})).finally(()=>{if(RPQ.get(se.id)===pr)RPQ.delete(se.id)});RPQ.set(se.id,pr);return pr}
 async function metaRepair(se,st,ai,o){o=o||{};const t0=Date.now(),bind={sid:se.id,n:se.turns.length,ns:DB.sessions.length,text:ai.text,vi:ai.vi},res={ok:false,ms:0};
   const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),num(DB.repairWait,90)*1000);if(o.signal)o.signal.addEventListener("abort",()=>ac.abort());
   try{const r=await ask(repairMsgs(se,ai),{model:cheapId(),max:700,temp:0.1,se,signal:ac.signal,lite:true});res.ms=Date.now()-t0;if(r.usage)res.tok=[r.usage.prompt_tokens||0,r.usage.completion_tokens||0];
