@@ -1,0 +1,25 @@
+// Persistent universes and crossovers (phase 8). Run: node tests/fanfic_universe_unit.mjs
+import assert from 'node:assert/strict'; import fs from 'node:fs'; import vm from 'node:vm'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
+const here = path.dirname(fileURLToPath(import.meta.url)); const ctx = {}; ctx.globalThis = ctx; vm.createContext(ctx);
+vm.runInContext(fs.readFileSync(path.join(here, '../site/fanfic-engine.js'), 'utf8'), ctx); const F = ctx.SFFan; let n = 0; const ok = (c, m) => { assert.ok(c, m); n++; };
+const FX = JSON.parse(fs.readFileSync(path.join(here, 'fixtures/fanfic-ember.json'), 'utf8')); const U = JSON.parse(JSON.stringify(FX.universe)), C = FX.session.canon;
+U.records.push({ id: 'fact:ember:vol3-twist', layer: 'universe', kind: 'fact', text: 'The Warden has a twin', who: [], canon: 'source', rev: 2, spoilerAt: { ch: 45 } });
+const pv = F.upgradePreview(U, C, {});
+ok(pv.from === 1 && pv.to === 2 && pv.newRecords.includes('fact:ember:vol3-twist'), 'upgrade preview lists what the newer source revision adds');
+ok(!F.search(U, Object.assign({}, C, { position: { ch: 60 } }), 'twin').some(r => r.id === 'fact:ember:vol3-twist'), 'before upgrading, the pinned playthrough does not see revision 2 material');
+const up = F.upgrade(C, U, 5); ok(up.applied && up.canon.rev === 2 && C.rev === 1, 'upgrade is explicit and recorded (copy changed, original untouched)');
+ok(F.search(U, Object.assign({}, up.canon, { position: { ch: 60 } }), 'twin').some(r => r.id === 'fact:ember:vol3-twist'), 'after upgrading, the new material is visible');
+ok(F.upgrade(up.canon, U).reason === 'already current' && F.undo(up.canon).canon.rev === 1, 'no double upgrade; upgrade can be undone');
+const pr = F.promote(U, { id: 'f77', text: 'Kael keeps a burned page from the archive', who: ['char:ember:kael'] }, { session: 'play-takeover' });
+ok(pr.applied && pr.universe.records.some(r => r.id === 'fanon:ember:f77' && r.canon === 'fanon' && r.from.session === 'play-takeover'), 'promoted fact becomes shared fanon with provenance');
+ok(!F.knows(pr.universe, Object.assign({}, C, { position: { ch: 60 } }), 'char:ember:mira').some(r => r.id === 'fanon:ember:f77'), 'promoted fanon is never character knowledge');
+ok(F.promote(pr.universe, { text: 'Kael keeps a burned page from the archive' }).reason === 'already in the universe', 'no duplicate promotion');
+ok(F.demote(pr.universe, 'fanon:ember:f77').applied && !F.demote(U, 'fact:ember:archive-fire').applied, 'only promoted records can be removed; source canon is protected');
+const V = { v: 1, id: 'void', name: 'Voidlands', rev: 1, chars: { 'char:void:sel': { id: 'char:void:sel', name: 'Sel Ashe' } }, events: [], records: [{ id: 'fact:void:rift', layer: 'universe', kind: 'fact', text: 'Rifts open at dusk', who: [], canon: 'source', spoilerAt: { ch: 1 } }], rules: { powers: [{ id: 'pow:void:rift', name: 'Rift walking' }], world: ['Night lasts two days'] } };
+const X = F.crossover([U, V]);
+ok(X.id === 'ember+void' && X.chars['char:ember:kael'] && X.chars['char:void:sel'] && X.rules.powers.length === 2 && X.rules.world.some(w => w.startsWith('[Voidlands]')), 'crossover combines both universes with namespaced ids and labelled rules');
+const XC = Object.assign({}, C, { position: { ch: 60 }, universes: [{ id: 'ember', role: 'primary' }, { id: 'void', role: 'secondary' }], powers: [{ from: 'ember', to: 'void', rule: 'translated', scale: 'normalized', note: 'Embers burn rifts shut' }] });
+ok(F.powerRule(XC, 'ember', 'void').rule === 'translated' && F.powerRule(XC, 'void', 'ember').rule === 'separate', 'power rules are per direction; default keeps systems separate');
+const km = F.knowsX(X, XC, 'char:ember:mira').map(r => r.id), ks = F.knowsX(X, XC, 'char:void:sel').map(r => r.id);
+ok(km.includes('fact:ember:archive-fire') && !km.includes('fact:void:rift') && ks.includes('fact:void:rift') && !ks.includes('fact:ember:archive-fire'), 'in a crossover, characters only know common facts from their own universe');
+console.log(`fanfic universes: ${n} checks passed`);

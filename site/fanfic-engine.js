@@ -220,6 +220,28 @@ function realWorldCheck(u,canon,T,out){const sent=String(T||'').split(/(?<=[.!?\
   sent.filter(x=>ROMANCE_WORDS.test(x)).forEach(x=>{Object.keys(u&&u.people||{}).forEach(id=>{const n=nameAny(u,id).split(' ')[0];if(new RegExp('\\b'+n+'\\b','i').test(x))out.push({kind:'real-person-romance',text:'Romance involving a real person: '+x.slice(0,140)})});
     Object.keys(u&&u.chars||{}).forEach(id=>{const age=ageAt(u,canon,id),n=nameOf(u,id).split(' ')[0];if(age!=null&&age<18&&new RegExp('\\b'+n+'\\b','i').test(x))out.push({kind:'minor-romance',text:'Romance involving a minor ('+nameOf(u,id)+'): '+x.slice(0,140)})})});return out}
 
+/* ---------- Part 8 (roadmap phase 8): persistent universes and crossovers ---------- */
+const uOfId=id=>{const m=String(id||'').match(/^(?:char|ev|fact|fanon|person):([^:]+):/);return m?m[1]:null};
+/* upgradePreview(u, canon, state) -> {from, to, newRecords, newEvents, statusChanges} — nothing is changed. */
+function upgradePreview(u,canon,state){const from=canon&&canon.rev||0,to=u&&u.rev||0;if(to<=from)return{from,to,newRecords:[],newEvents:[],statusChanges:[]};
+  const newRecords=arr(u.records).filter(r=>r.rev!=null&&r.rev>from&&r.rev<=to).map(r=>r.id),newEvents=arr(u.events).filter(e=>e.rev!=null&&e.rev>from).map(e=>e.id);
+  const a=evaluate(u,canon,state).status,c2=Object.assign({},canon,{rev:to}),b=evaluate(u,c2,state).status;
+  return{from,to,newRecords,newEvents,statusChanges:arr(u.events).filter(e=>(a[e.id]||{}).status!==(b[e.id]||{}).status).map(e=>({id:e.id,from:(a[e.id]||{}).status,to:(b[e.id]||{}).status}))}}
+function upgrade(canon,u,now){if(!u||(canon&&canon.rev||0)>=(u.rev||0))return{ok:false,applied:false,reason:'already current',canon};return mutate(canon,'upgrade','rev',C=>{C.rev=u.rev;return{note:{to:u.rev}}},now)}
+/* promote(u, record, o) -> {ok, applied, reason, universe}: a playthrough fact becomes shared universe material, marked fanon unless o.canon; never character knowledge. */
+function promote(u,rec,o){o=o||{};if(!u||!rec||!String(rec.text||'').trim())return{ok:false,applied:false,reason:'nothing to promote',universe:u};const U=clone(u),id='fanon:'+U.id+':'+slug(rec.id||rec.text);
+  if(arr(U.records).some(r=>r.id===id||low(r.text)===low(rec.text)))return{ok:false,applied:false,reason:'already in the universe',universe:u};
+  U.records=arr(U.records).concat([{id,layer:'universe',kind:rec.kind||'fact',text:String(rec.text).trim(),who:arr(rec.who),canon:o.canon?'source':'fanon',from:{session:o.session||null,record:rec.id||null},rev:U.rev||0,spoilerAt:null}]);U.updated=o.now||Date.now();
+  return{ok:true,applied:true,reason:null,universe:U}}
+function demote(u,id){const U=clone(u),n=arr(U.records).length;U.records=arr(U.records).filter(r=>!(r.id===id&&String(id).startsWith('fanon:')));return U.records.length<n?{ok:true,applied:true,reason:null,universe:U}:{ok:false,applied:false,reason:'only promoted (fanon) records can be removed',universe:u}}
+/* crossover(universes) -> combined read-only view; ids stay namespaced; powers from every universe. */
+function crossover(list){const L=arr(list).filter(Boolean),C={v:1,id:L.map(u=>u.id).join('+'),name:L.map(u=>u.name).join(' × '),type:L.some(u=>u.type&&u.type!=='fictional')?'hybrid':'fictional',rev:0,chars:{},people:{},aliases:{},events:[],records:[],rules:{powers:[],world:[]},sources:[],conflicts:[]};
+  L.forEach(u=>{Object.assign(C.chars,u.chars||{});Object.assign(C.people,u.people||{});Object.assign(C.aliases,u.aliases||{});C.events=C.events.concat(arr(u.events));C.records=C.records.concat(arr(u.records));C.rules.powers=C.rules.powers.concat(arr(u.rules&&u.rules.powers).map(p=>Object.assign({universe:u.id},p)));C.rules.world=C.rules.world.concat(arr(u.rules&&u.rules.world).map(w=>'['+u.name+'] '+w))});return C}
+/* powerRule(canon, fromUniverse, toUniverse) -> {rule, scale, note} (default: separate systems, original scale). */
+function powerRule(canon,from,to){const r=arr(canon&&canon.powers).find(p=>p.from===from&&p.to===to)||arr(canon&&canon.powers).find(p=>p.from===to&&p.to===from&&p.rule!=='translated');return r?{rule:r.rule,scale:r.scale||'original',note:r.note||''}:{rule:'separate',scale:'original',note:'Abilities follow the rules of their own universe.'}}
+/* homeUniverse(charId) and crossover-aware knowledge: in a crossover, common facts are known only within their own universe. */
+function knowsX(u,canon,charId){const multi=arr(canon&&canon.universes).length>1,home=uOfId(charId);const k=knows(u,canon,charId);return multi&&home?k.filter(r=>arr(r.knownBy).includes(charId)||arr(r.who).includes(charId)||uOfId(r.id)===home):k}
+
 root.SFFan=Object.freeze({slug,hash,ids,splitChapters,candidateNames,indexSource,emptyUniverse,mergeImport,RULE_KEYS,defaults,need,evaluate,impact,cycles,ruleFor,search,
-  knows,identity,relationships,relVisibleTo,isReal,ageAt,romanceAllowed,rank,recordCompetition,setRomance,setRule,lock,exception,setFate,eventStatus,setMode,setPosition,setPOV,setRelationship,undo,canonFor,check,validate,exportStory,restorePreview});
+  knows,identity,relationships,relVisibleTo,isReal,ageAt,romanceAllowed,rank,recordCompetition,setRomance,upgradePreview,upgrade,promote,demote,crossover,powerRule,knowsX,uOfId,setRule,lock,exception,setFate,eventStatus,setMode,setPosition,setPOV,setRelationship,undo,canonFor,check,validate,exportStory,restorePreview});
 })(typeof window!=='undefined'?window:globalThis);
