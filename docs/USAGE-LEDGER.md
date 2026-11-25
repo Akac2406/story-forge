@@ -14,8 +14,9 @@ Sources: **Dashboard** = Anna's OpenCode usage page (authoritative). **Estimate*
 | 2026-11-24 22:20 | Claude | Hybrid A/B: Glass Orchard, hybrid on (40 turns, live v91 trial page) | 1.80% | 0.72% | 0.36% | Estimate |
 | 2026-11-25 02:20 | Claude | Hybrid + recall: Glass Orchard (40 turns, live v92/v93 trial page; resumed once at turn 31) | 1.94% | 0.78% | 0.39% | Estimate |
 | 2026-11-25 03:30 | Claude | Hybrid + recall rerun on v94: Glass Orchard (40 turns; provider slow, ~2 min replies) | 1.60% | 0.64% | 0.32% | Estimate |
+| 2026-11-25 04:10 | Claude | Hybrid + recall on v94: Cedar Ridge (30 turns) | 1.09% | 0.43% | 0.22% | Estimate |
 
-Running total toward the 45% stop: **about 5.3%** monthly (4% dashboard + 1.29% estimate since). Next dashboard reading will replace the estimate.
+Running total toward the 45% stop: **about 5.5%** monthly (4% dashboard + 1.51% estimate since). Next dashboard reading will replace the estimate.
 
 ## Results: Glass Orchard, hybrid + recall (2026-11-25)
 
@@ -48,3 +49,19 @@ Findings: (1) when the narrator skips its notes the hybrid step recovers events 
 | Regenerate / branch / cancel, integrity, real stories untouched | ok | ok |
 
 Conclusion: the fix stops the snowballing (no long streaks of missing notes) and the knowledge score improved from 3/6 to 5/6. One run each, so treat the size of the gain as indicative.
+
+## Results: Cedar Ridge, hybrid only (v91) vs hybrid + recall (v94)
+
+| Check | Hybrid only | Hybrid + recall, v94 |
+|---|---|---|
+| Scene location | 27/30 | 27/30 |
+| Characters present | 23/24 | 24/24 |
+| Events recorded | 16/19 | 18/19 |
+| Knowledge (exact / paraphrase) | 1/4 | 2/4 / 3/4 |
+| No knowledge leaks | | 4/4 |
+| Narrator kept secrets | | 25/25 |
+| Narrator wrote [[META]] | | 25/30 (misses 12, 13, 23, 25, 29) |
+| Missing blocks repaired | | 30/30 |
+| Regenerate / branch / cancel, integrity, real stories untouched | | ok |
+
+Both stories improve with recall on v94; knowledge capture is still the weakest area (exact keyword checks are strict). Recommendation: make recall + the notes-history fix the default for hybrid stories after one more confirming run, and look at LEARNED extraction in the hybrid step (it records "none" too often when the narrator skips its notes).
