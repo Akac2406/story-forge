@@ -1,3 +1,15 @@
+/* Read-only structured inspector, shared by studio screens. */
+function sfStudioReadable(value,depth=0){
+ const label=k=>String(k).replace(/([a-z])([A-Z])/g,"$1 $2").replace(/[_-]/g," ");
+ if(value==null)return h("span",{class:"sub",text:"Not set"});
+ if(typeof value!=="object")return h("span",{text:typeof value==="boolean"?(value?"Yes":"No"):String(value)});
+ if(depth>=8)return h("pre",{text:JSON.stringify(value,null,2)});
+ const entries=Array.isArray(value)?value.map((v,i)=>[String(i+1),v]):Object.entries(value);
+ if(!entries.length)return h("p",{class:"sub",text:"None"});
+ const box=h("div",{class:"sf-readable"});
+ function add(items){for(const [k,v] of items){if(v!==null&&typeof v==="object"){const d=h("details",{},h("summary",{text:label(k)+(Array.isArray(v)?" ("+v.length+")":"")}));d.addEventListener("toggle",()=>{if(d.open&&d.children.length===1)d.append(sfStudioReadable(v,depth+1))});box.append(d)}else box.append(h("div",{class:"sf-readable-row"},h("strong",{text:label(k)}),sfStudioReadable(v,depth+1)))}}
+ add(entries.slice(0,30));if(entries.length>30){let n=30;const more=h("button",{text:"Show more ("+(entries.length-n)+")",onclick:()=>{more.remove();add(entries.slice(n,n+30));n+=30;if(n<entries.length){more.textContent="Show more ("+(entries.length-n)+")";box.append(more)}}});box.append(more)}return box;
+}
 /* Fanfiction UI: source library. All writes go through adapters. */
 (function(){
 "use strict";
@@ -12,7 +24,7 @@ function library(se){
    if(ticket!==epoch||!body.isConnected)return;
    if(!result.ok){status.textContent=result.reason||"Import failed";return}
    pending=result;const p=result.preview;status.textContent="Preview ready. Nothing has been saved.";
-   preview.append(h("div",{class:"ff-panel"},h("b",{text:"Revision "+p.rev}),h("p",{text:"Added: "+JSON.stringify(p.added)+" · Duplicates: "+JSON.stringify(p.duplicate)}),h("p",{text:"Conflicts: "+JSON.stringify(p.conflicts)}),h("p",{text:"Detected names: "+(p.names||[]).join(", ")}),h("details",{},h("summary",{text:"Index report"}),h("pre",{text:JSON.stringify(p.report,null,2)})),h("button",{class:"primary",text:"Confirm and save source",onclick:()=>{
+   preview.append(h("div",{class:"ff-panel"},h("b",{text:"Revision "+p.rev}),h("p",{text:"Added: "+JSON.stringify(p.added)+" · Duplicates: "+JSON.stringify(p.duplicate)}),h("p",{text:"Conflicts: "+JSON.stringify(p.conflicts)}),h("p",{text:"Detected names: "+(p.names||[]).join(", ")}),h("details",{},h("summary",{text:"Index report"}),sfStudioReadable(p.report)),h("button",{class:"primary",text:"Confirm and save source",onclick:()=>{
     if(!pending||!body.isConnected)return;const current=pending;pending=null;
     try{const r=current.commit();status.textContent=r.applied?"Source saved. Story revision unchanged.":r.reason||"No changes applied";preview.replaceChildren();refresh()}catch(e){status.textContent=String(e.message||e)}
    }})));
@@ -30,7 +42,7 @@ window.SFFanUI=Object.assign(window.SFFanUI||{},{library});
 "use strict";
 const options=(xs)=>xs.map(x=>[x,x]), label=x=>String(x).replace(/([a-z])([A-Z])/g,"$1 $2");
 const panel=(...kids)=>h("div",{class:"ff-panel"},...kids);
-const dump=x=>h("pre",{text:JSON.stringify(x,null,2)});
+const dump=x=>sfStudioReadable(x);
 const button=(text,onclick)=>h("button",{text,onclick});
 function screen(se,title,build){
  const body=h("div",{class:"ff-ui"}),status=h("p",{role:"status","aria-live":"polite",class:"sub"}),content=h("div",{class:"ff-ui"});
@@ -107,7 +119,7 @@ window.SFFanUI.polishMenu=function(bg,se){
 
 (function(){
 "use strict";
-const btn=(text,onclick)=>h("button",{text,onclick}), panel=(...kids)=>h("div",{class:"ff-panel"},...kids), dump=x=>h("pre",{text:JSON.stringify(x,null,2)}), opts=a=>a.map(x=>[x,x]);
+const btn=(text,onclick)=>h("button",{text,onclick}), panel=(...kids)=>h("div",{class:"ff-panel"},...kids), dump=x=>sfStudioReadable(x), opts=a=>a.map(x=>[x,x]);
 function open(se,title,build){
  const body=h("div",{class:"ff-ui"}),status=h("p",{role:"status","aria-live":"polite"}),content=h("div",{class:"ff-ui"});
  const refresh=()=>{content.replaceChildren();build(content,apply,refresh)};
@@ -159,7 +171,7 @@ Object.assign(window.SFFanUI,{web,journal,agenda,memory,director});
 
 (function(){
 "use strict";
-const button=(text,onclick)=>h("button",{text,onclick}), dump=x=>h("pre",{text:JSON.stringify(x,null,2)}), panel=(...kids)=>h("div",{class:"ff-panel"},...kids);
+const button=(text,onclick)=>h("button",{text,onclick}), dump=x=>sfStudioReadable(x), panel=(...kids)=>h("div",{class:"ff-panel"},...kids);
 function studio(se,title,build){
  const body=h("div",{class:"ff-ui"}),status=h("p",{role:"status","aria-live":"polite"}),content=h("div",{class:"ff-ui"});
  function refresh(){content.replaceChildren();build(content,apply)}
@@ -184,7 +196,7 @@ Object.assign(window.SFFanUI,{universe,studioShell:studio});
 
 (function(){
 "use strict";
-const button=(text,onclick)=>h("button",{text,onclick}), dump=x=>h("pre",{text:JSON.stringify(x,null,2)}), panel=(...kids)=>h("div",{class:"ff-panel"},...kids), field=(v="",type="text")=>{const e=h("input",{type});e.value=v;return e};
+const button=(text,onclick)=>h("button",{text,onclick}), dump=x=>sfStudioReadable(x), panel=(...kids)=>h("div",{class:"ff-panel"},...kids), field=(v="",type="text")=>{const e=h("input",{type});e.value=v;return e};
 function gameplay(se){window.SFFanUI.studioShell(se,"Gameplay Studio",(b,apply)=>{
  const g=gmState(se),num=e=>Number(e.value),id=field(),name=field(),min=field(0,"number"),max=field(100,"number"),start=field(0,"number"),hidden=h("input",{type:"checkbox"});
  b.append(chk("Enable gameplay",g.enabled,v=>apply(()=>gmEnable(se,v))),h("p",{text:"Level "+g.level+" · XP "+g.xp+" · Day "+g.day}),button("Undo last gameplay change",()=>apply(()=>gmUndo(se))));
@@ -205,7 +217,7 @@ Object.assign(window.SFFanUI,{gameplay});
 
 (function(){
 "use strict";
-const button=(text,onclick)=>h("button",{text,onclick}),dump=x=>h("pre",{text:JSON.stringify(x,null,2)}),panel=(...kids)=>h("div",{class:"ff-panel"},...kids);
+const button=(text,onclick)=>h("button",{text,onclick}),dump=x=>sfStudioReadable(x),panel=(...kids)=>h("div",{class:"ff-panel"},...kids);
 function creator(se){
  const st=getStory(se.storyId),body=h("div",{class:"ff-ui"}),status=h("p",{role:"status","aria-live":"polite"}),report=h("div",{}),importReport=h("div",{}),name=h("input",{}),note=h("textarea",{rows:3}),art=h("input",{type:"checkbox",disabled:!!st?.ooc}),templates=sfTemplates().map(t=>({name:t.name,box:h("input",{type:"checkbox"})}));
  let pending=null,epoch=0;
