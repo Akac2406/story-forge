@@ -108,7 +108,16 @@ Parallel from day 1: ChatGPT builds Studio/Timeline/backup screens against the S
 - Real-model (DeepSeek via OpenCode Go): A/B old vs new engine on Cedar Ridge, Glass Orchard and new long scenarios (100–250 turns), scoring notes adherence, canon contradictions, knowledge leaks, personality and relationship consistency, era consistency, retention of early facts, latency and usage.
 - Usage: ledger in `docs/USAGE-LEDGER.md`; stop real-model testing at 45% monthly total.
 
-## 9. Blockers and limits (honest)
+## 9. Agreed requirements from ChatGPT's review (2026-11-24)
+
+1. Regeneration safety: player corrections (`src:'player'`) survive regenerating or rolling back an earlier reply; they are stored outside per-reply deltas and re-applied on top.
+2. Knowledge isolation: universe facts are world truth, not character knowledge. No NPC "knows" a universe fact unless a record says so.
+3. Compression: summaries replace originals only in prompts; originals stay in the store and visible in Memory Studio.
+4. Existing stories: no new extra AI requests are switched on automatically. Existing stories keep their current mode until the player changes it.
+5. Hybrid: the step fills individual missing events only after deduplication and accuracy are tested; until then it fills only when the narrator wrote none.
+6. Backups exclude credentials; restores are atomic and integrity-checked.
+
+## 10. Blockers and limits (honest)
 
 - Real-model runs use Anna's key, which only exists in her browser. They run on the test address after she enters her key there once, and they need her computer awake with Chrome open while they run.
 - My workspace cannot keep work running after a reply ends. Unattended work means scheduled sessions (each starts fresh from this manifest), and real-model runs still need her computer on.
