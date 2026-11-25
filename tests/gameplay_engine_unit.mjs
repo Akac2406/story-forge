@@ -1,0 +1,42 @@
+// Gameplay engine (phase 9). Run: node tests/gameplay_engine_unit.mjs
+import assert from 'node:assert/strict'; import fs from 'node:fs'; import vm from 'node:vm'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
+const here = path.dirname(fileURLToPath(import.meta.url)); const ctx = {}; ctx.globalThis = ctx; vm.createContext(ctx);
+vm.runInContext(fs.readFileSync(path.join(here, '../site/gameplay-engine.js'), 'utf8'), ctx); const G = ctx.SFGame; let n = 0; const ok = (c, m) => { assert.ok(c, m); n++; };
+let g = G.defaults();
+ok(!g.enabled && G.block(g) === '', 'off by default; no prompt block');
+let r = G.defineStat(g, { id: 'courage', name: 'Courage', min: 0, max: 10, start: 3 }); ok(r.applied && g.stats.courage === undefined, 'define returns a new game; input untouched'); g = r.game;
+ok(G.defineStat(g, { id: 'x', min: 5, max: 5 }).reason === 'min must be below max', 'invalid stat rejected');
+r = G.change(g, 'courage', 20, 'dragon'); ok(r.game.stats.courage.value === 10 && r.result.delta === 7, 'changes are clamped to max'); g = r.game;
+ok(G.change(g, 'courage', 5).reason === 'no change' && G.change(g, 'nope', 1).reason === 'unknown stat nope', 'no-op and unknown stat rejected');
+ok(G.undo(g).game.stats.courage.value === 3, 'undo restores the previous value');
+r = G.gainXp(g, 249); ok(r.game.level === 2 && r.result.up, '249 XP with base 100, growth 1.5 -> level 2'); ok(G.gainXp(r.game, 1).game.level === 3, 'level 3 at 250 XP (100 + 150)'); g = r.game;
+r = G.addQuest(g, { id: 'q1', title: 'Find the deed', steps: ['Search the study', 'Open the chest'], reward: { xp: 50, courage: -2 } }); g = r.game;
+ok(G.addQuest(g, { id: 'q1', title: 'dup' }).reason === 'quest exists', 'duplicate quest rejected');
+g = G.advanceQuest(g, 'q1').game; ok(g.quests[0].done.length === 1 && g.quests[0].status === 'active', 'first step done');
+ok(G.advanceQuest(g, 'q1', 0).reason === 'step already done', 'a step cannot be done twice');
+r = G.advanceQuest(g, 'q1'); ok(r.game.quests[0].status === 'complete' && r.game.xp === 299 && r.game.stats.courage.value === 8, 'completion applies the reward once'); g = r.game;
+ok(G.advanceQuest(g, 'q1').reason === 'quest is complete', 'completed quest cannot advance');
+g = G.addQuest(g, { id: 'q2', title: 'Keep calm', steps: ['Wait'] }).game;
+r = G.addRule(g, { id: 'panic', when: { stat: 'courage', op: '<', value: 3 }, effect: { fail: 'q2', stats: { courage: 1 } }, note: 'Panic ends the vigil' }); g = r.game;
+ok(G.addRule(g, { id: 'bad', when: { stat: 'nope', op: '<', value: 1 } }).reason === 'unknown stat nope', 'rules must name a known stat');
+r = G.change(g, 'courage', -6, 'ghost'); ok(r.fired.includes('panic') && r.game.quests.find(q => q.id === 'q2').status === 'failed' && r.game.stats.courage.value === 3, 'consequence fires: fails quest and applies its effect'); g = r.game;
+r = G.change(g, 'courage', -2); ok(!r.fired.includes('panic'), 'non-repeating consequence fires once');
+ok(G.failQuest(g, 'q2').reason === 'quest is failed', 'failed quest stays failed');
+// careers
+ok(G.careerList().some(c => c.id === 'idol' && c.activities.some(a => a.id === 'variety_show' && a.needRank === 'rookie')), 'career modules listed with rank-gated activities');
+let c = G.startCareer(G.defaults(), 'idol', { seed: 42 }).game;
+ok(c.career.rank === 'trainee' && c.stats.vocal.value === 20 && c.stats.stamina.value === 80, 'idol career sets up stats and starting rank');
+ok(G.startCareer(c, 'idol').reason === 'a career is already running', 'one career at a time');
+ok(G.doActivity(c, 'variety_show').reason === 'needs rank Rookie', 'rank-gated activities are locked');
+const a1 = G.doActivity(c, 'vocal_lesson'), a2 = G.doActivity(c, 'vocal_lesson');
+ok(JSON.stringify(a1.result.got) === JSON.stringify(a2.result.got), 'same seed and state give the same result (no re-rolling)');
+ok(a1.result.got.vocal >= 2 && a1.result.got.vocal <= 5 && a1.result.got.stamina === -8 && a1.game.day === 7, 'gains stay within bounds; cost and time applied');
+let t = c; for (let i = 0; i < 6; i++) t = G.doActivity(t, 'dance_practice').game;
+ok(G.doActivity(t, 'dance_practice').reason === 'too tired: rest first', 'exhaustion blocks training instead of going negative');
+t = G.doActivity(t, 'rest').game; ok(t.stats.stamina.value > 20 && t.stats.stress.value >= 0, 'rest recovers stamina and lowers stress, clamped');
+let p = c; for (let i = 0; i < 40 && p.career.rank === 'trainee'; i++) { const k = p.stats.stamina.value < 15 ? 'rest' : (p.stats.vocal.value <= p.stats.dance.value ? 'vocal_lesson' : 'dance_practice'); p = G.doActivity(p, k).game }
+ok(p.career.rank === 'predebut' && p.stats.vocal.value >= 40 && p.stats.dance.value >= 40, 'rank rises only when requirements are met');
+p = G.set(p, { enabled: true }).game; const b = G.block(p);
+ok(b.includes('Career: Idol · Pre-debut') && b.includes('Vocal ') && b.includes('never invent wins'), 'prompt block shows state and forbids invented wins');
+ok(G.undo(p).game.enabled === false, 'settings change undoable');
+console.log(`gameplay engine: ${n} checks passed`);
