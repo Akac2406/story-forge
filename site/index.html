@@ -430,7 +430,7 @@ function idbOpen(){return new Promise((res,rej)=>{try{const r=indexedDB.open("st
 function idbGet(k){return new Promise((res,rej)=>{const q=idb.transaction("kv").objectStore("kv").get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})}
 function idbDel(k){return new Promise((res,rej)=>{const tx=idb.transaction("kv","readwrite");tx.objectStore("kv").delete(k);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})}
 function idbSet(k,v){return new Promise((res,rej)=>{const tx=idb.transaction("kv","readwrite");tx.objectStore("kv").put(v,k);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error)})}
-function save(){DB.ts=Date.now();if(DB.syncAuto&&typeof syncSoon==="function")syncSoon();let ok=false;try{localStorage.setItem(KEY,JSON.stringify(savedDB()));ok=true}catch(e){try{localStorage.removeItem(KEY)}catch(x){}}
+function save(localTimestamp){DB.ts=localTimestamp??Date.now();if(DB.syncAuto&&typeof syncSoon==="function")syncSoon();let ok=localTimestamp!==undefined;if(!ok)try{localStorage.setItem(KEY,JSON.stringify(savedDB()));ok=true}catch(e){try{localStorage.removeItem(KEY)}catch(x){}}
   if(idb){clearTimeout(saveT);saveT=setTimeout(()=>{idbSet(KEY,JSON.stringify(savedDB())).catch(()=>{if(!ok)toast("Could not save. Device storage may be full.")})},200)}
   else if(!ok)toast("Could not save. Device storage may be full.")}
 function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(tT);tT=setTimeout(()=>t.classList.remove("on"),3800)}
@@ -615,6 +615,12 @@ const HOME_TABS=[
 ];
 // Paths follow HOME_TABS order: Discover, Continue, Studio, Library, Create.
 const HOME_ICON_ART={
+  line:["M12 3a9 9 0 1 1 0 18 9 9 0 1 1 0-18zM15 9l-2 4-4 2 2-4z","M8 4l12 8-12 8z","M4 5h16v14H4zM4 9h16M10 9v10","M5 5h5v14H5zM13 5l4-1 3 14-4 1z","M12 5v14M5 12h14"],
+  rounded:["M4 12a8 8 0 1 0 16 0 8 8 0 1 0-16 0zM12 8v8M8 12h8","M5 6q0-2 2-2l12 7q2 1 0 2L7 20q-2 0-2-2z","M5 5h14q1 0 1 1v12q0 1-1 1H5q-1 0-1-1V6q0-1 1-1zM8 9h8M8 14h8","M6 4h12q2 0 2 2v14H6q-2 0-2-2V6q0-2 2-2zM8 16h7","M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18zM8 12h8M12 8v8"],
+  duotone:["M12 2l3 7 7 3-7 3-3 7-3-7-7-3 7-3zM12 7v10","M3 5h18v14H3zM10 8l6 4-6 4z","M4 4h16v16H4zM4 11h16M11 4v16","M3 6h8v14H3zM14 6l4-1 3 14-5 1z","M4 4h16v16H4zM12 8v8M8 12h8"],
+  runic:["M12 2l9 10-9 10-9-10zM12 6v12M7 12h10","M7 3l12 9-12 9 3-9z","M12 3l9 5v8l-9 5-9-5V8zM3 8l9 5 9-5M12 13v8","M5 20V7l7-4 7 4v13l-7-4zM12 3v13","M5 5l14 14M19 5L5 19M12 3l9 9-9 9-9-9z"],
+  geometric:["M12 3l9 9-9 9-9-9zM12 8l4 4-4 4-4-4z","M6 3l15 9-15 9zM6 12h15","M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z","M3 5h5v14H3zM10 5h5v14h-5zM17 5h4v14h-4z","M12 3l9 9-9 9-9-9zM12 7v10M7 12h10"],
+  blueprint:["M3 3h18v18H3zM12 5v14M5 12h14","M5 5h14v14H5zM9 7l8 5-8 5z","M3 3h18v18H3zM3 8h18M8 8v13M13 12h5M13 16h5","M5 4h14v16H5zM8 4v16M11 8h5M11 12h5","M3 3h18v18H3zM12 6v12M6 12h12"],
   editorial:[
     "M3 5c4-1 6 0 9 2v14c-3-2-5-3-9-2zM21 5c-4-1-6 0-9 2v14c3-2 5-3 9-2z",
     "M6 3h12v18l-6-4-6 4z",
@@ -2363,12 +2369,32 @@ const ffU=se=>se&&se.canon&&(DB.universes||{})[se.canon.universe]||null;
 function ffListUniverses(){return Object.values(DB.universes||{}).map(u=>({id:u.id,name:u.name,rev:u.rev,updated:u.updated,sources:(u.sources||[]).length,chapters:(u.sources||[]).reduce((a,x)=>a+(x.chapters||[]).length,0),chars:Object.keys(u.chars||{}).length,events:(u.events||[]).length}))}
 function ffUniverse(id){return(DB.universes||{})[id]||null}
 function ffSaveUniverse(u){if(!u||!u.id)return{ok:false,applied:false,reason:"no id"};DB.universes=DB.universes||{};DB.universes[u.id]=u;save();return{ok:true,applied:true,reason:null}}
+function ffSaveUniverseArtwork(id,artwork){
+  const current=ffUniverse(id);
+  if(!current)return{ok:false,applied:false,reason:"Universe no longer exists."};
+  const next={...current,artwork};
+  const ts=Date.now();
+  try{
+    localStorage.setItem(KEY,JSON.stringify({...savedDB(),ts,universes:{...DB.universes,[id]:next}}));
+  }catch(e){
+    return{ok:false,applied:false,reason:"Could not save artwork. Browser storage may be full."};
+  }
+  DB.universes[id]=next;
+  save(ts);
+  return{ok:true,applied:true,reason:null};
+}
 /* ffImportPreview(file, {title, kind, universeId, onProgress(i,n), signal}) -> {ok, reason?, preview:{added, duplicate, conflicts, rev, names[], report}, commit()} — nothing is saved until commit(). */
 async function ffImportPreview(file,o){o=o||{};const stop=()=>o.signal&&o.signal.aborted;try{if(stop())return{ok:false,reason:"cancelled"};let input,title=o.title;
     if(/\.epub$/i.test(file.name||"")){const r=await epubText(await file.arrayBuffer(),o.onProgress,true);if(stop())return{ok:false,reason:"cancelled"};input=r.parts.map((t,i)=>({n:i+1,title:r.heads[i]||("Part "+(i+1)),text:t}));title=title||r.title}
     else input=await file.text();if(stop())return{ok:false,reason:"cancelled"};
-    const ix=SFFan.indexSource(input,{title:title||String(file.name||"Source").replace(/\.[a-z0-9]+$/i,""),kind:o.kind||"novel"}),uid0=o.universeId||SFFan.slug(ix.source.title),u=ffUniverse(uid0)||Object.assign(SFFan.emptyUniverse(ix.source.title),{id:uid0}),m=SFFan.mergeImport(u,ix,{note:o.note});
-    return{ok:true,preview:{universe:m.universe.id,added:m.added,duplicate:m.duplicate,conflicts:m.conflicts,rev:m.rev,names:ix.names.slice(0,60),report:ix.report},commit:()=>stop()?{ok:false,applied:false,reason:"cancelled"}:ffSaveUniverse(m.universe)}}
+    const ix=SFFan.indexSource(input,{title:title||String(file.name||"Source").replace(/\.[a-z0-9]+$/i,""),kind:o.kind||"novel"}),uid0=o.universeId||SFFan.slug(ix.source.title),existing=ffUniverse(uid0),u=existing||Object.assign(SFFan.emptyUniverse(ix.source.title),{id:uid0}),m=SFFan.mergeImport(u,ix,{note:o.note});
+    return{ok:true,preview:{universe:m.universe.id,added:m.added,duplicate:m.duplicate,conflicts:m.conflicts,rev:m.rev,names:ix.names.slice(0,60),report:ix.report},commit:()=>{
+      if(stop())return{ok:false,applied:false,reason:"cancelled"};
+      const latest=ffUniverse(uid0);
+      if(latest!==existing&&(!latest||!existing||
+        Object.keys({...latest,...existing}).some(key=>key!=="artwork"&&latest[key]!==existing[key])))return{ok:false,applied:false,reason:"Universe changed. Preview the import again."};
+      return ffSaveUniverse(latest?.artwork?{...m.universe,artwork:latest.artwork}:m.universe);
+    }}}
   catch(e){return{ok:false,reason:String(e&&e.message||e)}}}
 function ffCharId(u,name){if(!u||!name)return null;const n=String(name).toLowerCase(),A=u.aliases||{};for(const id in A)if((A[id]||[]).some(a=>String(a).toLowerCase()===n||String(a).toLowerCase().split(" ")[0]===n.split(" ")[0]))return id;for(const id in u.chars||{})if(String(u.chars[id].name).toLowerCase()===n)return id;return null}
 function ffWorldState(se){const u=ffU(se),st={alive:{},at:{},knows:{},rel:{},has:{}};if(!u)return st;(se.dead||[]).forEach(n=>{const id=ffCharId(u,n);if(id)st.alive[id]=false});

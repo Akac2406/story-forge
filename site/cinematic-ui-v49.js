@@ -1,6 +1,40 @@
 /* Story Forge v49: non-invasive visual enhancement only. */
 (()=>{'use strict';
 const h=(tag,cls,txt)=>{const x=document.createElement(tag);if(cls)x.className=cls;if(txt)x.textContent=txt;return x};
+function readerControls(log,settings){
+ const old=log.parentNode.querySelector('.sf-cv-controls');
+ if(!settings.autoAdvance&&!settings.fullscreen){old?.remove();return}
+ if(old?.dataset.options===JSON.stringify([settings.autoAdvance,settings.autoDelay,settings.fullscreen]))return;
+ old?.remove();
+ const bar=h('div','sf-cv-controls');
+ bar.dataset.options=JSON.stringify([settings.autoAdvance,settings.autoDelay,settings.fullscreen]);
+ if(settings.autoAdvance){
+  const play=h('button','','Play saved replies');let timer=null;
+  function stop(){clearTimeout(timer);timer=null;play.textContent='Play saved replies';play.setAttribute('aria-pressed','false')}
+  play.type='button';stop();
+  play.addEventListener('click',()=>{
+   if(timer!==null){stop();return}
+   const replies=[...log.querySelectorAll('.turn.ai:not(.streaming)')];let index=0;
+   function step(){
+    if(!bar.isConnected||document.hidden||index>=replies.length){stop();return}
+    const reply=replies[index++];
+    log.scrollTop+=reply.getBoundingClientRect().top-log.getBoundingClientRect().top;
+    timer=setTimeout(step,settings.autoDelay*1000);
+   }
+   play.textContent='Pause saved replies';play.setAttribute('aria-pressed','true');step();
+  });
+  bar.append(play);
+ }
+ if(settings.fullscreen&&document.fullscreenEnabled){
+  const button=h('button','','Toggle fullscreen');button.type='button';
+  button.addEventListener('click',async()=>{
+   try{if(document.fullscreenElement)await document.exitFullscreen();else await document.querySelector('#app').requestFullscreen()}
+   catch(e){toast('Fullscreen is unavailable in this browser.')}
+  });
+  bar.append(button);
+ }
+ if(bar.children.length)log.before(bar);
+}
 function decorate(){
  const page=document.querySelector('#app>.page'),tabs=document.querySelector('#app>.tabs');
  /* The Discover hero needs the home page; the reader part below runs on the story view, which has no .page. */
@@ -19,6 +53,7 @@ function decorate(){
    for(const [k,v] of Object.entries({layout:c.layout,lighting:scene.lighting||c.lighting,overlay:scene.overlay||c.overlay,dialogue:c.dialogueBox,narration:c.narration,reveal:reduced&&c.textReveal==='typewriter'?'fade-in':c.textReveal,transition:reduced?'none':scene.transition||c.transition}))root.dataset['sfCv'+k[0].toUpperCase()+k.slice(1)]=v||'none';
    root.dataset.sfCvReduced=String(!!reduced);
    root.dataset.sfCvNameplate=String(c.nameplate!==false);
+   root.dataset.sfCvHideTools=String(!!c.hideUI);
    if(reduced&&['rain','snow','embers','petals'].includes(root.dataset.sfCvOverlay))root.dataset.sfCvOverlay='none';
    const stageLog=document.querySelector('#log');document.querySelector('.sf-cv-cast')?.remove();
    if(stageLog&&cv.layout?.caps?.portraits&&typeof cvCast==='function'){
@@ -32,8 +67,24 @@ function decorate(){
     if(stage.children.length)stageLog.before(stage);
    }
 
-   const log0=document.querySelector('#log'),ref=scene.background,src=ref&&typeof cvArt==='function'?cvArt(se,ref):null;
-   if(log0){if(src&&cv.layout?.caps?.background)log0.style.backgroundImage='linear-gradient(#0005,#0009),url('+JSON.stringify(src)+')';else log0.style.removeProperty('background-image')}
+   const log0=document.querySelector('#log'),ref=scene.background;
+   const backdrop=typeof apState==='function'?apState(se).background:null;
+   const sceneArt=ref&&typeof cvArt==='function'?cvArt(se,ref):null;
+   const appearanceArt=backdrop&&typeof cvArt==='function'?cvArt(se,backdrop):null;
+   const src=(cv.layout?.caps?.background?sceneArt:null)||appearanceArt;
+   if(log0){
+    if(src)log0.style.backgroundImage='linear-gradient(#0005,#0009),url('+JSON.stringify(src)+')';
+    else log0.style.removeProperty('background-image');
+    const sceneKey=JSON.stringify([ref,backdrop,scene.lighting,scene.overlay,root.dataset.sfCvTransition]);
+    if(log0.dataset.sceneKey!==sceneKey){
+     log0.dataset.sceneKey=sceneKey;
+     log0.classList.remove('sf-cv-scene-enter');
+     if(root.dataset.sfCvTransition!=='none'){
+      requestAnimationFrame(()=>{if(log0.dataset.sceneKey===sceneKey)log0.classList.add('sf-cv-scene-enter')});
+     }
+    }
+    readerControls(log0,c);
+   }
   }
   const log=document.querySelector('#log');if(log&&!document.querySelector('.sf49-viewbar')){
    const bar=h('div','sf49-viewbar');bar.append(h('span','','Reading view'));

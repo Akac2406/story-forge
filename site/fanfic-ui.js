@@ -159,12 +159,16 @@ function memory(se){open(se,"Memory Studio",(b,apply)=>{
  const layers=["permanent","working","episodic","semantic","character","relationship","temporal","world","universe"],q=h("input",{placeholder:"Search memories"}),layer=sel("",[["","All layers"],...opts(layers)],()=>draw()),deleted=sel("active",opts(["active","deleted","all"]),()=>draw()),out=h("div",{class:"ff-ui"});let limit=30;
  function draw(){const rows=memQuery(se,{text:q.value,layer:layer.value||undefined,deleted:deleted.value==="deleted"?"only":deleted.value==="all",limit:limit+1});out.replaceChildren(...rows.slice(0,limit).map(r=>{const edit=h("textarea",{rows:3});edit.value=r.text;return panel(h("b",{text:r.layer+" · "+r.kind}),h("p",{class:"sub",text:r.src+" · "+r.id+(r.pin?" · Pinned":"")+(r.lock?" · Locked":"")}),h("p",{text:r.text}),h("details",{},h("summary",{text:"Edit and history"}),edit,btn("Save text",()=>apply(()=>memEdit(se,r.id,{text:edit.value}))),btn(r.pin?"Unpin":"Pin",()=>apply(()=>memPin(se,r.id,!r.pin))),btn(r.lock?"Unlock":"Lock",()=>apply(()=>memLock(se,r.id,!r.lock))),btn(r.deleted?"Restore":"Soft delete",()=>apply(()=>r.deleted?memRestore(se,r.id):memDelete(se,r.id))),dump(memHistory(se,r.id))))}));if(rows.length>limit)out.append(btn("Show more",()=>{limit+=30;draw()}));if(!rows.length)out.append(h("p",{text:"No matching memories."}))}
  q.addEventListener("input",()=>{limit=30;draw()});const add=h("textarea",{rows:3}),addLayer=sel("permanent",opts(layers),()=>{});
- b.append(h("p",{text:memView(se).records.length+" records across nine layers"}),dump(memStatus(se)),btn("Undo last memory edit",()=>apply(()=>memUndo(se))),fld("Search",q),fld("Layer",layer),fld("Visibility",deleted),out,panel(h("b",{text:"Add memory"}),addLayer,add,btn("Save memory",()=>{if(add.value.trim())apply(()=>memAdd(se,{layer:addLayer.value,text:add.value.trim(),kind:"note"}))})),h("h3",{text:"Open conflicts"}),...memConflicts(se).map(c=>{const choice=sel("dismissed",opts(["keep-narrator","keep-step","dismissed"]),()=>{}),records=memView(se).records.filter(r=>!r.deleted),pick=sel("",[["","Select memory to correct"],...records.map(r=>[r.id,r.text.slice(0,100)])],()=>{edit.value=records.find(r=>r.id===pick.value)?.text||""}),edit=h("textarea",{rows:3});return panel(dump(c),choice,btn("Mark resolved (no memory edit)",()=>apply(()=>memResolve(se,c.id,choice.value))),h("details",{},h("summary",{text:"Resolve with corrected memory"}),pick,edit,btn("Save correction and resolve",()=>{if(pick.value&&edit.value.trim())apply(()=>memResolve(se,c.id,"edited",{edit:{id:pick.value,patch:{text:edit.value.trim()}}}))})))}),panel(h("b",{text:"Detected contradictions"}),dump(SFMem2.contradictions(memView(se)))));draw();
+ b.append(panel(h("h3",{text:"Memory records"}),h("p",{text:memView(se).records.length+" records across nine layers"}),h("details",{},h("summary",{text:"Memory status"}),dump(memStatus(se))),btn("Undo last memory edit",()=>apply(()=>memUndo(se))),h("div",{class:"ff-filter-grid"},fld("Search",q),fld("Layer",layer),fld("Visibility",deleted))),out,panel(h("b",{text:"Add memory"}),addLayer,add,btn("Save memory",()=>{if(add.value.trim())apply(()=>memAdd(se,{layer:addLayer.value,text:add.value.trim(),kind:"note"}))})),h("h3",{text:"Open conflicts"}),...memConflicts(se).map(c=>{const choice=sel("dismissed",opts(["keep-narrator","keep-step","dismissed"]),()=>{}),records=memView(se).records.filter(r=>!r.deleted),pick=sel("",[["","Select memory to correct"],...records.map(r=>[r.id,r.text.slice(0,100)])],()=>{edit.value=records.find(r=>r.id===pick.value)?.text||""}),edit=h("textarea",{rows:3});return panel(dump(c),choice,btn("Mark resolved (no memory edit)",()=>apply(()=>memResolve(se,c.id,choice.value))),h("details",{},h("summary",{text:"Resolve with corrected memory"}),pick,edit,btn("Save correction and resolve",()=>{if(pick.value&&edit.value.trim())apply(()=>memResolve(se,c.id,"edited",{edit:{id:pick.value,patch:{text:edit.value.trim()}}}))})))}),panel(h("b",{text:"Detected contradictions"}),dump(SFMem2.contradictions(memView(se)))));draw();
 })}
 function director(se){open(se,"Story Director",(b,apply)=>{
- const s=dirSettings(se),levels=["off","low","secondary","balanced","high"];b.append(chk("Enable Story Director",s.enabled,v=>apply(()=>dirEnable(se,v))),h("p",{class:"sub",text:"Guidance never overrides player choices."}),h("h3",{text:"Narrative focus"}),...Object.entries(s.focus).map(([k,v])=>fld(k,sel(v,opts(levels),x=>apply(()=>dirSet(se,{focus:{[k]:x}}))))));
- for(const [k,values] of Object.entries({pacing:["slow","natural","fast"],dialogue:levels,humor:levels,suspense:levels,description:levels,timeSkips:["ask","allowed","never"],subplots:["none","allowed","encouraged"],canonSpeed:["slow","natural","fast"]}))b.append(fld(k,sel(s[k],opts(values),v=>apply(()=>dirSet(se,{[k]:v})))));
- b.append(panel(h("b",{text:"Recent narrative analysis (heuristic)"}),dump(dirAnalyze(se))));
+ const s=dirSettings(se),levels=["off","low","secondary","balanced","high"];
+ const focus=Object.entries(s.focus).map(([key,value])=>fld(key,sel(value,opts(levels),next=>apply(()=>dirSet(se,{focus:{[key]:next}})))));
+ b.append(panel(chk("Enable Story Director",s.enabled,v=>apply(()=>dirEnable(se,v))),h("p",{class:"sub",text:"Guidance never overrides player choices."})),
+   panel(h("h3",{text:"Narrative focus"}),h("div",{class:"ff-filter-grid"},...focus)));
+ const pacing=h("div",{class:"ff-filter-grid"});
+ for(const [k,values] of Object.entries({pacing:["slow","natural","fast"],dialogue:levels,humor:levels,suspense:levels,description:levels,timeSkips:["ask","allowed","never"],subplots:["none","allowed","encouraged"],canonSpeed:["slow","natural","fast"]}))pacing.append(fld(k,sel(s[k],opts(values),v=>apply(()=>dirSet(se,{[k]:v})))));
+ b.append(panel(h("h3",{text:"Pacing and tone"}),pacing),panel(h("b",{text:"Recent narrative analysis (heuristic)"}),dump(dirAnalyze(se))));
 })}
 Object.assign(window.SFFanUI,{web,journal,agenda,memory,director});
 })();
@@ -180,7 +184,14 @@ function studio(se,title,build){
 }
 function universe(se){studio(se,"Universe Studio",(b,apply)=>{
  const list=ffListUniverses(),u=ffU(se),p=ffUpgradePreview(se);
- b.append(h("p",{text:"Shared universe library · Playthroughs retain their own outcomes."}),...list.map(x=>panel(h("b",{text:x.name}),h("p",{text:"Revision "+x.rev+" · "+x.chapters+" chapters · "+x.events+" events"}))),button("Import sources",()=>window.SFFanUI.library(se)));
+ const results=h("div",{class:"ff-ui"}),query=h("input",{type:"search",placeholder:"Search universes","aria-label":"Search universes",oninput:drawLibrary});
+ function drawLibrary(){
+  const matching=list.filter(x=>x.name.toLowerCase().includes(query.value.trim().toLowerCase()));
+  results.replaceChildren(...matching.map(x=>panel(h("b",{text:x.name}),h("p",{text:"Revision "+x.rev+" · "+x.chapters+" chapters · "+x.events+" events"}))),
+    matching.length?null:h("p",{class:"sub",text:list.length?"No matching universes.":"No universes imported yet."}));
+ }
+ drawLibrary();
+ b.append(panel(h("h3",{text:"Shared universes"}),query,results,button("Import sources",()=>window.SFFanUI.library(se))));
  if(!u)return;
  b.append(panel(h("b",{text:u.name+" · pinned revision "+se.canon.rev}),dump(p),button("Apply previewed revision upgrade",()=>{if(p&&p.to!==p.from&&confirm("Upgrade this playthrough to revision "+p.to+"?"))apply(()=>ffUpgrade(se))}),button("Undo canon change",()=>apply(()=>ffUndo(se)))));
  const records=memQuery(se,{limit:100}).filter(r=>!r.deleted),pick=sel("",[["","Choose a fact"],...records.map(r=>[r.id,r.text.slice(0,100)])],()=>{});
@@ -205,8 +216,31 @@ function gameplay(se){window.SFFanUI.studioShell(se,"Gameplay Studio",(b,apply)=
  b.append(h("h3",{text:"Stats"}),...Object.entries(g.stats||{}).map(([key,s])=>{const delta=field(1,"number");return panel(h("b",{text:s.name||key}),dump(s),fld("Change",delta),button("Apply change",()=>apply(()=>gmChange(se,key,num(delta),"Player adjustment"))))}),panel(h("b",{text:"Define stat"}),fld("ID",id),fld("Name",name),fld("Minimum",min),fld("Maximum",max),fld("Starting value",start),h("label",{},hidden," Hidden from narrator"),button("Add stat",()=>apply(()=>gmDefineStat(se,{id:id.value.trim(),name:name.value.trim(),min:num(min),max:num(max),start:num(start),hidden:hidden.checked})))));
  const qi=field(),qt=field(),steps=h("textarea",{rows:3}),reward=field(0,"number");
  b.append(h("h3",{text:"Quests"}),...g.quests.map(q=>panel(h("b",{text:q.title}),dump(q),button("Advance",()=>apply(()=>gmAdvanceQuest(se,q.id))),button("Fail quest",()=>{if(confirm("Mark quest failed?"))apply(()=>gmFailQuest(se,q.id,"Player decision"))}))),panel(fld("Quest ID",qi),fld("Title",qt),fld("Objectives (one per line)",steps),fld("XP reward",reward),button("Add quest",()=>apply(()=>gmAddQuest(se,{id:qi.value.trim(),title:qt.value.trim(),steps:steps.value.split("\n").map(x=>x.trim()).filter(Boolean),reward:{xp:num(reward)}})))));
- const ri=field(),stat=sel("level",["level","day",...Object.keys(g.stats||{})].map(x=>[x,x]),()=>{}),op=sel(">=",["<","<=",">",">=","=="].map(x=>[x,x]),()=>{}),threshold=field(1,"number"),effect=h("textarea",{rows:3}),note=field(),repeat=h("input",{type:"checkbox"});effect.value="{}";
- b.append(h("h3",{text:"Consequence rules"}),dump(g.rules),panel(fld("Rule ID",ri),fld("Condition",stat),op,threshold,fld("Effect JSON (stats, fail, unlock)",effect),fld("Note",note),h("label",{},repeat," Repeat when re-armed"),button("Add rule",()=>apply(()=>gmAddRule(se,{id:ri.value.trim(),when:{stat:stat.value,op:op.value,value:num(threshold)},effect:JSON.parse(effect.value),note:note.value,repeat:repeat.checked})))));
+ const statChoices=Object.entries(g.stats||{}).map(([id,s])=>[id,s.name||id]);
+ const ri=field(),stat=sel("level",[["level","Level"],["day","Story day"],...statChoices],()=>{});
+ const op=sel(">=",["<","<=",">",">=","=="].map(x=>[x,x]),()=>{}),threshold=field(1,"number");
+ const quests=[["","None"],...g.quests.map(q=>[q.id,q.title])];
+ const fail=sel("",quests,()=>{}),unlock=sel("",quests,()=>{}),deltas=h("div",{class:"ff-ui"});
+ const note=field(),repeat=h("input",{type:"checkbox"}),advanced=h("textarea",{rows:3,placeholder:"Optional JSON override"});
+ addAdjustment();
+ function addAdjustment(){
+   const key=sel("",[["","Choose a stat"],["xp","XP"],...statChoices.filter(([id])=>id!=="xp")],()=>{}),amount=field(0,"number");
+   const row=h("div",{class:"ff-filter-grid"},fld("Stat to change",key),fld("Change amount",amount),button("Remove adjustment",()=>row.remove()));
+   row.read=()=>[key.value,num(amount)];
+   deltas.append(row);
+ }
+ function ruleEffect(){
+   if(advanced.value.trim())return JSON.parse(advanced.value);
+   const stats=Object.fromEntries([...deltas.children].map(row=>row.read()).filter(([key])=>key));
+   return {...(Object.keys(stats).length?{stats}:{}),...(fail.value?{fail:fail.value}:{}),...(unlock.value?{unlock:unlock.value}:{})};
+ }
+ b.append(h("h3",{text:"Consequence rules"}),dump(g.rules),panel(fld("Rule ID",ri),
+  h("div",{class:"ff-filter-grid"},fld("Condition",stat),fld("Comparison",op),fld("Threshold",threshold)),
+  deltas,button("Add stat adjustment",addAdjustment),h("div",{class:"ff-filter-grid"},fld("Fail quest",fail),fld("Unlock quest",unlock)),
+  h("details",{},h("summary",{text:"Advanced effect JSON"}),fld("Effect JSON (stats, fail, unlock)",advanced)),
+  fld("Note",note),h("label",{},repeat," Repeat when re-armed"),button("Add rule",()=>apply(()=>gmAddRule(se,{
+    id:ri.value.trim(),when:{stat:stat.value,op:op.value,value:num(threshold)},effect:ruleEffect(),note:note.value,repeat:repeat.checked
+  })))));
  const careers=gmCareers(),custom=h("textarea",{rows:6});b.append(h("h3",{text:"Careers"}),dump(g.career));
  if(!g.career)b.append(...careers.map(c=>panel(h("b",{text:c.name}),button("Start career",()=>apply(()=>gmStartCareer(se,c.id,{}))))),panel(fld("Custom career module JSON",custom),button("Start custom career",()=>apply(()=>{const c=JSON.parse(custom.value);return gmStartCareer(se,c.id,{custom:c})}))));
  else {const c=careers.find(x=>x.id===g.career.id)||careers.find(x=>x.id===g.career.module?.id);const acts=c?.activities||Object.entries(g.career.module?.activities||{}).map(([id,a])=>({id,...a}));b.append(...acts.map(a=>button(a.name+(a.needRank?" · requires "+a.needRank:""),()=>{if(confirm("Advance one career week?"))apply(()=>gmActivity(se,a.id))})))}
@@ -221,12 +255,18 @@ const button=(text,onclick)=>h("button",{text,onclick}),dump=x=>sfStudioReadable
 function creator(se){
  const st=getStory(se.storyId),body=h("div",{class:"ff-ui"}),status=h("p",{role:"status","aria-live":"polite"}),report=h("div",{}),importReport=h("div",{}),name=h("input",{}),note=h("textarea",{rows:3}),art=h("input",{type:"checkbox",disabled:!!st?.ooc}),templates=sfTemplates().map(t=>({name:t.name,box:h("input",{type:"checkbox"})}));
  let pending=null,epoch=0;
+ const templateRows=templates.map(t=>h("label",{},t.box," "+t.name));
+ const templateList=h("div",{class:"ff-filter-grid"},...templateRows);
+ const templateSearch=h("input",{type:"search",placeholder:"Search character templates","aria-label":"Search character templates",oninput:e=>{
+  const q=e.target.value.trim().toLowerCase();
+  templateRows.forEach((row,i)=>{row.hidden=!templates[i].name.toLowerCase().includes(q)});
+ }});
  function options(){return {sessionId:se.id,templates:templates.filter(t=>t.box.checked).map(t=>t.name),art:art.checked&&!st?.ooc,creator:{name:name.value,note:note.value}}}
  function run(download){try{const r=download?crDownload(se.storyId,options()):crBuild(se.storyId,options());status.textContent=r.ok?(download?"Package prepared for download":"Preview ready"):r.reason||"Export failed";report.replaceChildren(dump({size:r.size,artBlocked:r.artBlocked,removed:r.removed,preview:r.ok?crPreview(r.package):null}))}catch(e){status.textContent=String(e.message||e)}}
  const file=h("input",{type:"file",accept:".json,.sfcreator.json"}),openButton=button("Create new story from package",()=>{if(!pending||!confirm("Create a new story from this blueprint?"))return;try{const r=crOpen(pending);status.textContent=r.applied?"New story created: "+r.storyId:r.reason||"No change";if(r.applied){pending=null;openButton.disabled=true}importReport.append(dump(r))}catch(e){status.textContent=String(e.message||e)}});openButton.disabled=true;
  file.addEventListener("change",()=>{epoch++;pending=null;openButton.disabled=true;importReport.replaceChildren()});
  const preview=button("Preview import",async()=>{const ticket=++epoch;pending=null;openButton.disabled=true;importReport.replaceChildren();try{const f=file.files[0];if(!f)throw Error("Choose a package first");if(f.size>8*1024*1024)throw Error("Package exceeds 8 MB");const p=JSON.parse(await f.text());if(ticket!==epoch||!body.isConnected)return;const r=crPreview(p);importReport.append(dump(r));if(r.ok){pending=p;openButton.disabled=false}status.textContent=r.ok?"Validated. Nothing imported yet.":"Package validation failed"}catch(e){if(ticket===epoch)status.textContent=String(e.message||e)}});
- body.append(status,panel(h("h3",{text:"Export reusable blueprint"}),h("p",{text:"Excludes playthroughs, memories, credentials and gameplay progress."}),fld("Creator name",name),fld("Creator notes",note),h("label",{},art," Include images"),st?.ooc?h("p",{text:"Images cannot be exported from OOC-imported stories."}):null,h("b",{text:"Character templates"}),...templates.map(t=>h("label",{},t.box," "+t.name)),button("Preview export",()=>run(false)),button("Download package",()=>run(true)),report),panel(h("h3",{text:"Import creator package"}),file,preview,importReport,openButton));sheet("Creator Studio",body);
+ body.append(status,panel(h("h3",{text:"Export reusable blueprint"}),h("p",{text:"Excludes playthroughs, memories, credentials and gameplay progress."}),fld("Creator name",name),fld("Creator notes",note),h("label",{},art," Include images"),st?.ooc?h("p",{text:"Images cannot be exported from OOC-imported stories."}):null,h("b",{text:"Character templates"}),templates.length?templateSearch:h("p",{class:"sub",text:"No character templates saved."}),templateList,button("Preview export",()=>run(false)),button("Download package",()=>run(true)),report),panel(h("h3",{text:"Import creator package"}),file,preview,importReport,openButton));sheet("Creator Studio",body);
 }
 Object.assign(window.SFFanUI,{creator});
 })();
@@ -260,18 +300,35 @@ const btn=(text,onclick)=>h("button",{text,onclick}),panel=(...kids)=>h("div",{c
 function appearance(se){
  let scope="story",device=matchMedia("(max-width: 700px)").matches?"mobile":"desktop";
  window.SFFanUI.studioShell(se,"Appearance & Customization",(b,apply)=>{
- const s=apState(se,device),set=(k,v)=>apply(()=>apSet(se,{[k]:v},scope));
+ const set=(k,v)=>apply(()=>apSet(se,{[k]:v},scope));
  const opts=xs=>xs.map(x=>typeof x==="string"?[x,x]:Array.isArray(x)?x:[x.id,x.name]);
- const choose=(k,xs)=>fld(k,sel(s[k],opts(xs),v=>set(k,v)));
- const field=(k,type="text",min,max,step)=>fld(k,h("input",{type,min,max,step,value:s[k]??"",onchange:e=>set(k,type==="number"?Number(e.target.value):e.target.value||null)}));
+ const choose=(k,xs)=>fld(k,sel(apState(se,device)[k],opts(xs),v=>set(k,v)));
+ const field=(k,type="text",min,max,step)=>fld(k,h("input",{type,min,max,step,value:apState(se,device)[k]??"",onchange:e=>set(k,type==="number"?Number(e.target.value):e.target.value||null)}));
  const scopePick=sel(scope,opts(["global","story","mobile","desktop"]),v=>{scope=v;device=v==="mobile"||v==="desktop"?v:device;render()});
  function render(){b.replaceChildren();build()}
  function build(){
  const current=apState(se,device);
  b.append(panel(h("b",{text:"Editing scope"}),scopePick,h("p",{text:"Effective preview: "+device+". Device overrides take precedence over story and global settings."}),btn("Reset selected scope",()=>{if(confirm("Reset appearance for "+scope+"?"))apply(()=>apReset(se,scope))})));
- b.append(panel(h("h3",{text:"Themes"}),...apThemes().map(t=>h("button",{onclick:()=>set("theme",t.id),style:"display:flex;align-items:center;gap:8px;flex-wrap:wrap"},t.name,...(t.palette||[]).map(c=>h("span",{style:"display:inline-block;width:20px;height:20px;border:1px solid currentColor;border-radius:4px;background:"+c}))))));
+ const selected=apThemes().find(t=>t.id===current.theme);
+ const [bg,card,accent]=selected?.palette||[];
+ const preview=h("section",{class:"ff-appearance-preview","aria-label":"Appearance preview"});
+ for(const [key,value] of Object.entries({bg:current.bg||bg,card:current.card||card,text:current.text,accent:current.accent||accent})){
+   if(value)preview.style.setProperty("--preview-"+key,value);
+ }
+ preview.style.setProperty("--preview-scale",current.fontScale||1);
+ if(current.radius!==undefined)preview.style.setProperty("--preview-radius",current.radius+"px");
+ preview.append(h("strong",{text:selected?.name||"Current appearance"}),h("p",{text:"The lanterns lit the road into town."}),h("small",{text:[current.layout,current.format].filter(Boolean).join(" · ")}));
+ b.append(preview);
+ const themes=h("div",{class:"ff-option-grid"}),themeQuery=h("input",{type:"search","aria-label":"Search themes",placeholder:"Search themes",oninput:filterThemes});
+ function filterThemes(){
+   const matching=apThemes().filter(t=>t.name.toLowerCase().includes(themeQuery.value.trim().toLowerCase()));
+   themes.replaceChildren(...matching.map(t=>h("button",{class:"ff-appearance-option","aria-pressed":String(current.theme===t.id),onclick:()=>set("theme",t.id)},
+     t.name,h("span",{class:"ff-swatches","aria-hidden":"true"},...(t.palette||[]).map(c=>h("span",{style:"background:"+c}))))),
+     matching.length?null:h("p",{class:"sub",text:"No themes match."}));
+ }
+ filterThemes();b.append(panel(h("h3",{text:"Themes"}),themeQuery,themes));
  b.append(panel(h("h3",{text:"Layout and typography"}),choose("layout",apLayouts()),choose("format",apFormats()),choose("nav",["bottom","top","side","floating"]),choose("panel",["right","left","bottom","overlay"]),field("font"),field("fontScale","number",0.8,1.4,0.05),choose("spacing",["compact","cozy","roomy"]),choose("borders",["none","thin","bold"]),field("radius","number",0,24,1),field("transparency","number",0,0.6,0.05),...["bg","card","accent","text"].map(k=>field(k)),field("background"),choose("motion",["none","subtle","full"]),choose("contrast",["normal","high"]),chk("Reduced motion",!!current.reducedMotion,v=>set("reducedMotion",v))));
- b.append(panel(h("h3",{text:"Icon design families"}),...apIcons().map(i=>btn(i.name,()=>set("icons",i.id)))));
+ b.append(panel(h("h3",{text:"Icon design families"}),h("div",{class:"ff-option-grid"},...apIcons().map(i=>h("button",{class:"ff-appearance-option","aria-pressed":String(current.icons===i.id),onclick:()=>set("icons",i.id)},i.name)))));
  const name=h("input",{placeholder:"Preset name"}),file=h("input",{type:"file",accept:".json"}),report=h("pre",{}),confirmImport=btn("Save imported preset",()=>{if(pending){const p=pending;pending=null;apply(()=>apImport(p))}});let pending=null;confirmImport.disabled=true;
  file.addEventListener("change",()=>{pending=null;confirmImport.disabled=true;report.textContent=""});
  b.append(panel(h("h3",{text:"Custom presets"}),name,btn("Save effective appearance",()=>apply(()=>apSavePreset(name.value,apState(se,device)))),...apPresets().map(p=>panel(h("b",{text:p.name}),btn("Apply to "+scope,()=>apply(()=>apApplyPreset(se,p.id,scope))),btn("Export",()=>{const data=apExportPreset(p.id);if(!data)return;const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:"application/json"}));const a=h("a",{href:url,download:"story-forge-appearance.json"});document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}),btn("Delete preset",()=>{if(confirm("Delete this appearance preset?"))apply(()=>apDeletePreset(p.id))}))),file,btn("Preview import",async()=>{pending=null;confirmImport.disabled=true;try{const f=file.files[0];if(!f||f.size>1024*1024)throw Error("Choose a JSON preset under 1 MB");const data=JSON.parse(await f.text());if(file.files[0]!==f||!b.isConnected)return;const r=apImportPreview(data);report.textContent=JSON.stringify(r,null,2);if(r.ok){pending=data;confirmImport.disabled=false}}catch(e){report.textContent=String(e.message||e)}}),report,confirmImport));
@@ -289,13 +346,15 @@ const labels={oc:"Original character",self:"Self-insert",takeover:"Canon takeove
 function createFanfiction(root,initialUniverse="",initialDraft=""){
  let step=0,uid=initialUniverse,modes=["oc"],takeover="",name="",desc="",title="",setting="",ch=0,age="",pov="second",pref="any",pacing="natural",rules={},others=[],link="merged",powers={},pending=null,controller=null,epoch=0,created=false,locks=[],exceptions=[],fates={},foreknowledge=[],draftId=null,draftName="";
  const body=h("div",{class:"ff-ui ff-create"}),status=h("p",{role:"status","aria-live":"polite"}),content=h("div",{class:"ff-ui ff-create-content"}),steps=["Universe","Scenario","Character","Timeline & narration","Canon rules","Crossover","Review"];
+ const rail=h("ol",{class:"ff-stage-list","aria-label":"Creation steps"}),summary=h("aside",{class:"ff-live-summary"});
  const config=()=>({modes:[...modes],start:{ch},takeover:takeover||undefined,player:{name,desc},startAge:age===""?null:Number(age),pov:{mode:pov},romance:{pref,pacing},rules:{...rules},crossover:{with:others,link,powers:others.flatMap(id=>[[uid,id],[id,uid]].map(([from,to])=>({from,to,rule:powers[from+"|"+to]||"separate"})))},title,setting,locks,exceptions,fates,foreknowledge});
  const input=(label,value,change,type="text")=>fld(label,h("input",{type,value,oninput:e=>change(e.target.value)}));
  const area=(label,value,change)=>fld(label,h("textarea",{rows:3,value,oninput:e=>change(e.target.value)}));
  const select=(label,value,options,change)=>fld(label,sel(value,options,change));
  function draw(){content.replaceChildren();status.textContent="";content.append(h("div",{class:"ff-step-head"},h("small",{text:"NEW FANFICTION · "+(step+1)+" / "+steps.length}),h("h2",{text:steps[step]}),h("div",{class:"ff-progress",role:"progressbar","aria-valuenow":step+1,"aria-valuemin":1,"aria-valuemax":steps.length},...steps.map((x,i)=>h("span",{class:i<=step?"done":"",title:x})))));
  const list=ffListUniverses(),u=uid?ffUniverse(uid):null;
- const summary=h("aside",{class:"ff-live-summary"},h("small",{text:"STORY CONFIGURATION"}),h("strong",{text:u?.name||"Choose a universe"}),h("p",{text:modes.map(m=>labels[m]||m).join(" · ")}),h("p",{text:(name||"Player character")+" · Chapter "+ch}),h("p",{text:locks.length+" locks · "+exceptions.length+" exceptions"}));content.append(summary);
+ rail.replaceChildren(...steps.map((label,index)=>h("li",{"aria-current":index===step?"step":null},label)));
+ summary.replaceChildren(h("strong",{text:u?.name||"Choose a universe"}),h("p",{text:modes.map(m=>labels[m]||m).join(" · ")}),h("p",{text:(name||u?.chars?.[takeover]?.name||"Player character")+" · Chapter "+ch}),h("p",{text:locks.length+" locks · "+exceptions.length+" exceptions"}));
  const chars=Object.entries(u?.chars||{}),events=u?.events||[],records=u?.records||[];
  const resetTargets=()=>{locks=[];exceptions=[];fates={};foreknowledge=[]};
  const drafts=ffDrafts(),dp=sel(initialDraft,[["","Choose saved draft"],...drafts.map(d=>[d.id,d.name])],()=>{});
@@ -306,7 +365,24 @@ function createFanfiction(root,initialUniverse="",initialDraft=""){
  const invalidate=()=>{epoch++;controller?.abort();pending=null;saveImport.disabled=true;report.replaceChildren()};for(const e of [file,sourceTitle,kind])e.addEventListener("change",invalidate);
  content.append(panel(h("h3",{text:"Import a source"}),h("p",{text:"Index a source you have permission to use. Review before saving it to your library."}),file,sourceTitle,kind,btn("Preview import",async()=>{invalidate();const token=epoch;controller=new AbortController();try{if(!file.files[0])throw Error("Choose a source file");const r=await ffImportPreview(file.files[0],{title:sourceTitle.value,kind:kind.value,signal:controller.signal,onProgress:p=>{if(token===epoch)status.textContent="Indexing source…"}});if(token!==epoch||!body.isConnected)return;if(!r.ok){status.textContent=r.reason;return}pending=r;report.append(h("p",{text:"Revision "+r.preview.rev+" · Added: "+JSON.stringify(r.preview.added)+" · Duplicates: "+JSON.stringify(r.preview.duplicate)}),h("p",{text:"Conflicts: "+(r.preview.conflicts||[]).length}),h("p",{text:"Characters: "+(r.preview.names||[]).join(", ")}));saveImport.disabled=false;status.textContent="Review ready; nothing imported yet."}catch(e){if(token===epoch)status.textContent=e.message}}),btn("Cancel import",invalidate),report,saveImport));
  }else if(step===1){content.append(h("p",{text:"Combine scenario types to define your story."}),h("div",{class:"ff-mode-grid"},...ffModes().map((m,i)=>h("button",{class:"ff-mode-card","aria-pressed":String(modes.includes(m)),onclick:()=>{modes=modes.includes(m)?modes.filter(x=>x!==m):[...modes,m];rules={};draw()}},h("span",{class:"ff-mode-symbol",text:["✧","◇","◈","↻","☾","✦"][i%6]}),h("strong",{text:labels[m]||m}),h("small",{text:modes.includes(m)?"Selected":"Select"})))));
- }else if(step===2){content.append(select("Canon character (if applicable)",takeover,[["","Original character"],...Object.entries(u?.chars||{}).map(([id,c])=>[id,c.name||id])],v=>{takeover=v}),input("Player character name",name,v=>name=v),area("Origin, identity and background",desc,v=>desc=v),input("Starting age (optional)",age,v=>age=v,"number"),h("p",{class:"sub",text:"Takeover, transmigration and regression require a canon character. Leave name blank to inherit that character’s name."}));
+ }else if(step===2){const picker=sel(takeover,[["","Original character"],...chars.map(([id,c])=>[id,c.name||id])],()=>choose(picker.value));
+ const cards=h("div",{class:"ff-character-grid",role:"group","aria-label":"Canon characters"});
+ const query=h("input",{type:"search",placeholder:"Search canon characters","aria-label":"Search canon characters",oninput:paintCharacters});
+ function choose(id){takeover=id;picker.value=id;summary.children[2].textContent=(name||u?.chars?.[id]?.name||"Player character")+" · Chapter "+ch;paintCharacters()}
+ function paintCharacters(){
+   const q=query.value.trim().toLowerCase();
+   const filtered=chars.filter(([id,c])=>(c.name||id).toLowerCase().includes(q));
+   cards.replaceChildren(...filtered.slice(0,24).map(([id,c])=>{
+     const name=c.name||id;
+     const portrait=typeof c.portrait==="string"&&/^data:image\/(?:png|jpeg|webp);base64,/.test(c.portrait)?c.portrait:null;
+     return h("button",{class:"ff-character-card","aria-pressed":String(takeover===id),onclick:()=>choose(id)},
+       h("span",{class:"ff-character-portrait","aria-hidden":"true"},portrait?h("img",{src:portrait,alt:"",loading:"lazy"}):name.trim().slice(0,1).toUpperCase()),
+       h("strong",{text:name}));
+   }),!filtered.length?h("p",{class:"sub",text:q?"No matching characters.":"No indexed characters yet."}):null,
+   filtered.length>24?h("p",{class:"sub",text:"Showing 24 characters. Search or use the full list below."}):null);
+ }
+ paintCharacters();
+ content.append(chars.length>0?query:null,cards,fld("Canon character (if applicable)",picker),input("Player character name",name,v=>name=v),area("Origin, identity and background",desc,v=>desc=v),input("Starting age (optional)",age,v=>age=v,"number"),h("p",{class:"sub",text:"Takeover, transmigration and regression require a canon character. Leave name blank to inherit that character’s name."}));
  }else if(step===3){content.append(input("Starting source chapter (0 = beginning)",ch,v=>ch=Number(v),"number"),h("details",{},h("summary",{text:"Browse canon timeline"}),...events.slice(0,150).map(e=>h("button",{class:"ff-timeline-event",text:"Chapter "+e.ch+" · "+e.title,onclick:()=>{ch=Number(e.ch)||0;draw()}}))),select("Point of view",pov,[["first","First person"],["second","Second person"],["thirdLimited","Third person limited"],["omniscient","Omniscient"],["multi","Multiple POVs"]],v=>pov=v),select("Romance preference (fictional characters only)",pref,[["any","Any"],["none","None"],["bl","BL"],["gl","GL"],["straight","Straight"]],v=>pref=v),select("Romance pacing",pacing,opts(["slow","natural","fast"]),v=>pacing=v));
  }else if(step===4){const defaults=ffDefaults(modes);content.append(h("p",{text:"Locked preserves canon; adaptive allows justified changes; free permits divergence."}),h("div",{class:"row"},...["locked","adaptive","free"].map(v=>btn("All "+v,()=>{rules=Object.fromEntries(Object.keys(defaults).map(k=>[k,v]));draw()})),btn("Mode defaults",()=>{rules={};draw()})),...Object.keys(defaults).map(k=>select(k.replace(/([A-Z])/g," $1"),rules[k]||defaults[k],opts(["locked","adaptive","free"]),v=>rules[k]=v)));
  const lockList=h("div",{}),lockKind=sel("event",opts(["event","char"]),()=>drawLock()),lockTarget=h("div",{});function drawLock(){const k=lockKind.value,choices=k==="event"?events.map(e=>[e.id,e.title]):chars.map(([id,c])=>[id,c.name||id]),p=sel("",[["","Choose target"],...choices],()=>{});lockTarget.replaceChildren(p,btn("Add lock",()=>{if(p.value&&!locks.some(l=>l.kind===k&&l.id===p.value)){locks.push({kind:k,id:p.value});showLocks()}}))}function showLocks(){lockList.replaceChildren(...locks.map(l=>panel(h("p",{text:l.kind+" · "+(l.kind==="event"?events.find(e=>e.id===l.id)?.title:u?.chars?.[l.id]?.name||l.id)}),btn("Remove lock",()=>{locks=locks.filter(x=>x!==l);showLocks()}))))}drawLock();showLocks();
@@ -318,7 +394,7 @@ function createFanfiction(root,initialUniverse="",initialDraft=""){
  }else{content.append(input("Story title",title,v=>title=v),area("Story setting and opening premise",setting,v=>setting=v));const r=ffNewCanonPreview(uid,config());if(!r.ok)content.append(h("p",{text:r.reason}));else{const x=r.summary;content.append(panel(h("b",{text:x.universe}),h("p",{text:"Modes: "+x.modes.map(m=>labels[m]||m).join(", ")}),h("p",{text:"Player: "+x.player+" · Chapter "+x.start+" · POV: "+x.pov}),h("p",{text:"Locked rules: "+x.locked.join(", ")}),h("p",{text:"Individual locks: "+locks.length+" · Exceptions: "+exceptions.length+" · Fate rules: "+Object.keys(fates).length+" · Foreknowledge: "+foreknowledge.length}),h("p",{text:"Each playthrough receives an independent canon copy."})),btn("Create fanfiction",()=>{if(created)return;const v=ffNewCanonPreview(uid,config());if(!v.ok){status.textContent=v.reason;return}if(!confirm("Create this story with the reviewed canon rules?"))return;const result=ffCreateStory(uid,config());if(!result.applied){status.textContent=result.reason||"Creation refused";return}created=true;go({n:"story",id:result.storyId})}))}}
  content.append(h("div",{class:"ff-wizard-nav"},step?btn("Back",()=>{step--;draw()}):null,step<6?btn("Next",()=>{if(step===0&&!uid){status.textContent="Choose or import a universe first.";return}if(step===1&&!modes.length){status.textContent="Choose at least one mode.";return}if(step===2&&(!name.trim()&&!takeover||modes.some(m=>["takeover","transmigration","regression"].includes(m))&&!takeover)){status.textContent="Complete the character identity first.";return}if(step===3&&(!Number.isFinite(ch)||ch<0||!Number.isInteger(ch))){status.textContent="Enter a nonnegative whole chapter number.";return}epoch++;controller?.abort();pending=null;step++;draw()}):null));
  }
- body.append(status,content);root.append(body);draw();
+ body.append(status,rail,content,summary);root.append(body);draw();
 }
 Object.assign(window.SFFanUI,{createFanfiction});
 })();
@@ -329,15 +405,47 @@ function fanfictionHome(root){
  function cover(st,fallback="✧"){return h("span",{class:"ff-cover"},st?readerCover(st):h("span",{text:fallback}))}
  function universeCover(id){const u=ffUniverse(id);if(u?.artwork?.cover)return h("span",{class:"ff-cover"},h("img",{src:u.artwork.cover,alt:"",loading:"lazy"}));return cover(DB.stories.find(st=>st.fanfic?.universe===id&&(st.cover||st.coverT))||DB.stories.find(st=>st.fanfic?.universe===id))}
  function artworkEditor(id,refresh){
- const u=ffUniverse(id),draft={...u.artwork},box=h("div",{class:"ff-ui"}),preview=h("div",{class:"ff-art-preview"}),status=h("p",{role:"status"});let busyArt=false;
- function paint(){preview.replaceChildren(...["cover","banner"].map(k=>h("div",{},h("strong",{text:k}),draft[k]?h("img",{src:draft[k],alt:k}):h("p",{text:"No custom artwork"}))))}
- for(const k of ["cover","banner"]){box.append(h("label",{},k+" image",h("input",{type:"file",accept:"image/png,image/jpeg,image/webp",onchange:async e=>{const f=e.target.files[0];if(!f||busyArt)return;busyArt=true;try{if(f.size>12*1024*1024)throw Error("Choose an image under 12 MB");draft[k]=await imgShrink(f,k==="cover"?480:1000,.78);paint()}catch(err){status.textContent=err.message}finally{busyArt=false}}})),h("button",{text:"Clear "+k,onclick:()=>{if(!busyArt){delete draft[k];paint()}}}))}
- box.append(preview,status,h("button",{class:"primary",text:"Save universe artwork",onclick:()=>{if(busyArt)return;const latest=ffUniverse(id);if(!latest)return;const r=ffSaveUniverse({...latest,artwork:draft});if(r.applied){closeSheet(true);refresh()}else status.textContent=r.reason}}));paint();sheet("Universe artwork",box)
+ const draft={...ffUniverse(id).artwork},changes=new Set(),box=h("div",{class:"ff-ui"}),preview=h("div",{class:"ff-art-preview"}),status=h("p",{role:"status"});
+ const saveButton=h("button",{class:"primary",text:"Save universe artwork",onclick:()=>{
+   const artwork={...ffUniverse(id)?.artwork};
+   for(const key of changes){
+     if(draft[key])artwork[key]=draft[key];
+     else delete artwork[key];
+   }
+   const result=ffSaveUniverseArtwork(id,artwork);
+   if(result.applied){closeSheet(true);refresh()}
+   else status.textContent=result.reason;
+ }});
+ const fields=["cover","banner"].map(key=>{
+   const label=key==="cover"?"Cover":"Banner";
+   const image=h("div",{class:"ff-art-frame ff-art-"+key});
+   const clear=h("button",{text:"Clear "+key,onclick:()=>{
+     delete draft[key];changes.add(key);file.value="";paint();
+   }});
+   const file=h("input",{type:"file",accept:"image/png,image/jpeg,image/webp",onchange:async()=>{
+     const selected=file.files[0];
+     if(!selected)return;
+     controls.forEach(control=>control.disabled=true);
+     status.textContent="Preparing "+key+"…";
+     try{
+       if(!["image/png","image/jpeg","image/webp"].includes(selected.type)||selected.size>12*1024*1024)throw Error("Choose a PNG, JPEG or WebP under 12 MB.");
+       draft[key]=await imgShrink(selected,key==="cover"?480:1000,.78);
+       changes.add(key);
+       status.textContent="";
+       paint();
+     }catch(error){status.textContent=error.message}
+     finally{file.value="";controls.forEach(control=>control.disabled=false)}
+   }});
+   preview.append(h("section",{class:"ff-panel"},h("strong",{text:label}),image,h("label",{},label+" image",file),clear));
+   return {key,label,image,file,clear};
+ });
+ const controls=[saveButton,...fields.flatMap(f=>[f.file,f.clear])];
+ function paint(){for(const {key,label,image} of fields)image.replaceChildren(draft[key]?h("img",{src:draft[key],alt:label+" preview"}):h("p",{text:"No custom "+key}));}
+ box.append(preview,status,saveButton);paint();sheet("Universe artwork",box);
  }
 
 
- const el=(tag,attrs,...kids)=>h(tag,attrs,...kids),button=(text,onclick)=>h("button",{text,onclick});
- let section="home";
+ const button=(text,onclick)=>h("button",{text,onclick});
  function wizard(uid="",draft=""){root.replaceChildren();root.append(h("button",{class:"ff-back",text:"‹ Fanfiction Studio",onclick:()=>{if(confirm("Return to Studio? Save your draft first to retain unfinished changes."))draw("home")}}));window.SFFanUI.createFanfiction(root,uid,draft)}
  function universePage(id){
  const u=ffUniverse(id);if(!u){draw("home");return}
@@ -347,13 +455,13 @@ function fanfictionHome(root){
  wrap.append(button("Customize universe artwork",()=>artworkEditor(id,()=>universePage(id))));
  const results=h("div",{class:"ff-ui"}),search=h("input",{placeholder:"Search this section",type:"search","aria-label":"Search universe"});let selected=0;
  const sections=[["Sources",sources.map(x=>({title:x.title,detail:(x.kind||"Source")+" · "+(x.chapters||[]).length+" chapters"}))],["Characters",chars.map(x=>({title:x.name,detail:[x.appearance,x.personality].filter(v=>typeof v==="string").join(" · ")}))],["Timeline",events.map(x=>({title:x.title,detail:"Chapter "+x.ch+" · "+(x.summary||"")}))],["Canon records",(u.records||[]).map(x=>({title:x.kind||"Fact",detail:x.text||""}))],["Playthroughs",stories.map(x=>({title:x.title,detail:"Open story",action:()=>go({n:"story",id:x.id})}))]];
- function refresh(){const q=search.value.toLowerCase();const rows=sections[selected][1].filter(x=>(x.title+" "+x.detail).toLowerCase().includes(q));results.replaceChildren(h("h3",{text:sections[selected][0]+" · "+rows.length}),...rows.slice(0,100).map(x=>h(x.action?"button":"article",{class:"ff-panel",onclick:x.action||null},h("strong",{text:x.title}),h("p",{text:x.detail}))),rows.length>100?h("p",{text:"Showing first 100 results. Search to narrow the list."}):null)}
- const tiles=h("div",{class:"ff-dashboard-grid"},...sections.map(([label,rows],i)=>h("button",{class:"ff-dashboard-tile","aria-pressed":i===0,onclick:()=>{selected=i;for(const [n,b] of Array.from(tiles.children).entries())b.setAttribute("aria-pressed",String(n===i));refresh()}},h("strong",{text:label}),h("small",{text:String(rows.length)}))));
+ function refresh(){const q=search.value.toLowerCase();const rows=sections[selected][1].filter(x=>(x.title+" "+x.detail).toLowerCase().includes(q));results.replaceChildren(h("h3",{text:sections[selected][0]+" · "+rows.length}),...rows.slice(0,100).map(x=>h(x.action?"button":"article",{class:"ff-panel",onclick:x.action||null},h("strong",{text:x.title}),h("p",{text:x.detail}))),!rows.length?h("p",{class:"sub",text:q?"No matches in this section.":"Nothing in this section yet."}):rows.length>100?h("p",{text:"Showing first 100 results. Search to narrow the list."}):null)}
+ const tiles=h("div",{class:"ff-dashboard-grid"},...sections.map(([label,rows],i)=>h("button",{class:"ff-dashboard-tile","aria-pressed":String(i===0),onclick:()=>{selected=i;for(const [n,b] of Array.from(tiles.children).entries())b.setAttribute("aria-pressed",String(n===i));refresh()}},h("strong",{text:label}),h("small",{text:String(rows.length)}))));
  search.addEventListener("input",refresh);wrap.append(tiles,search,results);refresh()
  }
- function draw(tab){section=tab;root.replaceChildren();const list=ffListUniverses(),drafts=ffDrafts(),stories=DB.stories.filter(s=>s.fanfic);
+ function draw(tab){root.replaceChildren();const list=ffListUniverses(),drafts=ffDrafts(),stories=DB.stories.filter(s=>s.fanfic);
  const wrap=h("div",{class:"ff-dashboard"});root.append(wrap);
- const hero=h("section",{class:"ff-hero"},h("div",{class:"ff-hero-art","aria-hidden":"true"},h("span",{text:"✧"}),h("span",{text:"◇"}),h("span",{text:"✦"})),h("small",{text:"FANFICTION STUDIO"}),h("h2",{text:"Rewrite destiny."}),h("p",{text:"Enter familiar worlds. Create your own path."}),h("button",{class:"ff-primary",text:"+ Create fanfiction",onclick:()=>wizard()}));wrap.append(hero);
+ const hero=h("section",{class:"ff-hero"},h("div",{class:"ff-hero-art","aria-hidden":"true"}),h("small",{text:"FANFICTION STUDIO"}),h("h2",{text:"Rewrite destiny."}),h("p",{text:"Enter familiar worlds. Create your own path."}),h("button",{class:"ff-primary",text:"+ Create fanfiction",onclick:()=>wizard()}));wrap.append(hero);
  const tiles=[["universes","◈","Universes",list.length],["stories","▤","My fanfiction",stories.length],["drafts","✎","Saved drafts",drafts.length],["templates","▱","Templates",drafts.length]];
  wrap.append(h("div",{class:"ff-dashboard-grid"},...tiles.map(([id,icon,label,count])=>h("button",{class:"ff-dashboard-tile","aria-pressed":String(tab===id),onclick:()=>draw(id)},h("span",{class:"ff-tile-icon",text:icon}),h("strong",{text:label}),h("small",{text:count+" saved"})))));
  const title=tab==="stories"?"My fanfiction":tab==="drafts"?"Saved drafts":tab==="templates"?"Reusable setups":"Your universes";

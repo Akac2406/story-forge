@@ -74,6 +74,10 @@ function apply(){const c=resolved(),pal=palettes()[c.theme],r=document.documentE
     const attr='sf'+key[0].toUpperCase()+key.slice(1);if(values.includes(c[key]))r.dataset[attr]=c[key];else delete r.dataset[attr];
   }
   const bounded=(key,min,max,unit)=>{const n=c[key];if(typeof n==='number'&&Number.isFinite(n))r.style.setProperty('--sf-'+key,Math.max(min,Math.min(max,n))+unit);else r.style.removeProperty('--sf-'+key)};
+  const font=typeof c.font==='string'?c.font.trim():'';
+  const family=/^[\p{L}\p{N}][\p{L}\p{N} -]{0,79}$/u.test(font)?font:null;
+  if(family)r.style.setProperty('--sf-custom-font',/^(serif|sans-serif|monospace|system-ui|cursive|fantasy)$/i.test(family)?family:JSON.stringify(family)+', system-ui');
+  else r.style.removeProperty('--sf-custom-font');
   bounded('radius',0,24,'px');bounded('fontScale',.8,1.4,'');bounded('transparency',0,.6,'');
   if(c.contrast==='high')r.style.setProperty('--sf-transparency','0');
   r.dataset.sfReducedMotion=String(!!c.reducedMotion||motion==='none'||matchMedia('(prefers-reduced-motion: reduce)').matches);

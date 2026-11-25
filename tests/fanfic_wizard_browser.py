@@ -34,6 +34,11 @@ try:
     nxt(pg); ok(step(pg) == "Character", "Character step")
     nxt(pg); ok("character identity" in status(pg), "takeover without a canon character is refused")
     ok(pick(pg, "Canon character", "char:ember:kael"), "canon character chosen"); nxt(pg); ok(step(pg).startswith("Timeline"), "Timeline step")
+    pg.get_by_text("Browse canon timeline", exact=True).click()
+    event = pg.locator("#wz .ff-timeline-event").first
+    chapter = event.inner_text().split(" ")[1]
+    event.click()
+    ok(pg.get_by_label("Starting source chapter").input_value() == chapter, "timeline event selects the starting chapter")
     nxt(pg); ok(step(pg) == "Canon rules", "Canon rules step"); nxt(pg); ok(step(pg) == "Crossover", "Crossover step"); nxt(pg); ok(step(pg) == "Review", "Review step")
     rev = pg.evaluate("document.querySelector('#wz').innerText"); ok("Kael" in rev and "Locked rules" in rev, "review shows the player and locked rules")
     pg.locator("#wz button", has_text="Create fanfiction").click(); pg.wait_for_timeout(400)

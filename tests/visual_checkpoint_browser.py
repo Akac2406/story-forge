@@ -45,11 +45,42 @@ try:
     ok(any(t.startswith("Fanfiction") for t in tabs) and all(t.endswith(":true") or t.endswith(":false") for t in tabs), "Studio tabs with valid aria-pressed " + str(tabs))
     pg.locator("[aria-label='Studio sections'] button", has_text="Fanfiction").click(); pg.wait_for_timeout(300)
     ok("Ember" in pg.evaluate("document.querySelector('main').innerText") or "ember" in pg.evaluate("document.querySelector('main').innerText").lower(), "Fanfiction dashboard lists the saved universe")
-    srch = pg.locator("main input[type=search], main input[placeholder*='Search']")
-    if srch.count():
-        srch.first.fill("Kael"); pg.wait_for_timeout(300)
-        ok(len(errs) == 0, "dashboard search runs without errors")
+    pg.locator("main .ff-universe-card").first.click()
+    pg.locator(".ff-dashboard-tile", has_text="Characters").click()
+    srch = pg.get_by_role("searchbox", name="Search universe")
+    srch.fill("Kael")
+    ok(pg.locator("main .ff-ui article").count() == 1 and "Kael" in pg.locator("main .ff-ui article").inner_text(), "universe search filters character cards")
+    srch.fill("no-matching-character")
+    ok(pg.get_by_text("No matches in this section.").is_visible(), "universe search shows an empty state")
     ok(pg.evaluate("JSON.stringify({t:DB.sessions[0].turns,k:DB.ocKey,u:Object.keys(DB.universes)})") == before, "stories, keys and universes preserved through all visual changes")
+    pg.get_by_role("button", name="Customize universe artwork").click()
+    pg.get_by_label("Cover image").set_input_files(os.path.join(APP, "icon-192.png"))
+    pg.get_by_role("img", name="Cover preview").wait_for()
+    pg.get_by_label("Banner image").set_input_files(os.path.join(APP, "icon-512.png"))
+    pg.get_by_role("img", name="Banner preview").wait_for()
+    pg.evaluate("""async()=>{window.pendingArtImport=await ffImportPreview(
+        new File(['Chapter 1\\nThe archive is opened.'],'Appendix.txt'),{universeId:'ember'});
+        window.setItemBeforeArt=Storage.prototype.setItem;
+        Storage.prototype.setItem=function(key,value){
+            if(key==='story-forge-v2')throw new DOMException('Full','QuotaExceededError');
+            return window.setItemBeforeArt.call(this,key,value);
+        };}""")
+    pg.get_by_role("button", name="Save universe artwork").click()
+    ok(pg.get_by_text("Could not save artwork.", exact=False).is_visible() and pg.evaluate("!ffUniverse('ember').artwork"), "quota error leaves the old universe and the artwork editor intact")
+    pg.evaluate("()=>{Storage.prototype.setItem=window.setItemBeforeArt}")
+    pg.get_by_role("button", name="Save universe artwork").click()
+    pg.locator(".ff-hero-image").wait_for()
+    initial_art = pg.evaluate("ffUniverse('ember').artwork")
+    ok(initial_art["cover"] != initial_art["banner"], "cover and banner are saved separately")
+    ok(pg.evaluate("pendingArtImport.commit().applied") and pg.evaluate("ffUniverse('ember').artwork") == initial_art, "committing a previously previewed source retains newer artwork")
+    pg.get_by_role("button", name="Customize universe artwork").click()
+    pg.get_by_role("button", name="Clear cover").click()
+    pg.get_by_role("button", name="Save universe artwork").click()
+    ok(pg.evaluate("ffUniverse('ember').artwork") == {"banner": initial_art["banner"]}, "cover removal keeps the banner")
+    pg.wait_for_timeout(300)
+    pg.reload()
+    pg.wait_for_selector(".cta")
+    ok(pg.evaluate("ffUniverse('ember').artwork") == {"banner": initial_art["banner"]}, "artwork removal and banner persist after reload")
     br.close()
 finally:
     srv.terminate()
