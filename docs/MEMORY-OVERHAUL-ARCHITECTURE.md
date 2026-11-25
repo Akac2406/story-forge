@@ -117,7 +117,16 @@ Parallel from day 1: ChatGPT builds Studio/Timeline/backup screens against the S
 5. Hybrid: the step fills individual missing events only after deduplication and accuracy are tested; until then it fills only when the narrator wrote none.
 6. Backups exclude credentials; restores are atomic and integrity-checked.
 
-## 10. Blockers and limits (honest)
+## 10. Open-source research decisions (see docs/OSS-EVALUATION.md)
+
+- Temporal (Graphiti idea): facts carry story validity (`storyFrom`/`storyTo`) and record time (`seenAt`/`expiredAt`); contradictions close a fact, never delete it; "current" vs "as of turn N" retrieval.
+- Retrieval (Mem0 idea): fused BM25 + entity + temporal + importance + pin score; no embeddings in phase 1 (no paid embeddings service); add-only extraction with hash dedupe.
+- NPC behaviour (AI Town idea): goals, schedules, agendas advance with story time only; deterministic, no per-NPC requests.
+- Memory blocks (Letta idea): Permanent/Working as size-limited always-in-context blocks.
+- SillyTavern is AGPL: ideas only (lorebook recursion), no code.
+- Storage stays as is; Dexie.js (Apache-2.0) is the preferred upgrade if size requires, as a separate decision.
+
+## 11. Blockers and limits (honest)
 
 - Real-model runs use Anna's key, which only exists in her browser. They run on the test address after she enters her key there once, and they need her computer awake with Chrome open while they run.
 - My workspace cannot keep work running after a reply ends. Unattended work means scheduled sessions (each starts fresh from this manifest), and real-model runs still need her computer on.
