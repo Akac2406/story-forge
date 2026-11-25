@@ -80,3 +80,24 @@ html[data-sf-cv-overlay=petals] #log .turn.ai{background-image:radial-gradient(e
 html[data-sf-cv-reveal=fade-in] #log .sf-cv-stream{animation:sf-cv-fade .2s ease-out}
 
 .sf-readable{display:grid;gap:6px;min-width:0;overflow-wrap:anywhere}.sf-readable-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:8px;padding:5px 0;border-bottom:1px solid var(--border)}.sf-readable-row strong{font-size:.85em;color:var(--muted)}.sf-readable details{padding:6px;border:1px solid var(--border);border-radius:6px}.sf-readable details>.sf-readable{margin-top:8px}.sf-readable summary{overflow-wrap:anywhere}
+
+/* Fanfiction Studio: theme-aware mobile-first dashboard */
+.ff-dashboard,.ff-create{display:grid;gap:14px;min-width:0;padding:12px 0 20px}
+.ff-hero{position:relative;isolation:isolate;overflow:hidden;border:1px solid var(--border);border-radius:20px;padding:24px 18px;background:linear-gradient(135deg,#10182b,#22394b 65%,#263e50);color:#f1f5ff;min-height:230px;display:flex;flex-direction:column;justify-content:flex-end;gap:8px}
+.ff-hero h2{font-size:clamp(25px,5vw,38px);line-height:1.15;margin:0;color:inherit}
+.ff-hero p{margin:0 0 8px;color:#d5e3f0}.ff-hero small{letter-spacing:.12em;color:#a7d6df;font-size:11px}
+.ff-hero-art{position:absolute;inset:0;z-index:-1;overflow:hidden;background:radial-gradient(ellipse at 80% 10%,#77bdcf66,transparent 48%),repeating-linear-gradient(115deg,transparent 0 30px,#ffffff08 31px 32px)}
+.ff-hero-art span{position:absolute;font-size:90px;color:#bce7f133;right:12%;top:0}.ff-hero-art span:nth-child(2){right:35%;top:15%;font-size:45px}.ff-hero-art span:nth-child(3){right:3%;top:35%;font-size:32px}
+.ff-dashboard .ff-primary{background:var(--accent);color:var(--onacc,#10101a);font-weight:700;border:0;border-radius:12px;padding:12px;width:100%}
+.ff-dashboard-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ff-dashboard .ff-dashboard-tile{display:flex;flex-direction:column;align-items:flex-start;gap:5px;text-align:left;padding:14px;min-height:100px;background:var(--card);border:1px solid var(--border);border-radius:14px;white-space:normal;color:var(--text)}
+.ff-dashboard-tile[aria-pressed="true"]{outline:2px solid var(--accent);outline-offset:-2px}.ff-tile-icon{font-size:23px;color:var(--accent)}
+.ff-dashboard small{display:block;font-size:12px;color:var(--muted)}.ff-hero small{color:#a7d6df}
+.ff-section-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.ff-section-head h3{margin:0}
+.ff-dashboard .ff-universe-card{display:grid;grid-template-columns:60px minmax(0,1fr) 16px;align-items:center;gap:12px;text-align:left;white-space:normal;padding:10px;border:1px solid var(--border);border-radius:14px;background:var(--card);color:var(--text);width:100%}
+.ff-universe-card strong{display:block;overflow-wrap:anywhere}.ff-cover{display:grid;place-items:center;aspect-ratio:3/4;border-radius:8px;background:linear-gradient(145deg,#203c53,#53627e);color:#d9e7ff;font-size:28px}
+.ff-step-head{display:grid;gap:8px;padding:12px 0}.ff-step-head small{color:var(--muted);letter-spacing:.09em;font-size:11px}.ff-step-head h2{margin:0;font-size:25px}.ff-progress{display:flex;gap:4px}.ff-progress span{height:5px;flex:1;border-radius:8px;background:var(--border)}.ff-progress .done{background:var(--accent)}
+.ff-create .ff-create-content{gap:12px;min-width:0}.ff-create .ff-panel{padding:12px;border-color:var(--border);border-radius:14px}.ff-create .ff-panel p{margin:6px 0}.ff-create details{padding:10px;border:1px solid var(--border);border-radius:12px}.ff-create h3{margin:6px 0}
+.ff-wizard-nav{display:flex;justify-content:space-between;gap:10px;position:sticky;bottom:0;background:var(--bg);padding:10px 0;z-index:2}.ff-wizard-nav button{min-height:44px;flex:1}.ff-wizard-nav button:last-child{background:var(--accent);color:var(--onacc,#10101a)}
+.ff-back{margin:8px 0}
+@media(min-width:760px){.ff-dashboard-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.ff-hero{padding:32px;min-height:260px}.ff-dashboard .ff-primary{width:auto;align-self:flex-start}.ff-create{max-width:780px;margin:auto}}
