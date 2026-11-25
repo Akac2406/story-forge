@@ -87,3 +87,20 @@ function continuity(se){screen(se,"Continuity Center",(b,s)=>{
 })}
 Object.assign(window.SFFanUI,{studio,canon,timeline,inspector,romance,realworld,competition,continuity});
 })();
+
+(function(){
+"use strict";
+const read=k=>{try{return localStorage.getItem(k)||""}catch(e){return ""}};
+const write=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+window.SFFanUI.polishMenu=function(bg,se){
+ const drawer=bg.querySelector(".drawer"),groups=[...drawer.querySelectorAll("details[name='sf-novel-menu']")];if(!groups.length)return;
+ const key="sf-ui-menu-"+se.id,last=read(key),search=h("input",{type:"search",placeholder:"Search story tools","aria-label":"Search story tools"}),favorites=h("div",{class:"ff-menu-favorites"}),favKey="sf-ui-favorites";let fav=[];try{fav=JSON.parse(read(favKey)||"[]");if(!Array.isArray(fav))fav=[]}catch(e){}
+ const groupName=g=>g.querySelector("summary").textContent,rows=groups.flatMap(g=>[...g.children].filter(x=>x.tagName!=="SUMMARY").map((el,i)=>({el,g,id:groupName(g)+":"+i,name:el.textContent.trim()})));
+ let searching=false;
+ function drawFavorites(){favorites.replaceChildren();const chosen=rows.filter(r=>fav.includes(r.id));if(chosen.length)favorites.append(h("p",{class:"sub",text:"Favorites"}),...chosen.map(r=>h("button",{text:r.name,onclick:()=>{if(r.el.tagName==="BUTTON")r.el.click();else{r.g.open=true;r.el.scrollIntoView({block:"nearest"})}}))))}
+ const manage=h("details",{class:"ff-menu-favorites"},h("summary",{text:"Manage favorites"}),...rows.map(r=>chk(r.name,fav.includes(r.id),v=>{fav=v?[...new Set([...fav,r.id])]:fav.filter(x=>x!==r.id);write(favKey,JSON.stringify(fav));drawFavorites()})));
+ drawer.insertBefore(h("div",{class:"ff-menu-search"},search,favorites,manage),groups[0]);drawFavorites();
+ for(const g of groups){if(groupName(g)===last)g.open=true;g.addEventListener("toggle",()=>{if(!searching&&g.open)write(key,groupName(g))})}
+ search.addEventListener("input",()=>{const q=search.value.trim().toLowerCase();searching=!!q;for(const g of groups){const matches=rows.filter(r=>r.g===g);for(const r of matches)r.el.hidden=!!q&&!r.name.toLowerCase().includes(q)&&!groupName(g).toLowerCase().includes(q);g.hidden=!!q&&matches.every(r=>r.el.hidden);if(q)g.open=false}if(q){const first=groups.find(g=>!g.hidden);if(first)first.open=true}else{for(const g of groups)g.open=groupName(g)===read(key)}});
+};
+})();
