@@ -2527,8 +2527,17 @@ function ffSaveDraft(draft){const d=draft||{};const name=String(d.name||"").trim
 function ffLoadDraft(id){const d=(DB.ffDrafts||{})[id];return d?JSON.parse(JSON.stringify(d)):null}
 function ffDeleteDraft(id){if(!(DB.ffDrafts||{})[id])return{ok:false,applied:false,reason:"not found"};delete DB.ffDrafts[id];save();return{ok:true,applied:true,reason:null}}
 /* Quick Create (docs/QUICK-CREATE-API.md). Research uses the app's existing lookups (searchWorks, wikiFind, wikiSearch, wikiPage); the model never browses.
-   One creation session at a time: QC keeps the context of the last preview and an undo stack of accepted edits. Nothing is saved before qcCommit. */
-const QC={ctx:null,undo:[]};
+   One creation session at a time: QC keeps the context of the last preview. Each blueprint has an id; undo/redo history is kept per id.
+   AI edits are staged as proposals until qcAccept. Cancelling a request never changes the current blueprint. Nothing is saved before qcCommit. */
+const QC={ctx:null,cur:null,hist:{},prop:null,seq:0};
+const qcJ=x=>JSON.stringify(x);
+const qcH=id=>QC.hist[id]||(QC.hist[id]={undo:[],redo:[]});
+/* Record an accepted change: the previous blueprint goes on the undo stack, redo is cleared. */
+function qcPush(prev,next){const id=(next&&next.id)||(prev&&prev.id)||QC.cur;if(!id)return;QC.cur=id;const H=qcH(id);H.undo.push(prev);if(H.undo.length>50)H.undo.shift();H.redo=[];H.now=next}
+/* A UI that keeps a proposal's blueprint without calling qcAccept: accept it now so history stays right. */
+const qcSame=(a,b)=>{const n=x=>JSON.stringify(x,(k,v)=>v===null?undefined:v);return n(a)===n(b)};
+function qcSettle(bp){if(QC.prop&&bp&&qcSame(bp,QC.prop.blueprint)){const P=QC.prop;QC.prop=null;qcPush(P.base,P.blueprint)}}
+const qcCancelled=e=>e&&e.name==="AbortError";
 const qcAbort=s=>{if(s&&s.aborted){const e=new Error("cancelled");e.name="AbortError";throw e}};
 const qcSlug=t=>String(t||"").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,40)||"work";
 async function qcResearch(query,o){o=o||{};const q=String(query||"").trim().slice(0,200);if(!q)return{ok:false,reason:"Enter the title of the work"};
@@ -2549,18 +2558,41 @@ function qcResearchUniverse(title,facts){const us=qcSlug(title),chars={};(facts|
 function qcCtx(u,facts){return{universe:u,facts,fan:SFFan,director:window.SFDirector,game:window.SFGame,cinema:window.SFCinema}}
 async function qcPreview(input,o){o=o||{};input=input||{};try{qcAbort(o.signal);
     const u=o.universeId?ffUniverse(o.universeId):qcResearchUniverse(input.sourceTitle||"Untitled",o.facts||[]);if(o.universeId&&!u)return{ok:false,reason:"universe missing"};
-    const facts=o.facts||(o.universeId?SFQuick.factsFromUniverse(u):[]),msgs=SFQuick.prompt(input,facts,{modes:SFFan.MODES,careers:window.SFGame?SFGame.careerList().map(c=>c.id):[],universe:u}),est=SFQuick.estimate(msgs,1800);
-    const r=await ask(msgs,{max:1800,temp:0.4,signal:o.signal,lite:true});qcAbort(o.signal);const p=SFQuick.parse(r.text);if(!p.ok)return{ok:false,reason:p.reason,estimate:est,usage:r.usage||null};
-    const v=SFQuick.validate(p.value,qcCtx(u,facts));QC.ctx={universe:u,facts,imported:!!o.universeId,input:Object.assign({},input)};QC.undo=[];
+    const facts=o.facts||(o.universeId?SFQuick.factsFromUniverse(u):[]),msgs=SFQuick.prompt(input,facts,{modes:SFFan.MODES,careers:window.SFGame?SFGame.careerList().map(c=>c.id):[],universe:u}),est=SFQuick.estimate(msgs,SFQuick.MAX_OUT.preview);
+    const r=await ask(msgs,{max:SFQuick.MAX_OUT.preview,temp:0.4,signal:o.signal,lite:true});qcAbort(o.signal);const p=SFQuick.parse(r.text);if(!p.ok)return{ok:false,reason:p.reason,estimate:est,usage:r.usage||null};
+    const raw=Object.assign({},p.value,{id:"qc"+Date.now().toString(36)+"-"+(++QC.seq)});delete raw.locked;
+    const v=SFQuick.validate(raw,qcCtx(u,facts));QC.ctx={universe:u,facts,imported:!!o.universeId,input:Object.assign({},input)};QC.cur=raw.id;QC.prop=null;qcH(raw.id).now=v.blueprint;
     return{ok:v.ok,reason:v.ok?null:v.issues[0],blueprint:v.blueprint,issues:v.issues,unsupported:v.unsupported,canon:v.canon,estimate:est,usage:r.usage||null}}
   catch(e){return{ok:false,reason:e&&e.name==="AbortError"?"cancelled":String(e&&e.message||e)}}}
+/* Stage an AI change: returns a proposal (blueprint after the change + diff). Nothing changes until qcAccept(proposalId). */
+function qcStage(bp,r,kind){if(!r.ok)return{ok:false,reason:r.reason,issues:r.issues||[],staged:false};if(!r.diff.length)return{ok:true,reason:"no change",blueprint:bp,diff:[],issues:r.issues,staged:false};
+  const id="p"+(++QC.seq);QC.prop={id,kind,base:bp,blueprint:r.blueprint};return{ok:true,reason:null,proposalId:id,blueprint:r.blueprint,diff:r.diff,issues:r.issues,staged:true}}
 async function qcEdit(bp,instruction,o){o=o||{};if(!QC.ctx)return{ok:false,reason:"preview first"};if(!String(instruction||"").trim())return{ok:false,reason:"Describe the change"};
-  try{qcAbort(o.signal);const r=await ask(SFQuick.editPrompt(bp,instruction),{max:900,temp:0.2,signal:o.signal,lite:true});qcAbort(o.signal);const p=SFQuick.parse(r.text);if(!p.ok)return{ok:false,reason:p.reason};
-    return qcApply(bp,p.value)}catch(e){return{ok:false,reason:e&&e.name==="AbortError"?"cancelled":String(e&&e.message||e)}}}
-function qcApply(bp,patch){if(!QC.ctx)return{ok:false,reason:"preview first"};const r=SFQuick.applyPatch(bp,patch,qcCtx(QC.ctx.universe,QC.ctx.facts));if(r.ok&&r.diff.length)QC.undo.push(bp);return{ok:r.ok,reason:r.reason,blueprint:r.blueprint,diff:r.diff,issues:r.issues}}
-function qcUndo(){const b=QC.undo.pop();return b?{ok:true,blueprint:b}:{ok:false,reason:"nothing to undo"}}
+  qcSettle(bp);try{qcAbort(o.signal);const r=await ask(SFQuick.editPrompt(bp,instruction),{max:SFQuick.MAX_OUT.edit,temp:0.2,signal:o.signal,lite:true});qcAbort(o.signal);const p=SFQuick.parse(r.text);if(!p.ok)return{ok:false,reason:p.reason};
+    return qcStage(bp,SFQuick.applyPatch(bp,p.value,qcCtx(QC.ctx.universe,QC.ctx.facts)),"edit")}catch(e){return{ok:false,reason:qcCancelled(e)?"cancelled":String(e&&e.message||e)}}}
+/* Regenerate one top-level section (respects locks); staged like qcEdit. o: {signal, instruction} */
+async function qcRegenerate(bp,section,o){o=o||{};if(!QC.ctx)return{ok:false,reason:"preview first"};const c=SFQuick.canRegenerate(bp,section);if(!c.ok)return c;
+  qcSettle(bp);try{qcAbort(o.signal);const r=await ask(SFQuick.regeneratePrompt(bp,section,QC.ctx.input,QC.ctx.facts,{instruction:o.instruction}),{max:SFQuick.MAX_OUT.regenerate,temp:0.5,signal:o.signal,lite:true});qcAbort(o.signal);
+    const p=SFQuick.parse(r.text);if(!p.ok)return{ok:false,reason:p.reason};if(!p.value||!("value" in p.value))return{ok:false,reason:"the reply had no value"};
+    return qcStage(bp,SFQuick.applyPatch(bp,{set:{[section]:p.value.value}},qcCtx(QC.ctx.universe,QC.ctx.facts)),"regenerate")}catch(e){return{ok:false,reason:qcCancelled(e)?"cancelled":String(e&&e.message||e)}}}
+function qcAccept(proposalId){const P=QC.prop;if(!P||P.id!==proposalId)return{ok:false,reason:"no such proposal"};QC.prop=null;qcPush(P.base,P.blueprint);return{ok:true,reason:null,blueprint:P.blueprint}}
+function qcReject(proposalId){const P=QC.prop;if(!P||(proposalId&&P.id!==proposalId))return{ok:false,reason:"no such proposal"};QC.prop=null;return{ok:true,reason:null,blueprint:P.base}}
+/* The player's own change, applied at once (undoable). o: {force} lets the player change a locked path directly. */
+function qcApply(bp,patch,o){o=o||{};if(!QC.ctx)return{ok:false,reason:"preview first"};qcSettle(bp);const r=SFQuick.applyPatch(bp,patch,qcCtx(QC.ctx.universe,QC.ctx.facts),{force:!!o.force});if(r.ok&&r.diff.length)qcPush(bp,r.blueprint);return{ok:r.ok,reason:r.reason,blueprint:r.blueprint,diff:r.diff,issues:r.issues}}
+function qcLock(bp,paths,on){if(!QC.ctx)return{ok:false,reason:"preview first"};qcSettle(bp);const cur=SFQuick.cleanLocks(bp&&bp.locked),ps=SFQuick.cleanLocks([].concat(paths||[]));if(!ps.length)return{ok:false,reason:"nothing to lock"};
+  const next=on===false?cur.filter(l=>!ps.includes(l)):[...new Set(cur.concat(ps))],B=Object.assign({},bp,{locked:next});if(qcJ(next)!==qcJ(cur))qcPush(bp,B);return{ok:true,reason:null,blueprint:B,locked:next}}
+const qcUnlock=(bp,paths)=>qcLock(bp,paths,false);
+/* Undo/redo for one blueprint id (default: the current one). Undo with a pending proposal discards the proposal. */
+function qcUndo(id){if(QC.prop){const P=QC.prop;QC.prop=null;return{ok:true,reason:null,blueprint:P.base,discarded:P.id}}
+  const H=QC.hist[id||QC.cur];const b=H&&H.undo.pop();if(!b)return{ok:false,reason:"nothing to undo"};H.redo.push(H.now);H.now=b;return{ok:true,reason:null,blueprint:b}}
+function qcRedo(id){const H=QC.hist[id||QC.cur];const b=H&&H.redo.pop();if(!b)return{ok:false,reason:"nothing to redo"};H.undo.push(H.now);H.now=b;return{ok:true,reason:null,blueprint:b}}
+/* Preflight estimates: build the exact request, send nothing. */
+function qcEstimatePreview(input,o){o=o||{};input=input||{};const u=o.universeId?ffUniverse(o.universeId):qcResearchUniverse(input.sourceTitle||"Untitled",o.facts||[]);if(o.universeId&&!u)return{ok:false,reason:"universe missing"};
+  const facts=o.facts||(o.universeId?SFQuick.factsFromUniverse(u):[]);return Object.assign({ok:true,reason:null,requests:1},SFQuick.estimate(SFQuick.prompt(input,facts,{modes:SFFan.MODES,careers:window.SFGame?SFGame.careerList().map(c=>c.id):[],universe:u}),SFQuick.MAX_OUT.preview))}
+function qcEstimateEdit(bp,instruction){return Object.assign({ok:true,reason:null,requests:1},SFQuick.estimate(SFQuick.editPrompt(bp,instruction||""),SFQuick.MAX_OUT.edit))}
+function qcEstimateRegenerate(bp,section,o){o=o||{};if(!QC.ctx)return{ok:false,reason:"preview first"};const c=SFQuick.canRegenerate(bp,section);if(!c.ok)return c;return Object.assign({ok:true,reason:null,requests:1},SFQuick.estimate(SFQuick.regeneratePrompt(bp,section,QC.ctx.input,QC.ctx.facts,{instruction:o.instruction}),SFQuick.MAX_OUT.regenerate))}
 /* Atomic: everything or nothing. */
-function qcCommit(bp){if(!QC.ctx)return{ok:false,applied:false,reason:"preview first"};const ctx=qcCtx(QC.ctx.universe,QC.ctx.facts),v=SFQuick.validate(bp,ctx);if(!v.ok)return{ok:false,applied:false,reason:v.issues[0]||"invalid setup"};
+function qcCommit(bp){if(!QC.ctx)return{ok:false,applied:false,reason:"preview first"};qcSettle(bp);const ctx=qcCtx(QC.ctx.universe,QC.ctx.facts),v=SFQuick.validate(bp,ctx);if(!v.ok)return{ok:false,applied:false,reason:v.issues[0]||"invalid setup"};
   const B=v.blueprint,u=QC.ctx.universe,snap=JSON.stringify({stories:DB.stories,universes:DB.universes||{}});
   let uid0=u.id;try{if(!QC.ctx.imported){DB.universes=DB.universes||{};let n=2;while(DB.universes[uid0])uid0=u.id+"-"+n++;DB.universes[uid0]=Object.assign({},u,{id:uid0})}
     const o={};for(const k of ["modes","takeover","start","pov","romance","rules","locks","exceptions","fates","foreknowledge"])if(B[k]!==undefined)o[k]=B[k];if(B.player)o.player={name:B.player.name,desc:B.player.desc};if(B.player&&B.player.age!=null)o.startAge=B.player.age;
@@ -2570,7 +2602,7 @@ function qcCommit(bp){if(!QC.ctx)return{ok:false,applied:false,reason:"preview f
     if(game||director)st.blueprint={game,director};st.fanfic.setup={memoryRecall:!!(B.memory&&B.memory.recall),layout:B.appearance&&B.appearance.layout||null};if(B.styleProfile&&Object.keys(B.styleProfile).length)st.fanfic.styleProfile=B.styleProfile;
     st.fanfic.quick={characters:B.characters,notes:B.notes,sources:(QC.ctx.facts||[]).filter(f=>B.sources.includes(f.id)).map(f=>f.source),uncertain:B.uncertain};
     if(window.__qcFailAfterStory)throw new Error("simulated failure");
-    save();QC.ctx=null;QC.undo=[];return{ok:true,applied:true,reason:null,storyId:r.storyId}}
+    save();QC.ctx=null;QC.prop=null;QC.hist={};QC.cur=null;return{ok:true,applied:true,reason:null,storyId:r.storyId}}
   catch(e){const p=JSON.parse(snap);DB.stories=p.stories;DB.universes=p.universes;save();return{ok:false,applied:false,reason:String(e&&e.message||e)}}}
 const AP_PRESETS="sf.appearance.presets";
 function apKey(){return(window.SFVisualV48&&SFVisualV48.KEY)||"sf.visual.v48"}

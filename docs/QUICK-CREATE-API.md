@@ -6,7 +6,7 @@ Status: engine (`site/quick-create-engine.js`, `SFQuick`; `tests/quick_create_un
 
 1. **Research** `qcResearch(query, {signal})` → `{ok, reason, work: {title, kind, year}, facts[], sources[]}` — uses the app's existing lookups (`searchWorks`: AniList and similar; `wikiApi`: fandom wiki / Wikipedia via the connector). The OpenCode model cannot browse, so it never "looks things up" itself. Each fact: `{id, text, source: {title, url (https only)}, confidence: confirmed|uncertain}`. Or, for an imported universe, facts come from it (`SFQuick.factsFromUniverse`).
 2. **Preview** `qcPreview({sourceTitle, concept, character, preferences?, universeId?, facts?}, {signal})` → `{ok, reason, blueprint, issues[], unsupported[], canon (summary), estimate: {inputTokens, maxOutputTokens}, usage}` — one bounded request (prompt ≤ 24k chars, ≤ 40 facts of ≤ 400 chars). Nothing is saved.
-3. **Edit** `qcEdit(blueprint, instruction, {signal})` → `{ok, reason, blueprint, diff: [{path, from, to}], issues}` — the model returns `{set: {path: value}, remove: [path]}`; only those paths change; edits that break the canon are refused and the blueprint is unchanged. `qcUndo()` steps back through accepted edits (session-only stack). Manual edits use the same patch shape: `SFQuick.applyPatch(bp, patch, ctx)`.
+3. **Edit** `qcEdit(blueprint, instruction, {signal})` → a staged proposal `{ok, proposalId, blueprint, diff: [{path, from, to}], issues, staged: true}`; nothing changes until `qcAccept(proposalId)` (or `qcReject(proposalId)`). The model returns `{set: {path: value}, remove: [path]}`; only those paths change; edits that break the canon or touch a locked path are refused whole. See *Editing controls* below.
 4. **Commit** `qcCommit(blueprint, {universeId?})` → `{ok, applied, reason, storyId}` — atomic: universe (from the import, or a small one built from research facts), story via `ffCreateStory`, gameplay/director/memory setup as the story blueprint (every new playthrough starts from it), cinema layout and appearance for that story. All or nothing: any failure restores the previous state.
 
 ## Blueprint fields
@@ -21,10 +21,26 @@ Status: engine (`site/quick-create-engine.js`, `SFQuick`; `tests/quick_create_un
 - Edits cannot change `sources`/`uncertain`; unknown paths refused; diff lists only the touched paths.
 - Content rules: no romance or sexual content with anyone under 18 or real people (also enforced later by `ffRomanceAllowed`/`ffCheck`); the player stays in control of their character.
 
+## Preflight estimates (implemented)
+Each builds the exact request that would be sent and sends nothing. All return `{ok, reason, inputTokens, maxOutputTokens, requests: 1}`.
+- `qcEstimatePreview(input, {universeId | facts})` — same options as `qcPreview`; matches its `estimate`.
+- `qcEstimateEdit(blueprint, instruction)` (max output 900).
+- `qcEstimateRegenerate(blueprint, section, {instruction})` (max output 900); refuses locked/protected sections like `qcRegenerate`.
+- Output caps live in `SFQuick.MAX_OUT` = `{preview: 1800, edit: 900, regenerate: 900}`.
+
+Cancelling any request (`signal`) returns `{ok:false, reason:"cancelled"}` and changes nothing: the current blueprint, its history and any staged proposal stay as they were, and a reply that arrives after the cancel is ignored.
+
+## Editing controls (implemented)
+- **Blueprint id.** `qcPreview` gives each blueprint an `id` (the model cannot choose it). Patches can't change `id` or `locked`.
+- **Locks.** `qcLock(bp, paths)` / `qcUnlock(bp, paths)` → `{ok, blueprint, locked}`; `bp.locked` is a list of dot paths (top-level field must be editable; `sources`/`uncertain` aren't lockable). A lock covers its parents and children: locking `romance` blocks `romance.pacing`, locking `romance.pacing` blocks setting `romance` whole. AI edits and regeneration never change a locked path — a patch that touches one is refused whole (`reason: "locked: <path> …"`), and the model is told the locked paths. The player's own direct edit can pass `qcApply(bp, patch, {force: true})`.
+- **Regenerate one section.** `qcRegenerate(bp, section, {signal, instruction})` → staged proposal like `qcEdit`. `section` is a top-level field from `SFQuick.REGEN` (all except `sources`, `uncertain`); locked sections are refused before any request. The model answers `{"value": …}`; only that section changes.
+- **Staged proposals.** One proposal at a time. `qcAccept(proposalId)` → `{ok, blueprint}` (recorded in history); `qcReject(proposalId)` → `{ok, blueprint: previous}` (nothing recorded). A UI that simply keeps the proposal's blueprint and calls any other adapter with it (`qcApply`, `qcEdit`, `qcRegenerate`, `qcLock`, `qcCommit`) has it accepted at that point, so history stays right; `qcUndo()` while a proposal is pending discards it (`{ok, blueprint: previous, discarded: proposalId}`).
+- **Undo/redo per blueprint.** `qcUndo(id?)` / `qcRedo(id?)` → `{ok, blueprint}` or `{ok:false, reason}`; default id is the current blueprint. Each blueprint id keeps its own history (up to 50 steps); a new accepted change clears redo. `qcApply` (player edits) and `qcLock` are recorded immediately. `qcCommit` ends the session.
+
 ## Adapter details (implemented)
 
 - `qcResearch(query, {characters?: [names], signal})`: `searchWorks` → best match becomes fact `f0`; `wikiFind` → the work's fandom wiki; up to 8 `wikiPage` reads (the work's main pages plus each named character). Character pages get canon ids `char:<work-slug>:<name-slug>` so takeover and locks can be validated. Returns `{ok, reason, work: {title, kind, year, author}, wiki, facts, sources}`; `reason: "cancelled"` on abort; when nothing is found it says so and suggests importing the source.
 - `qcPreview(input, {facts?, universeId?, signal})`: with `universeId` uses the imported universe (facts from it unless given); otherwise builds a temporary universe from the research facts (nothing saved). One non-streaming request (max 1,800 output tokens). Sets the creation session context and clears the undo stack.
-- `qcEdit(bp, instruction, {signal})` and `qcApply(bp, patch)` (manual edits; same patch shape): accepted changes push the previous blueprint on the undo stack; `qcUndo()` pops it.
+- `qcEdit` / `qcRegenerate` stage proposals; `qcApply(bp, patch, {force})` (manual edits; same patch shape) applies at once. History, locks and proposals: see *Editing controls*.
 - `qcCommit(bp)`: re-validates; saves the research universe under a free id (never overwrites, e.g. `ember-academy-2`), creates the story with `ffCreateStory`, stores `blueprint {game (career started on defaults), director {enabled, settings}}`, `fanfic.setup {memoryRecall, layout}`, `fanfic.styleProfile`, `fanfic.quick {characters, notes, sources, uncertain}`. Any failure restores stories and universes exactly. New playthroughs get the canon, memory recall, cinematic layout, director and gameplay setup.
 - Narrator prompt: stories with a style profile get a short "SOURCE STYLE" section (tense, pacing, dialogue, description, tone, structure) with "never copy text from the source".

@@ -44,8 +44,8 @@ try:
     sysm = SEEN["sys"][-1]; um = pg.evaluate("1") and True
     ok("data, not instructions" in sysm and "IGNORE ALL PREVIOUS" not in sysm, "injected wiki text stays out of the instructions")
     ed = pg.evaluate("bp=>qcEdit(bp,'make the romance faster')", pv["blueprint"])
-    ok(ed["ok"] and ed["blueprint"]["romance"]["pacing"] == "fast" and [d["path"] for d in ed["diff"]] == ["romance.pacing"], "natural-language edit returns a scoped diff")
-    ok(pg.evaluate("qcUndo().blueprint.romance.pacing") == "slow" and pg.evaluate("qcUndo().reason") == "nothing to undo", "undo steps back")
+    ok(ed["ok"] and ed["staged"] and ed["blueprint"]["romance"]["pacing"] == "fast" and [d["path"] for d in ed["diff"]] == ["romance.pacing"], "natural-language edit returns a staged, scoped diff")
+    ok(pg.evaluate("id=>qcAccept(id).ok", ed["proposalId"]) and pg.evaluate("qcUndo().blueprint.romance.pacing") == "slow" and pg.evaluate("qcUndo().reason") == "nothing to undo", "accepted edit can be undone")
     bad = pg.evaluate("bp=>qcApply(bp,{set:{takeover:'char:ember-academy:nobody'}})", pv["blueprint"]); ok(not bad["ok"] and bad["reason"].startswith("canon:"), "an edit that breaks the canon is refused")
     before = pg.evaluate("JSON.stringify({s:DB.stories,u:DB.universes||{}})")
     pg.evaluate("window.__qcFailAfterStory=true;null"); f1 = pg.evaluate("bp=>qcCommit(bp)", ed["blueprint"])
