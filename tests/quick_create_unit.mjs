@@ -68,4 +68,13 @@ const sv = Q.validate(Object.assign({}, FX.reply, { styleProfile: { balance: 'di
 ok(sv.blueprint.styleProfile.innerMonologue === 'frequent' && sv.blueprint.styleProfile.rhythm === 'short' && Q.validate(Object.assign({}, FX.reply, { styleProfile: { humor: 'slapstick' } }), C).issues.some(i => i.includes('styleProfile.humor')), 'extended style profile with checked values');
 const pr = Q.prompt(FX.input, FX.facts, { modes: ctx.SFFan.MODES, careers: ['idol'], universe: U, layouts: ['novel'], presets: ['noir'], cinematic: { lighting: ['night'] }, themes: ['Midnight'] })[0].content;
 ok(pr.includes('milestones') && pr.includes('innerMonologue') && pr.includes('lighting: night') && pr.includes('Midnight') && pr.includes('mode: app|on'), 'prompt lists the real allowed values');
+// extension 4: spoiler limit, coverage, drafts
+const SF = Q.spoilerFilter([{ text: 'In Chapter 12 Lys dies' }, { text: 'Kael (chapter 3)' }, { text: 'ep. 30 finale' }, { text: 'Vol 2 begins' }, { text: 'no numbers' }], 5);
+ok(SF.removed === 2 && SF.facts.map(f => f.text).join('|') === 'Kael (chapter 3)|Vol 2 begins|no numbers', 'spoiler limit drops facts naming a later chapter, episode or volume');
+ok(Q.spoilerFilter([{ text: 'chapter 99' }], null).removed === 0, 'no limit keeps everything');
+const CV = Q.coverage({ facts: [{ charName: 'Kael', confidence: 'confirmed' }, { confidence: 'uncertain' }], sources: [1, 2], work: { kind: 'Light novel' } }, ['Kael', 'Lys']);
+ok(CV.level === 'partial' && CV.characters.missing.join() === 'Lys' && CV.confidence.uncertain === 1 && Q.coverage({ facts: [], sources: [] }, []).level === 'thin', 'coverage level separate from confidence');
+const DR = Q.cleanDraft({ name: '', input: { sourceTitle: 'Ember', concept: 'x'.repeat(5000), maxChapter: '7' }, facts: [{ id: 'f1', text: 'a', charName: 'Kael', source: { url: 'javascript:x' } }], blueprint: { title: 'T' } });
+ok(DR.ok && DR.draft.name === 'Ember' && DR.draft.input.concept.length === 2000 && DR.draft.maxChapter === 7 && DR.draft.facts[0].charName === 'Kael' && !DR.draft.facts[0].source.url, 'drafts are sanitized (names, caps, links, spoiler limit)');
+ok(!Q.cleanDraft({ blueprint: { premise: 'y'.repeat(Q.DRAFT_MAX_CHARS) } }).ok, 'oversized drafts refused');
 console.log(`quick create: ${n} checks passed`);
