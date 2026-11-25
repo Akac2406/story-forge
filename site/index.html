@@ -2484,6 +2484,7 @@ function menuSheet(se,st){closeSheet(true);const ends=ed(se,st),fo=foundOf(st),n
       drow(se.start||"From the beginning",()=>go({n:"story",id:st.id}))
     ),
     h("details",{class:"story-tools",name:"sf-novel-menu"},h("summary",{text:"Canon & Fanfiction",style:"padding:12px 8px;cursor:pointer;font-weight:600"}),
+      se.canon&&window.SFFanUI?.library?drow("Source Library",()=>window.SFFanUI.library(se)):null,
       drow("Reference texts",()=>refSheet(st.id),String(refsFor(st.id).length+refsFor(se.id).length)),
       st.kind!=="character"?drow("Canon mode",()=>canonModeSheet(se,st),CANON_MODES.find(x=>x[0]===SFCanon.mode(se,st))?.[1]):null,
       drow("Canon Bible",()=>canonBible(se,st),String((st.entries||[]).length)),
@@ -3985,4 +3986,6 @@ addEventListener("pagehide",()=>{if(idb){clearTimeout(saveT);idbSet(KEY,JSON.str
   applyFs();save();render();if(DB.syncAuto&&DB.syncPass)setTimeout(()=>syncNow(false),1500)})();
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&DB.syncAuto&&DB.syncPass&&!busy)syncNow(false)});
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
-</script><script src="visual-customization-v48.js"></script><script src="cinematic-ui-v49.js"></script><script src="character-ui-v50.js"></script><script src="character-studio-v51.js"></script><script src="relationship-map-v52.js"></script><script src="cinematic-profiles-v53.js"></script><script src="cinematic-scenes-v54.js"></script></body></html>
+</script><script src="visual-customization-v48.js"></script><script src="cinematic-ui-v49.js"></script><script src="character-ui-v50.js"></script><script src="character-studio-v51.js"></script><script src="relationship-map-v52.js"></script><script src="cinematic-profiles-v53.js"></script><script src="cinematic-scenes-v54.js"></script><link rel="stylesheet" href="fanfic-ui.css">
+<script src="fanfic-ui.js"></script>
+</body></html>
