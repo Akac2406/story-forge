@@ -19,7 +19,7 @@ Paid testing: the memory-overhaul OpenCode authorization (stop at 45% monthly, l
 
 | | |
 |---|---|
-| Live (production) | **92** (released 2026-11-25 with Anna's approval): menu reorganisation, fanfiction engine + first screens, real-world/romance/competition, memory v2 engine + opt-in recall, living characters engine. |
+| Live (production) | **93** (released 2026-11-25 with Anna's approval): Relationship Web, Character Journal, NPC Agenda, Memory Studio, Story Director screens (ChatGPT) on the v92 engines; Story Director adapter + opt-in prompt block; persistent universes/crossovers engine (no UI yet) |
 | Test address | https://deploy-preview-7--celebrated-brigadeiros-580c41.netlify.app (draft PR #7 = `memory-overhaul`) |
 | Integration branch | `memory-overhaul`: Claude merges, runs the full suite, pushes |
 | ChatGPT branch | `ui-overhaul` (fast-forwarded to `memory-overhaul` after each integration) |
@@ -61,7 +61,12 @@ Workflow per batch: ChatGPT commits to `ui-overhaul`; Claude merges into `memory
 | 2026-11-24 | b2b10ed | ui-overhaul e35a6e6 (menu) + fanfic-engine | full suite pass; menu parity 50/50; 17 old tests adapted via `tests/menu_helper.py` |
 | 2026-11-25 | release 92 | memory-overhaul b083875 + version bump | full suite pass; upgrade 91 -> 92 check 26/26 (keys, stories, art, offline, deadlines/branches, world export) |
 | 2026-11-25 | 66e674c | ui-overhaul c69ceb5 (10 commits: Source Library, management screens, competition, favorites, search, last category) | **bug fixed:** `fanfic-ui.js` missing `}` in drawFavorites (whole UI file failed to load); added `tests/js_syntax_check.mjs`, `tests/fanfic_ui_screens.py` (16 checks); helper adapted for favorites panel; full suite pass |
+| 2026-11-25 | 9342f11 + 4bfc59c | ui-overhaul 4f19e15 (5 screens) + phase 8 universes engine | **bug fixed:** broken ternary in the Story Director menu entry (index.html would not parse); new tests `character_screens_browser.py` (13), `fanfic_universe_unit.mjs` (12); full suite pass |
+| 2026-11-25 | release 93 | memory-overhaul + version bump | full suite pass; upgrade 92 -> 93 check 26/26 |
 
 ## Known issues / notes
 
 - "Manage favorites" repeats every menu item as a checkbox above the categories (collapsed). Consider moving it into Advanced & Settings to keep the drawer short.
+
+- Phase 8 engine API (SFFan): upgradePreview(u, canon, state), upgrade(canon, u), promote(u, record, {session, canon?}) -> fanon, demote(u, id) (fanon only), crossover([u...]), powerRule(canon, from, to), knowsX(u, canon, charId). Adapters + UI next.
+- Upgrade checks: give the new site files a newer modification time than the old copy (`touch`), or the test server answers 304 and the browser keeps the old page.
