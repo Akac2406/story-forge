@@ -2938,6 +2938,7 @@ function menuSheet(se,st){closeSheet(true);const ends=ed(se,st),fo=foundOf(st),n
     ),
     h("details",{class:"story-tools",name:"sf-novel-menu"},h("summary",{text:"Story Director",style:"padding:12px 8px;cursor:pointer;font-weight:600"}),
       st.kind!=="character"&&window.SFFanUI?.director?drow("Story Director",()=>window.SFFanUI.director(se)):null,
+      se.canon&&window.SFFanUI?.storyChanges?drow("AI Story Architect",()=>window.SFFanUI.storyChanges(se)):null,
       st.kind!=="character"?drow("Story formats",()=>fmtSheet(se)):null,
       st.kind!=="character"?drow("Story controls",()=>ctlSheet(se),ctlText(se)?"Custom":""):null,
       drow("Length & depth",()=>depthSheet(se),(LENS.some(x=>x[0]===String(se.len))?li[1].split(" ")[0]:"~"+se.len+" words")+(se.think?" · "+THINK[se.think][0]:"")),
