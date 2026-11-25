@@ -734,7 +734,14 @@ function readerStudio(main){
       h("button",{text:"Edit","aria-label":"Edit "+(story.title||story.charName||"story"),
         onclick:()=>go({n:"edit",id:story.id})})))));
 }
+let sfStudioTab="overview";
 function vVisualStudio(m){
+  const host=h("div",{}),tabs=h("div",{class:"row",role:"group","aria-label":"Studio sections"});
+  function show(tab){sfStudioTab=tab;host.replaceChildren();for(const b of tabs.children)b.setAttribute("aria-pressed",String(b.dataset.tab===tab));if(tab==="fanfiction"&&window.SFFanUI?.createFanfiction)window.SFFanUI.createFanfiction(host);else vVisualStudioOverview(host)}
+  for(const [id,label] of [["overview","Overview"],["fanfiction","Fanfiction"]])tabs.append(h("button",{"data-tab":id,text:label,onclick:()=>{if(sfStudioTab!==id)show(id)}}));
+  ap(m,tabs,host);show(sfStudioTab);
+}
+function vVisualStudioOverview(m){
   if(illustratedReader()){readerStudio(m);return}
   const sessions=(DB.sessions||[]).slice().sort((a,b)=>(b.updated||0)-(a.updated||0));
   const hero=h("section",{class:"sf-studio-hero"},h("div",{class:"sf-studio-kicker",text:"STORY FORGE · CREATOR STUDIO"}),h("h2",{text:"Your worlds. Your legends."}),h("p",{text:"A cinematic command center for your stories, characters and visual settings. Memory and generation logic are unchanged."}));ap(m,hero);
