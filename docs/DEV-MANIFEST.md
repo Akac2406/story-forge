@@ -19,7 +19,7 @@ Paid testing: the memory-overhaul OpenCode authorization (stop at 45% monthly, l
 
 | | |
 |---|---|
-| Live (production) | **100** (released 2026-11-25): Fanfiction wizard canon targets, foreknowledge and drafts; appearance and cinematic settings now render (ChatGPT, via the v48/v49 hooks). 99: Fanfiction creation wizard |
+| Live (production) | **101** (released 2026-11-25 with Anna's approval): complete visual overhaul (ChatGPT): Fanfiction Studio dashboard, universe artwork, eight distinct reader styles, portraits and expression art, 14 icon families, appearance previews, custom career forms; readable studio panels. 100: wizard extensions + first rendering |
 | Test address | https://deploy-preview-7--celebrated-brigadeiros-580c41.netlify.app (draft PR #7 = `memory-overhaul`) |
 | Integration branch | `memory-overhaul`: Claude merges, runs the full suite, pushes |
 | ChatGPT branch | `ui-overhaul` (fast-forwarded to `memory-overhaul` after each integration) |
@@ -152,4 +152,4 @@ All 90 repository regression scripts passed across local Node/Chromium runs, inc
 
 ### Release candidate 101 — visual overhaul (Claude, 2026-11-25)
 
-Integrated ui-overhaul through 81e7f46 on memory-overhaul. Version assigned: **101** (`VER=101`, cache `sf-v101`). Reviewed ChatGPT's test edits (additions only, no weakened assertions) and confirmed no engine files changed; every adapter called exists. Full suite passes (all scripts); upgrade checks 100 -> 101 and 92 -> 101 both 26/26 (keys, stories, artwork, offline, deadlines/branches, world export). **Not published**: waiting for Anna's go-ahead for the official release. Production stays v100.
+Integrated ui-overhaul through 81e7f46 on memory-overhaul. Version assigned: **101** (`VER=101`, cache `sf-v101`). Reviewed ChatGPT's test edits (additions only, no weakened assertions) and confirmed no engine files changed; every adapter called exists. Full suite passes (all scripts); upgrade checks 100 -> 101 and 92 -> 101 both 26/26 (keys, stories, artwork, offline, deadlines/branches, world export). Published as v101 on 2026-11-25 after Anna approved.
