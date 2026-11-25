@@ -1,0 +1,819 @@
+{
+ "universe": {
+  "v": 1,
+  "id": "ember",
+  "name": "The Ember Academy (invented test universe)",
+  "rev": 2,
+  "created": 1764000000000,
+  "updated": 1764100000000,
+  "revisions": [
+   {
+    "rev": 1,
+    "at": 1764000000000,
+    "note": "Volumes 1-2 imported"
+   },
+   {
+    "rev": 2,
+    "at": 1764100000000,
+    "note": "Volume 3 added (chapters 41-60)"
+   }
+  ],
+  "sources": [
+   {
+    "id": "src:ember-novel",
+    "title": "The Ember Academy (novel, invented)",
+    "kind": "novel",
+    "priority": 1,
+    "lang": "en",
+    "chapters": [
+     {
+      "n": 1,
+      "title": "Chapter 1",
+      "hash": "h001",
+      "words": 3000
+     },
+     {
+      "n": 2,
+      "title": "Chapter 2",
+      "hash": "h002",
+      "words": 3000
+     },
+     {
+      "n": 5,
+      "title": "Chapter 5",
+      "hash": "h005",
+      "words": 3000
+     },
+     {
+      "n": 12,
+      "title": "Chapter 12",
+      "hash": "h012",
+      "words": 3000
+     },
+     {
+      "n": 20,
+      "title": "Chapter 20",
+      "hash": "h020",
+      "words": 3000
+     },
+     {
+      "n": 33,
+      "title": "Chapter 33",
+      "hash": "h033",
+      "words": 3000
+     },
+     {
+      "n": 41,
+      "title": "Chapter 41",
+      "hash": "h041",
+      "words": 3000
+     },
+     {
+      "n": 47,
+      "title": "Chapter 47",
+      "hash": "h047",
+      "words": 3000
+     },
+     {
+      "n": 52,
+      "title": "Chapter 52",
+      "hash": "h052",
+      "words": 3000
+     },
+     {
+      "n": 60,
+      "title": "Chapter 60",
+      "hash": "h060",
+      "words": 3000
+     }
+    ],
+    "coverage": {
+     "from": 1,
+     "to": 60
+    },
+    "indexedAt": 1764100000000
+   },
+   {
+    "id": "src:ember-anime",
+    "title": "The Ember Academy (anime, invented)",
+    "kind": "anime",
+    "priority": 2,
+    "lang": "en",
+    "chapters": [
+     {
+      "n": 1,
+      "title": "Episode 1",
+      "hash": "a001",
+      "words": 0
+     },
+     {
+      "n": 2,
+      "title": "Episode 2",
+      "hash": "a002",
+      "words": 0
+     },
+     {
+      "n": 3,
+      "title": "Episode 3",
+      "hash": "a003",
+      "words": 0
+     }
+    ],
+    "coverage": {
+     "from": 1,
+     "to": 3
+    },
+    "indexedAt": 1764100000000
+   }
+  ],
+  "aliases": {
+   "char:ember:kael": [
+    "Kael",
+    "Young Lord Kael",
+    "the ash-born"
+   ],
+   "char:ember:mira": [
+    "Mira",
+    "Instructor Vell"
+   ],
+   "char:ember:dorran": [
+    "Dorran",
+    "the Warden"
+   ],
+   "char:ember:lys": [
+    "Lys"
+   ]
+  },
+  "chars": {
+   "char:ember:kael": {
+    "id": "char:ember:kael",
+    "name": "Kael Ashveil",
+    "aliases": [
+     "Kael",
+     "Young Lord Kael"
+    ],
+    "born": "Year 980",
+    "core": {
+     "personality": "guarded, dry humor, fiercely loyal once trust is earned",
+     "values": "family honor, freedom",
+     "temperament": "calm until cornered"
+    },
+    "speech": {
+     "tone": "clipped",
+     "vocabulary": "plain, few titles",
+     "mannerisms": "answers questions with questions",
+     "lines": [
+      "Paraphrase: asks why someone is helping before accepting help."
+     ]
+    },
+    "appearance": "grey eyes, burn scar on left hand",
+    "abilities": [
+     "ember-sense",
+     "blade form 1-3"
+    ],
+    "affiliations": [
+     "House Ashveil",
+     "Ember Academy"
+    ],
+    "ambitions": [
+     "master the ninth form",
+     "learn who burned his family's archive"
+    ],
+    "arcs": [
+     {
+      "fromCh": 1,
+      "toCh": 20,
+      "summary": "arrives as an outcast, earns a place"
+     },
+     {
+      "fromCh": 21,
+      "toCh": 60,
+      "summary": "uncovers the archive fire"
+     }
+    ]
+   },
+   "char:ember:mira": {
+    "id": "char:ember:mira",
+    "name": "Mira Vell",
+    "aliases": [
+     "Instructor Vell"
+    ],
+    "born": "Year 961",
+    "core": {
+     "personality": "strict, secretly kind",
+     "values": "duty",
+     "temperament": "patient"
+    },
+    "speech": {
+     "tone": "formal",
+     "vocabulary": "precise",
+     "mannerisms": "uses full names",
+     "lines": [
+      "Paraphrase: corrects posture before answering."
+     ]
+    },
+    "appearance": "silver braid",
+    "abilities": [
+     "ward-weaving"
+    ],
+    "affiliations": [
+     "Ember Academy"
+    ],
+    "ambitions": [
+     "protect her students"
+    ],
+    "arcs": []
+   },
+   "char:ember:dorran": {
+    "id": "char:ember:dorran",
+    "name": "Dorran Hale",
+    "aliases": [
+     "the Warden"
+    ],
+    "born": "Year 950",
+    "core": {
+     "personality": "charming, manipulative",
+     "values": "power",
+     "temperament": "cold"
+    },
+    "speech": {
+     "tone": "warm on the surface",
+     "vocabulary": "courtly",
+     "mannerisms": "compliments before threats",
+     "lines": [
+      "Paraphrase: offers a favor that hides a debt."
+     ]
+    },
+    "appearance": "tall, ash-grey coat",
+    "abilities": [
+     "ember-binding"
+    ],
+    "affiliations": [
+     "Academy Council"
+    ],
+    "ambitions": [
+     "control the academy"
+    ],
+    "arcs": []
+   },
+   "char:ember:lys": {
+    "id": "char:ember:lys",
+    "name": "Lys Ashveil",
+    "aliases": [
+     "Lys"
+    ],
+    "born": "Year 983",
+    "core": {
+     "personality": "bright, reckless",
+     "values": "her brother",
+     "temperament": "impulsive"
+    },
+    "speech": {
+     "tone": "lively",
+     "vocabulary": "casual",
+     "mannerisms": "nicknames everyone",
+     "lines": [
+      "Paraphrase: teases Kael when worried."
+     ]
+    },
+    "appearance": "short red hair",
+    "abilities": [
+     "spark-casting"
+    ],
+    "affiliations": [
+     "House Ashveil"
+    ],
+    "ambitions": [
+     "join the academy"
+    ],
+    "arcs": []
+   }
+  },
+  "events": [
+   {
+    "id": "ev:ember:1",
+    "title": "Kael enters the academy",
+    "summary": "Kael passes the entrance trial.",
+    "src": "src:ember-novel",
+    "ch": 2,
+    "order": 1,
+    "when": "Year 998, spring",
+    "who": [
+     "char:ember:kael",
+     "char:ember:mira"
+    ],
+    "where": "Ember Academy",
+    "importance": 3,
+    "requires": [],
+    "needs": [],
+    "leadsTo": [
+     "ev:ember:2",
+     "ev:ember:3"
+    ]
+   },
+   {
+    "id": "ev:ember:2",
+    "title": "Mira takes Kael as a student",
+    "summary": "Mira chooses Kael for her class.",
+    "src": "src:ember-novel",
+    "ch": 5,
+    "order": 2,
+    "when": "Year 998, spring",
+    "who": [
+     "char:ember:mira",
+     "char:ember:kael"
+    ],
+    "where": "Ember Academy",
+    "importance": 3,
+    "requires": [
+     "ev:ember:1"
+    ],
+    "needs": [
+     {
+      "kind": "alive",
+      "who": "char:ember:mira",
+      "value": true
+     }
+    ],
+    "leadsTo": [
+     "ev:ember:4"
+    ]
+   },
+   {
+    "id": "ev:ember:3",
+    "title": "Lys is kidnapped",
+    "summary": "Lys is taken on the road to the academy.",
+    "src": "src:ember-novel",
+    "ch": 12,
+    "order": 3,
+    "when": "Year 998, summer",
+    "who": [
+     "char:ember:lys",
+     "char:ember:dorran"
+    ],
+    "where": "North Road",
+    "importance": 5,
+    "requires": [
+     "ev:ember:1"
+    ],
+    "needs": [
+     {
+      "kind": "at",
+      "who": "char:ember:lys",
+      "value": "North Road"
+     }
+    ],
+    "leadsTo": [
+     "ev:ember:5"
+    ]
+   },
+   {
+    "id": "ev:ember:4",
+    "title": "Kael learns the ninth form",
+    "summary": "Mira teaches the forbidden ninth form.",
+    "src": "src:ember-novel",
+    "ch": 33,
+    "order": 4,
+    "when": "Year 999, winter",
+    "who": [
+     "char:ember:kael",
+     "char:ember:mira"
+    ],
+    "where": "Ember Academy",
+    "importance": 4,
+    "requires": [
+     "ev:ember:2"
+    ],
+    "needs": [
+     {
+      "kind": "rel",
+      "who": "char:ember:mira>char:ember:kael",
+      "value": "trust>=50"
+     }
+    ],
+    "leadsTo": [
+     "ev:ember:6"
+    ]
+   },
+   {
+    "id": "ev:ember:5",
+    "title": "Kael swears revenge on Dorran",
+    "summary": "After the kidnapping Kael vows revenge.",
+    "src": "src:ember-novel",
+    "ch": 20,
+    "order": 5,
+    "when": "Year 998, autumn",
+    "who": [
+     "char:ember:kael"
+    ],
+    "where": "Ember Academy",
+    "importance": 4,
+    "requires": [
+     "ev:ember:3"
+    ],
+    "needs": [
+     {
+      "kind": "knows",
+      "who": "char:ember:kael",
+      "value": "fact:ember:dorran-took-lys"
+     }
+    ],
+    "leadsTo": [
+     "ev:ember:6"
+    ]
+   },
+   {
+    "id": "ev:ember:6",
+    "title": "Duel at the archive",
+    "summary": "Kael confronts Dorran at the burned archive.",
+    "src": "src:ember-novel",
+    "ch": 60,
+    "order": 6,
+    "when": "Year 1000, spring",
+    "who": [
+     "char:ember:kael",
+     "char:ember:dorran"
+    ],
+    "where": "Old Archive",
+    "importance": 5,
+    "requires": [
+     "ev:ember:4",
+     "ev:ember:5"
+    ],
+    "needs": [
+     {
+      "kind": "alive",
+      "who": "char:ember:dorran",
+      "value": true
+     }
+    ],
+    "leadsTo": []
+   }
+  ],
+  "records": [
+   {
+    "id": "fact:ember:dorran-took-lys",
+    "layer": "universe",
+    "kind": "secret",
+    "text": "Dorran arranged Lys's kidnapping",
+    "who": [
+     "char:ember:dorran",
+     "char:ember:lys"
+    ],
+    "canon": "source",
+    "ref": [
+     {
+      "src": "src:ember-novel",
+      "ch": 20,
+      "conf": 0.9
+     }
+    ],
+    "spoilerAt": {
+     "src": "src:ember-novel",
+     "ch": 20
+    }
+   },
+   {
+    "id": "fact:ember:archive-fire",
+    "layer": "universe",
+    "kind": "fact",
+    "text": "The Ashveil archive burned ten years before the story",
+    "who": [],
+    "canon": "source",
+    "ref": [
+     {
+      "src": "src:ember-novel",
+      "ch": 1,
+      "conf": 1
+     }
+    ],
+    "spoilerAt": {
+     "src": "src:ember-novel",
+     "ch": 1
+    }
+   },
+   {
+    "id": "fact:ember:ninth-form",
+    "layer": "universe",
+    "kind": "ability",
+    "text": "The ninth form burns the user's own life force",
+    "who": [
+     "char:ember:kael"
+    ],
+    "canon": "source",
+    "ref": [
+     {
+      "src": "src:ember-novel",
+      "ch": 33,
+      "conf": 0.8
+     }
+    ],
+    "spoilerAt": {
+     "src": "src:ember-novel",
+     "ch": 33
+    }
+   },
+   {
+    "id": "fact:ember:mira-dorran",
+    "layer": "universe",
+    "kind": "fact",
+    "text": "Mira and Dorran trained together",
+    "who": [
+     "char:ember:mira",
+     "char:ember:dorran"
+    ],
+    "canon": "uncertain",
+    "ref": [
+     {
+      "src": "src:ember-anime",
+      "ch": 3,
+      "conf": 0.4
+     }
+    ],
+    "spoilerAt": {
+     "src": "src:ember-novel",
+     "ch": 41
+    }
+   },
+   {
+    "id": "fanon:ember:kael-cooks",
+    "layer": "universe",
+    "kind": "fact",
+    "text": "Kael is a good cook",
+    "who": [
+     "char:ember:kael"
+    ],
+    "canon": "fanon",
+    "ref": [],
+    "spoilerAt": null
+   }
+  ],
+  "conflicts": [
+   {
+    "id": "sc:1",
+    "between": [
+     "src:ember-novel",
+     "src:ember-anime"
+    ],
+    "text": "Anime shows Mira at the entrance trial; novel does not",
+    "resolved": "novel wins (priority 1)"
+   }
+  ],
+  "rules": {
+   "powers": [
+    {
+     "id": "pow:ember:embers",
+     "name": "Ember arts",
+     "note": "forms 1-9; the ninth costs life force"
+    }
+   ],
+   "world": [
+    "No teleportation",
+    "Academy year has four terms"
+   ]
+  }
+ },
+ "session": {
+  "id": "play-takeover",
+  "storyId": "ff-ember",
+  "canon": {
+   "universe": "ember",
+   "rev": 1,
+   "mode": {
+    "types": [
+     "takeover",
+     "fixit"
+    ],
+    "start": {
+     "src": "src:ember-novel",
+     "ch": 2,
+     "order": 1
+    },
+    "takeover": "char:ember:kael",
+    "player": {
+     "name": "Kael Ashveil (player)",
+     "desc": "Kael, played by Anna",
+     "origin": "takeover"
+    },
+    "inherit": {
+     "memories": "canon-up-to-start",
+     "foreknowledge": [
+      "ev:ember:3",
+      "fact:ember:dorran-took-lys"
+     ]
+    },
+    "startAge": 17
+   },
+   "pov": {
+    "mode": "second",
+    "who": "char:ember:kael"
+   },
+   "position": {
+    "ch": 5,
+    "order": 2,
+    "storyChapter": 9,
+    "date": "Year 998, early summer",
+    "ages": {
+     "char:ember:kael": 18,
+     "char:ember:lys": 15
+    },
+    "lastEvent": "ev:ember:2",
+    "nextEvent": "ev:ember:3",
+    "incompatible": []
+   },
+   "rules": {
+    "history": "locked",
+    "personalities": "adaptive",
+    "appearances": "locked",
+    "powers": "locked",
+    "family": "locked",
+    "friendships": "adaptive",
+    "romance": "free",
+    "fates": "adaptive",
+    "majorEvents": "adaptive",
+    "minorEvents": "free",
+    "chronology": "locked",
+    "organizations": "adaptive",
+    "protagonistAchievements": "adaptive",
+    "ending": "free"
+   },
+   "locks": [
+    {
+     "kind": "char",
+     "id": "char:ember:mira"
+    },
+    {
+     "kind": "event",
+     "id": "ev:ember:6"
+    }
+   ],
+   "exceptions": [
+    {
+     "id": "x1",
+     "target": "ev:ember:3",
+     "text": "Kael escorts Lys personally on the North Road",
+     "approved": true,
+     "t": 14
+    }
+   ],
+   "events": {
+    "ev:ember:1": {
+     "status": "unchanged",
+     "t": 2
+    },
+    "ev:ember:2": {
+     "status": "unchanged",
+     "t": 10
+    },
+    "ev:ember:3": {
+     "status": "prevented",
+     "t": 16,
+     "why": "Kael escorted Lys; the ambush failed",
+     "by": [
+      "e21"
+     ]
+    },
+    "ev:ember:5": {
+     "status": "impossible",
+     "t": 16,
+     "why": "requires Lys is kidnapped (prevented)"
+    },
+    "ev:ember:4": {
+     "status": "approaching",
+     "t": 16
+    },
+    "ev:ember:6": {
+     "status": "protected",
+     "t": 16,
+     "why": "locked by the player; now has an impossible prerequisite",
+     "conflict": "pc:1"
+    }
+   },
+   "eventConflicts": [
+    {
+     "id": "pc:1",
+     "event": "ev:ember:6",
+     "text": "The archive duel is protected, but it requires Kael's revenge vow, which can no longer happen.",
+     "options": [
+      "find another reason",
+      "unprotect",
+      "replace the event"
+     ]
+    }
+   ],
+   "fates": {
+    "char:ember:lys": {
+     "original": "kidnapped at 15, rescued after a year",
+     "target": "protected",
+     "current": "safe at the academy",
+     "changedAt": 16,
+     "why": "Kael escorted her",
+     "by": [
+      "e21"
+     ]
+    },
+    "char:ember:dorran": {
+     "original": "dies in the archive duel",
+     "target": "adapt",
+     "current": "unchanged so far"
+    }
+   },
+   "relationships": [
+    {
+     "id": "rel:char:ember:mira>char:ember:kael",
+     "a": "char:ember:mira",
+     "b": "char:ember:kael",
+     "kinds": [
+      "mentor"
+     ],
+     "baseline": "distant mentor",
+     "trust": 35,
+     "respect": 60,
+     "history": [
+      "e12",
+      "e19"
+     ],
+     "private": false,
+     "knownBy": []
+    },
+    {
+     "id": "rel:char:ember:kael>char:ember:mira",
+     "a": "char:ember:kael",
+     "b": "char:ember:mira",
+     "kinds": [
+      "mentor"
+     ],
+     "baseline": "wary student",
+     "trust": 55,
+     "respect": 70,
+     "history": [
+      "e12"
+     ],
+     "private": false,
+     "knownBy": []
+    },
+    {
+     "id": "rel:char:ember:lys>char:ember:dorran",
+     "a": "char:ember:lys",
+     "b": "char:ember:dorran",
+     "kinds": [
+      "enemy"
+     ],
+     "baseline": "stranger",
+     "trust": -40,
+     "history": [
+      "e21"
+     ],
+     "private": true,
+     "knownBy": [
+      "char:ember:lys",
+      "char:ember:kael"
+     ]
+    }
+   ],
+   "identity": {
+    "canon": "char:ember:kael",
+    "player": {
+     "changes": [
+      "more open with Lys"
+     ],
+     "since": 3
+    },
+    "inherited": "canon memories to chapter 2",
+    "foreknowledge": [
+     "ev:ember:3",
+     "fact:ember:dorran-took-lys"
+    ]
+   },
+   "history": [
+    {
+     "at": 1764200000000,
+     "op": "setRule",
+     "key": "fates",
+     "from": "locked",
+     "to": "adaptive"
+    },
+    {
+     "at": 1764200100000,
+     "op": "lock",
+     "kind": "event",
+     "id": "ev:ember:6"
+    },
+    {
+     "at": 1764200200000,
+     "op": "exception",
+     "id": "x1"
+    }
+   ],
+   "universes": [
+    {
+     "id": "ember",
+     "role": "primary",
+     "authority": 1
+    }
+   ],
+   "link": null,
+   "powers": []
+  }
+ }
+}

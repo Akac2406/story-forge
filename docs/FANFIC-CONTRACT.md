@@ -160,7 +160,7 @@ dependents, a protected fate, spoilers, NPC-to-NPC relationships, a crossover po
 
 ChatGPT, in the `ui-overhaul` branch: 1) navigation overhaul (inventory every control first), 2) Fanfiction Studio, 3) Timeline, fates, relationships, divergence review, Memory Studio, 4) integration and responsive polish.
 Claude, in the `fanfic-engine` branch: 1) universe store + import/indexing with revisions, 2) events/dependencies/butterfly + rules precedence, 3) characters, takeover identity, knowledge boundaries, directional relationships, fates, 4) prompt integration (`ffCanonFor`, `ffCheck`) + fixtures + long-run tests.
-UI can build against contract-compatible fixtures without waiting.
+UI can build against contract-compatible fixtures without waiting: `tests/fixtures/fanfic-ember.json` (invented universe; checked by `tests/fanfic_fixture_check.mjs`) on branch `fanfic-engine`.
 
 ## Original open questions (draft 1)
 
