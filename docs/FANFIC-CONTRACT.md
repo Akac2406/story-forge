@@ -146,6 +146,12 @@ The test address (PR #7) shows the merged result. No version number until a rele
 
 Added: UI navigation parity (no control lost), keyboard access, mobile layouts, migration, backup/restore, regeneration, source-revision isolation, branch isolation.
 
+Integration cases (ChatGPT, agreed): empty universes and new playthroughs; existing stories without `se.canon`; partially indexed sources and cancelled imports;
+invalid or outdated source references; rejected mutations that must not change saved data; large universes (hundreds of characters, thousands of events);
+backup and restore with pinned revisions; mid-story changes to rules and perspective.
+
+Status 2026-11-24: engine parts 1-2 done on `fanfic-engine` (`site/fanfic-engine.js`, 27 unit checks): indexing, incremental imports with revisions and conflicts, presets, butterfly evaluation, conflicts for protected events, impact preview, cycles, precedence, spoiler-filtered search.
+
 Simulated fixtures first: a small invented universe (no copyrighted text) covering OC insertion, takeover, regression, a prevented event spreading to its
 dependents, a protected fate, spoilers, NPC-to-NPC relationships, a crossover power rule and an originality check. Then long-run simulations. Real-model trials only with Anna's approval.
 
