@@ -24,7 +24,7 @@ function undo(game){const h=arr(game&&game.hist);if(!h.length)return{ok:false,ap
 
 /* ---------- stats ---------- */
 function defineStat(game,s){return mutate(game,'stat',G=>{if(!s||!s.id)return{reason:'needs an id'};const min=num(s.min,0),max=num(s.max,100);if(min>=max)return{reason:'min must be below max'};
-  G.stats[s.id]={id:s.id,name:s.name||s.id,min,max,value:clamp(num(s.start,min),min,max),hidden:!!s.hidden};return{log:'Stat '+(s.name||s.id)+' added'}})}
+  const st0=clamp(num(s.start,min),min,max);G.stats[s.id]={id:s.id,name:s.name||s.id,min,max,start:st0,value:st0,hidden:!!s.hidden};return{log:'Stat '+(s.name||s.id)+' added'}})}
 function change(game,id,delta,why,o){return mutate(game,'change',G=>{const s=G.stats[id];if(!s)return{reason:'unknown stat '+id};const v=clamp(s.value+num(delta,0),s.min,s.max);if(v===s.value)return{reason:'no change'};
   const d=v-s.value;s.value=v;return{log:s.name+' '+(d>0?'+':'')+d+(why?' ('+why+')':''),result:{id,delta:d,value:v}}},o)}
 function gainXp(game,n,why,o){return mutate(game,'xp',G=>{const x=Math.max(0,Math.round(num(n,0)));if(!x)return{reason:'no change'};const lv=G.level;G.xp+=x;const nl=levelFor(G.xp,G.curve);return{log:'+'+x+' XP'+(why?' ('+why+')':'')+(nl>lv?' · level '+nl:''),result:{level:nl,up:nl>lv}}},o)}
@@ -63,7 +63,7 @@ const CAREERS={
     activities:{practice:{name:'Practice',gain:{skill:[2,5]},cost:{stamina:8}},write:{name:'Write songs',gain:{songwriting:[2,5]},cost:{stamina:6}},gig:{name:'Play a gig',gain:{stage:[1,4],listeners:[50,600]},cost:{stamina:12}},rest:{name:'Rest day',gain:{stamina:[20,30]},cost:{}}}}};
 function careerList(){return Object.entries(CAREERS).map(([id,c])=>({id,name:c.name,stats:c.stats.map(s=>s[1]),ranks:c.ranks.map(r=>r.name),activities:Object.entries(c.activities).map(([k,a])=>({id:k,name:a.name,needRank:a.needRank||null}))}))}
 function startCareer(game,id,o){o=o||{};const C=CAREERS[id]||o.custom;if(!C)return{ok:false,applied:false,reason:'unknown career',game};
-  return mutate(game,'career',G=>{if(G.career)return{reason:'a career is already running'};for(const [sid,name,min,max,start] of C.stats)if(!G.stats[sid])G.stats[sid]={id:sid,name,min:num(min,0),max:num(max,100),value:num(start,num(o.start,20))};
+  return mutate(game,'career',G=>{if(G.career)return{reason:'a career is already running'};for(const [sid,name,min,max,start] of C.stats)if(!G.stats[sid]){const v0=num(start,num(o.start,20));G.stats[sid]={id:sid,name,min:num(min,0),max:num(max,100),start:v0,value:v0}}
     G.career={id:o.custom?(o.custom.id||'custom'):id,name:C.name,rank:C.ranks[0].id,ranks:clone(C.ranks),activities:clone(C.activities),week:0,history:[]};if(o.seed!=null)G.seed=num(o.seed,1);return{log:'Career started: '+C.name}})}
 const rankIdx=(c,id)=>c.ranks.findIndex(r=>r.id===id);
 function rankUp(G){const c=G.career;let i=rankIdx(c,c.rank),up=null;while(i+1<c.ranks.length){const n=c.ranks[i+1],need=n.need||{};if(Object.entries(need).every(([k,v])=>valueOf(G,k)>=v)){i++;up=n}else break}if(up){c.rank=up.id;c.history.push({week:c.week,rank:up.id})}return up}

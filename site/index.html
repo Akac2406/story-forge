@@ -319,7 +319,7 @@ body[data-ui-layout="academy"] .tabs button.on,body[data-ui-layout="anime"] .tab
 .sf-v46-shell{display:grid;gap:12px}.sf-v46-tabs{display:flex;gap:7px;overflow-x:auto;padding:4px 0}.sf-v46-tabs button{flex-shrink:0;border-radius:999px}.sf-v46-tabs .active{background:var(--accent,#9b7bff);color:#fff}.sf-v46-hero{padding:20px;border-radius:18px;background:linear-gradient(120deg,#38205c,#101d36);color:#fff;border:1px solid #ffffff35}.sf-v46-hero h3{font-size:1.45em;margin:5px 0}.sf-v46-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}.sf-v46-card{padding:13px;border-radius:15px;background:rgba(128,128,128,.10);border:1px solid rgba(128,128,128,.26);min-width:0}.sf-v46-card img{max-width:100%;height:150px;object-fit:cover;border-radius:12px}.sf-v46-card small{display:block;opacity:.75;margin-top:5px}.sf-v46-track{height:8px;background:#80808040;border-radius:9px;overflow:hidden;margin:6px 0}.sf-v46-track i{height:100%;display:block;background:var(--accent,#9b7bff)}.sf-v46-step{padding:12px 12px 12px 18px;border-left:3px solid var(--accent,#9b7bff);margin:8px 0;background:#80808014;border-radius:8px}.sf-v46-palette{display:flex;gap:6px;flex-wrap:wrap}.sf-v46-palette button{min-width:110px}.sf-v46-note{opacity:.75;font-size:.86em}.sf-v46-preview{padding:20px;background:linear-gradient(160deg,#101529,#342244);border:1px solid #b79aff66;border-radius:18px;color:#fff;line-height:1.7}.sf-v46-preview .speaker{font-size:.8em;color:#e2c5ff;letter-spacing:.1em}.sf-v46-preview blockquote{margin:8px 0 0;font-size:1.05em}
 </style><link rel="stylesheet" href="visual-customization-v48.css"><link rel="stylesheet" href="illustrated-reader.css"></head><body>
 <div id="app"></div><div id="toast" role="status"></div>
-<script src="memory-engine.js"></script> <script src="canon-engine.js"></script> <script src="memory-v2.js"></script> <script src="fanfic-engine.js"></script> <script src="character-engine.js"></script> <script src="director-engine.js"></script> <script src="gameplay-engine.js"></script>
+<script src="memory-engine.js"></script> <script src="canon-engine.js"></script> <script src="memory-v2.js"></script> <script src="fanfic-engine.js"></script> <script src="character-engine.js"></script> <script src="director-engine.js"></script> <script src="gameplay-engine.js"></script> <script src="creator-engine.js"></script>
 <script>
 "use strict";
 const KEY="story-forge-v2",app=document.getElementById("app"),$=s=>document.querySelector(s);
@@ -913,6 +913,7 @@ function play(st,d){if(!hasKey()){toast("Add your OpenRouter key in Settings fir
   sd(se,st).forEach(s=>{se.stats[s.n]=num(s.v,0)});
   if(st.cast0&&st.cast0.length){se.cast={};st.cast0.forEach(c=>{se.cast[c.n]={r:c.role||"",l:[c.age?"age "+c.age:"",c.looks].filter(Boolean).join(", "),t:[],a:c.hook||"",ch:0,u:Date.now(),pic:c.th||undefined}})}
   if(st.ctr&&st.ctr.length){se.ctr={};st.ctr.forEach(c=>{se.ctr[c.n]=0})}if(st.ooc)se.fmt=Object.assign(fmtOf(se),{tag:1});
+  if(st.blueprint&&window.SFCreator)try{if(st.blueprint.game)se.game=SFCreator.gameSetup(st.blueprint.game);if(st.blueprint.director)se.director=JSON.parse(JSON.stringify(st.blueprint.director))}catch(e){}
   DB.sessions.push(se);save();view={n:"chat",id:se.id};begin(se,st)}
 function begin(se,st){if(se.sim&&se.sim.ph==="setup"){toast("Finish the setup with the guide first.");return}
   if(se.sim&&!se.turns.length){send("Begin the story with the opening scene from the preview I approved, then stop at a moment that needs my action.",true);return}
@@ -2406,6 +2407,17 @@ const gmEnable=(se,on)=>!!gmState(se).enabled===!!on?{ok:false,applied:false,rea
   gmFailQuest=(se,id,why)=>gmDo(se,g=>SFGame.failQuest(g,id,why,{t:se.turns.length})),gmAddRule=(se,r)=>gmDo(se,g=>SFGame.addRule(g,r)),gmCareers=()=>SFGame.careerList(),
   gmStartCareer=(se,id,o)=>gmDo(se,g=>SFGame.startCareer(g,id,Object.assign({seed:(String(se.id).split("").reduce((a,c)=>a+c.charCodeAt(0),0))},o||{}))),gmActivity=(se,act)=>gmDo(se,g=>SFGame.doActivity(g,act,{t:se.turns.length})),
   gmUndo=se=>gmDo(se,g=>SFGame.undo(g)),gmLog=(se,n)=>(gmState(se).log||[]).slice(-(n||50)),gmBlock=se=>SFGame.block(gmState(se));
+/* Creator packages (creator-engine.js, SFCreator): reusable blueprints without playthroughs, progress, credentials or (by default) images. Never images for OOC-imported stories. */
+function crBuild(storyId,o){o=o||{};const st=getStory(storyId);if(!st)return{ok:false,reason:"story not found"};const se=o.sessionId?DB.sessions.find(x=>x.id===o.sessionId&&x.storyId===storyId):null;
+  const names=new Set((o.templates||[]).map(n=>String(n).toLowerCase()));const tp=sfTemplates().filter(t=>names.has(String(t.name).toLowerCase())).map(t=>{const c=Object.assign({},t);delete c.originalArtId;delete c.originalArtName;delete c.originalArtType;return c});
+  const story=Object.assign(portableStory(st),{ooc:!!st.ooc});const u=se&&se.canon?ffU(se):null;
+  return SFCreator.build({story,templates:tp,game:se&&se.game||st.blueprint&&st.blueprint.game||null,director:se&&se.director||st.blueprint&&st.blueprint.director||null,universe:u?{id:u.id,name:u.name,rev:u.rev}:null,creator:o.creator},{art:!!o.art})}
+function crDownload(storyId,o){const r=crBuild(storyId,o);if(!r.ok){toast(r.reason);return r}sfDownloadJSON(String(r.package.story.title||"story").replace(/[^\w -]+/g,"").trim().slice(0,60)+".sfcreator.json",r.package);return r}
+const crPreview=pkg=>SFCreator.preview(pkg);
+function crOpen(pkg){const r=SFCreator.open(pkg);if(!r.ok)return{ok:false,applied:false,reason:r.reason};const st=Object.assign({},r.story,{id:uid(),author:r.story.author||"",entries:r.story.entries||[],starts:r.story.starts||[],stats:r.story.stats||[],endings:r.story.endings||[]});
+  if(!pkg.art){delete st.coverT;delete st.bannerT}if(r.game||r.director)st.blueprint={game:r.game,director:r.director};if(r.universe)st.universeRef=r.universe;
+  let added=0;for(const t of r.templates){if(!t||typeof t.name!=="string"||!t.name.trim())continue;const name=t.name.trim().slice(0,48);if(sfTemplates().some(x=>x.name.toLowerCase()===name.toLowerCase()))continue;sfTemplates().push(sfTemplateFromCharacter(name,t));added++}
+  DB.stories.push(st);save();return{ok:true,applied:true,reason:null,storyId:st.id,templatesAdded:added,needsUniverse:!!(r.universe&&!(DB.universes||{})[r.universe.id])}}
 function dirBlock(se){return se.director&&se.director.enabled?SFDirector.block(se.director.settings,dirAnalyze(se)):""}
 /* NPC plans and character development notes (living characters UI). Return {ok, applied, reason}. */
 function chSetNpc(se,name,plan){name=String(name||"").trim();if(!name)return{ok:false,applied:false,reason:"needs a name"};const p=plan||{},goals=Array.isArray(p.goals)?p.goals:[],sch=Array.isArray(p.schedule)?p.schedule:[];
