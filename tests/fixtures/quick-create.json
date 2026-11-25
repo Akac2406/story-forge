@@ -1,0 +1,30 @@
+{
+  "input": {"sourceTitle": "Ember Academy", "concept": "Kael gets a second chance after the fire and tries to save Lys from the ambush, slow burn friendship, no romance", "character": "I take over Kael at the start of the new term"},
+  "facts": [
+    {"id": "f1", "text": "Kael Ashveil is a second-year student at Ember Academy.", "source": {"title": "Ember Academy Wiki: Kael Ashveil", "url": "https://ember.fandom.com/wiki/Kael_Ashveil"}, "confidence": "confirmed"},
+    {"id": "f2", "text": "Lys is ambushed on the North Road in volume 1.", "source": {"title": "Ember Academy Wiki: North Road", "url": "https://ember.fandom.com/wiki/North_Road"}, "confidence": "confirmed"},
+    {"id": "f3", "text": "The academy archive burned before the story begins.", "source": {"title": "Ember Academy Wiki: Archive", "url": "https://ember.fandom.com/wiki/Archive"}, "confidence": "uncertain"}
+  ],
+  "reply": {
+    "title": "Kael's Second Term",
+    "premise": "Kael wakes at the start of term remembering what happens next and decides to change the North Road.",
+    "modes": ["takeover", "fixit"],
+    "takeover": "char:ember:kael",
+    "player": {"name": "Kael Ashveil", "desc": "Remembers the first timeline", "age": 17},
+    "start": {"ch": 1},
+    "pov": {"mode": "second"},
+    "romance": {"pref": "none", "pacing": "slow"},
+    "rules": {"fates": "free"},
+    "characters": [{"name": "Lys", "role": "friend", "desc": "Younger student", "canonId": "char:ember:lys"}, {"name": "Warden Ghost", "role": "rival", "desc": "invented", "canonId": "char:ember:nobody"}],
+    "notes": [{"text": "Lys is ambushed on the North Road", "cite": ["f2"]}, {"text": "Kael is a second-year", "cite": ["f1", "f9"]}],
+    "gameplay": {"career": null},
+    "director": {"pacing": "slow", "dialogue": "high"},
+    "memory": {"recall": true},
+    "opening": "Morning bells over the academy; Kael stands at the gate with a memory that has not happened yet.",
+    "appearance": {"layout": "visual-novel"},
+    "styleProfile": {"pov": "thirdLimited", "tense": "past", "pacing": "measured", "dialogue": "balanced", "description": "moderate", "tone": "earnest, melancholy", "structure": "short chapters ending on hooks", "voice": "exact author voice"},
+    "sources": ["f1", "f2", "f7"],
+    "uncertain": ["Exact chapter of the archive fire"],
+    "secretField": 1
+  }
+}
