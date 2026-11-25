@@ -329,6 +329,17 @@ function fanfictionHome(root){
  const el=(tag,attrs,...kids)=>h(tag,attrs,...kids),button=(text,onclick)=>h("button",{text,onclick});
  let section="home";
  function wizard(uid="",draft=""){root.replaceChildren();root.append(h("button",{class:"ff-back",text:"‹ Fanfiction Studio",onclick:()=>{if(confirm("Return to Studio? Save your draft first to retain unfinished changes."))draw("home")}}));window.SFFanUI.createFanfiction(root,uid,draft)}
+ function universePage(id){
+ const u=ffUniverse(id);if(!u){draw("home");return}
+ root.replaceChildren();const wrap=h("div",{class:"ff-dashboard"});root.append(wrap);
+ const chars=Object.values(u.chars||{}),events=u.events||[],sources=u.sources||[],stories=DB.stories.filter(st=>st.fanfic?.universe===id);
+ wrap.append(button("‹ Your universes",()=>draw("universes")),h("section",{class:"ff-hero"},h("small",{text:"UNIVERSE LIBRARY"}),h("h2",{text:u.name}),h("p",{text:sources.length+" sources · "+chars.length+" characters · "+events.length+" events"}),h("button",{class:"ff-primary",text:"Create fanfiction",onclick:()=>wizard(id)})));
+ const results=h("div",{class:"ff-ui"}),search=h("input",{placeholder:"Search this section",type:"search","aria-label":"Search universe"});let selected=0;
+ const sections=[["Sources",sources.map(x=>({title:x.title,detail:(x.kind||"Source")+" · "+(x.chapters||[]).length+" chapters"}))],["Characters",chars.map(x=>({title:x.name,detail:[x.appearance,x.personality].filter(v=>typeof v==="string").join(" · ")}))],["Timeline",events.map(x=>({title:x.title,detail:"Chapter "+x.ch+" · "+(x.summary||"")}))],["Canon records",(u.records||[]).map(x=>({title:x.kind||"Fact",detail:x.text||""}))],["Playthroughs",stories.map(x=>({title:x.title,detail:"Open story",action:()=>go({n:"story",id:x.id})}))]];
+ function refresh(){const q=search.value.toLowerCase();const rows=sections[selected][1].filter(x=>(x.title+" "+x.detail).toLowerCase().includes(q));results.replaceChildren(h("h3",{text:sections[selected][0]+" · "+rows.length}),...rows.slice(0,100).map(x=>h(x.action?"button":"article",{class:"ff-panel",onclick:x.action||null},h("strong",{text:x.title}),h("p",{text:x.detail}))),rows.length>100?h("p",{text:"Showing first 100 results. Search to narrow the list."}):null)}
+ const tiles=h("div",{class:"ff-dashboard-grid"},...sections.map(([label,rows],i)=>h("button",{class:"ff-dashboard-tile","aria-pressed":i===0,onclick:()=>{selected=i;for(const [n,b] of Array.from(tiles.children).entries())b.setAttribute("aria-pressed",String(n===i));refresh()}},h("strong",{text:label}),h("small",{text:String(rows.length)}))));
+ search.addEventListener("input",refresh);wrap.append(tiles,search,results);refresh()
+ }
  function draw(tab){section=tab;root.replaceChildren();const list=ffListUniverses(),drafts=ffDrafts(),stories=DB.stories.filter(s=>s.fanfic);
  const wrap=h("div",{class:"ff-dashboard"});root.append(wrap);
  const hero=h("section",{class:"ff-hero"},h("div",{class:"ff-hero-art","aria-hidden":"true"},h("span",{text:"✧"}),h("span",{text:"◇"}),h("span",{text:"✦"})),h("small",{text:"FANFICTION STUDIO"}),h("h2",{text:"Rewrite destiny."}),h("p",{text:"Enter familiar worlds. Create your own path."}),h("button",{class:"ff-primary",text:"+ Create fanfiction",onclick:()=>wizard()}));wrap.append(hero);
@@ -338,7 +349,7 @@ function fanfictionHome(root){
  wrap.append(h("div",{class:"ff-section-head"},h("h3",{text:title}),tab!=="home"?button("Overview",()=>draw("home")):null));
  if(tab==="stories"){wrap.append(...stories.map(st=>h("button",{class:"ff-universe-card",onclick:()=>go({n:"story",id:st.id})},h("span",{class:"ff-cover",text:"▤"}),h("div",{},h("strong",{text:st.title}),h("small",{text:ffUniverse(st.fanfic.universe)?.name||"Fanfiction"})),h("span",{text:"›"}))));if(!stories.length)wrap.append(h("p",{class:"sub",text:"No fanfiction stories yet."}))}
  else if(tab==="drafts"||tab==="templates"){wrap.append(h("p",{class:"sub",text:tab==="templates"?"Reuse a saved setup in the creation wizard.":"Continue a saved configuration."}),...drafts.map(d=>h("button",{class:"ff-universe-card",onclick:()=>wizard(d.universe||"",d.id)},h("span",{class:"ff-cover",text:"✎"}),h("div",{},h("strong",{text:d.name}),h("small",{text:"Select Resume draft in the wizard"})),h("span",{text:"›"}))));if(!drafts.length)wrap.append(h("p",{class:"sub",text:"No saved setups yet."}))}
- else{wrap.append(...list.map(u=>h("button",{class:"ff-universe-card",onclick:()=>wizard(u.id)},h("span",{class:"ff-cover",text:"✧"}),h("div",{},h("strong",{text:u.name}),h("small",{text:(u.chapters||0)+" chapters · "+(u.events||0)+" events"}),h("small",{text:"Create a story in this universe"})),h("span",{text:"›"}))));wrap.append(button("+ Import a universe",()=>wizard()));if(!list.length)wrap.append(h("p",{class:"sub",text:"Import your first source to begin."}))}
+ else{wrap.append(...list.map(u=>h("button",{class:"ff-universe-card",onclick:()=>universePage(u.id)},h("span",{class:"ff-cover",text:"✧"}),h("div",{},h("strong",{text:u.name}),h("small",{text:(u.chapters||0)+" chapters · "+(u.events||0)+" events"}),h("small",{text:"Explore universe and create stories"})),h("span",{text:"›"}))));wrap.append(button("+ Import a universe",()=>wizard()));if(!list.length)wrap.append(h("p",{class:"sub",text:"Import your first source to begin."}))}
  }
  draw("home");
 }
