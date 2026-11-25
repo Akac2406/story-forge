@@ -1,0 +1,35 @@
+{
+  "sessionId": "harbor-play",
+  "player": {"name": "Avery", "desc": "Silver eyes, new clerk at the harbor office."},
+  "setup": "A fog-bound harbor town in 1890. The ledger audit begins tomorrow.",
+  "era": "1890s coastal town: no telephones, gas lamps, steamships.",
+  "days": 2,
+  "canon": [
+    {"id": "entry-0", "k": "Dale", "t": "Harbor master. Never lies outright.", "lock": true, "aliases": ["the harbor master"]},
+    {"id": "entry-1", "k": "The ledger", "t": "Kept in the office safe.", "lock": false}
+  ],
+  "notes": [
+    {"id": "n1", "text": "Keep replies under 250 words.", "pri": "must", "on": true},
+    {"id": "n2", "text": "Avoid modern slang.", "pri": "style", "on": true}
+  ],
+  "mem": {
+    "v": 1, "seq": 9,
+    "scene": {"where": "harbor office", "who": ["Rae", "Dale"], "when": "night"},
+    "events": [
+      {"id": "e1", "t": 3, "ch": 0, "tid": "r3", "src": "meta", "kind": "reveal", "imp": 4, "who": ["Rae"], "wit": ["Dale"], "where": "harbor office", "text": "Rae reads the forged ledger entry"},
+      {"id": "e2", "t": 4, "ch": 0, "tid": "r4", "src": "meta", "kind": "action", "imp": 2, "who": ["Dale"], "wit": [], "where": "harbor office", "text": "Dale locks the safe"},
+      {"id": "e3", "t": 5, "ch": 0, "tid": "r5", "src": "meta", "kind": "bond", "imp": 3, "who": ["Rae", "Dale"], "wit": [], "where": "pier", "text": "Rae and Dale agree to keep the ledger secret"}
+    ],
+    "facts": [{"id": "f1", "text": "Ledger entry 12 is forged", "since": 3, "until": null, "sticky": false}],
+    "secrets": [{"id": "s1", "text": "Dale owes money to the smugglers", "since": 0}],
+    "chars": {
+      "Rae": {"kernel": {"core": "Sharp, loyal deputy"}, "state": {"mood": "wary", "where": "harbor office", "status": "alive"}, "knows": ["f1"]},
+      "Dale": {"kernel": {"core": "Tired harbor master"}, "state": {"mood": "nervous", "status": "alive"}, "knows": ["s1"]}
+    }
+  },
+  "schedule": [{"id": "d1", "kind": "Deadline", "text": "The ledger audit", "day": 3}],
+  "progression": {"item": [{"name": "Harbor pass", "value": 1, "owner": "Avery"}], "reputation": [{"name": "Harbor guild", "value": 10}]},
+  "dead": ["Old Tom"],
+  "quests": ["Find who forged entry 12"],
+  "universe": [{"id": "u1", "kind": "place", "text": "The Gull Coast has three harbor towns."}]
+}

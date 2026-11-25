@@ -319,7 +319,7 @@ body[data-ui-layout="academy"] .tabs button.on,body[data-ui-layout="anime"] .tab
 .sf-v46-shell{display:grid;gap:12px}.sf-v46-tabs{display:flex;gap:7px;overflow-x:auto;padding:4px 0}.sf-v46-tabs button{flex-shrink:0;border-radius:999px}.sf-v46-tabs .active{background:var(--accent,#9b7bff);color:#fff}.sf-v46-hero{padding:20px;border-radius:18px;background:linear-gradient(120deg,#38205c,#101d36);color:#fff;border:1px solid #ffffff35}.sf-v46-hero h3{font-size:1.45em;margin:5px 0}.sf-v46-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}.sf-v46-card{padding:13px;border-radius:15px;background:rgba(128,128,128,.10);border:1px solid rgba(128,128,128,.26);min-width:0}.sf-v46-card img{max-width:100%;height:150px;object-fit:cover;border-radius:12px}.sf-v46-card small{display:block;opacity:.75;margin-top:5px}.sf-v46-track{height:8px;background:#80808040;border-radius:9px;overflow:hidden;margin:6px 0}.sf-v46-track i{height:100%;display:block;background:var(--accent,#9b7bff)}.sf-v46-step{padding:12px 12px 12px 18px;border-left:3px solid var(--accent,#9b7bff);margin:8px 0;background:#80808014;border-radius:8px}.sf-v46-palette{display:flex;gap:6px;flex-wrap:wrap}.sf-v46-palette button{min-width:110px}.sf-v46-note{opacity:.75;font-size:.86em}.sf-v46-preview{padding:20px;background:linear-gradient(160deg,#101529,#342244);border:1px solid #b79aff66;border-radius:18px;color:#fff;line-height:1.7}.sf-v46-preview .speaker{font-size:.8em;color:#e2c5ff;letter-spacing:.1em}.sf-v46-preview blockquote{margin:8px 0 0;font-size:1.05em}
 </style><link rel="stylesheet" href="visual-customization-v48.css"><link rel="stylesheet" href="illustrated-reader.css"></head><body>
 <div id="app"></div><div id="toast" role="status"></div>
-<script src="memory-engine.js"></script> <script src="canon-engine.js"></script>
+<script src="memory-engine.js"></script> <script src="canon-engine.js"></script> <script src="memory-v2.js"></script>
 <script>
 "use strict";
 const KEY="story-forge-v2",app=document.getElementById("app"),$=s=>document.querySelector(s);
@@ -2300,6 +2300,21 @@ function memReconcile(nat,step){nat=nat||{};step=step||{};const ne=nat.events||[
   if(ns&&ss&&ns.where&&ss.where&&ns.where.toLowerCase()!==ss.where.toLowerCase())conflicts.push("scene: narrator said "+ns.where+", step said "+ss.where);
   const key=l=>String(l.who||"").toLowerCase().split(/\s+/)[0];if(nl.length&&sl.length){const nw=new Set(nl.map(key));sl.forEach(l=>{if(!nw.has(key(l)))conflicts.push("learned: step also noted "+l.who+": "+String(l.text).slice(0,80))})}
   return{rec:{events:ne.length?ne:se,learned:nl.length?nl:sl,scene,dropped:step.dropped},src,conflicts}}
+/* Memory overhaul, contract 2: nine-layer view + Studio API. See docs/MEMORY-API.md. Read-only over se.mem; player edits live in se.memEdits. */
+function memSource(se){const st=getStory(se.storyId)||{},ep=typeof eraProfile==="function"?eraProfile(st):{},P={};
+  try{progressionState(se,se.turns.length).forEach(c=>{(P[c.kind]=P[c.kind]||[]).push({name:c.name,value:c.value})})}catch(e){}
+  const notes=(DB.notes||[]).concat(se.notes||[]);if(DB.globalNote)notes.push({id:"global-note",text:DB.globalNote,pri:"must",on:true});if(se.note)notes.push({id:"story-note",text:se.note,pri:"must",on:true});
+  return{sessionId:se.id,mem:se.mem||{},canon:(st.entries||[]).map((e,i)=>Object.assign({},e,{id:canonEntryId(st,e,i)})),notes,player:se.char||null,setup:st.setting||"",
+    era:ep.era&&ep.era!=="Unspecified"?[ep.era,ep.date,ep.region].filter(Boolean).join(", "):"",days:se.turns.reduce((a,t)=>a+(+t.worldDays||0),0),
+    schedule:(se.worldSchedule||[]).map((x,i)=>Object.assign({id:x.id||("sched-"+i)},x)),progression:P,dead:se.dead||[],quests:se.quests||[],
+    universe:((DB.universes||{})[st.universe]||{}).records||[]}}
+function memView(se){if(!window.SFMem2)return{v:2,records:[]};return SFMem2.apply(SFMem2.build(memSource(se)),se.memEdits)}
+function memQuery(se,q){return SFMem2.query(memView(se),q)}
+function memOp(se,fn){const before=se.memEdits;se.memEdits=fn(se.memEdits||SFMem2.emptyEdits());save();return se.memEdits!==before}
+const memEdit=(se,id,patch)=>memOp(se,e=>SFMem2.edit(e,id,patch)),memPin=(se,id,on)=>memOp(se,e=>SFMem2.pin(e,id,on)),memLock=(se,id,on)=>memOp(se,e=>SFMem2.lock(e,id,on)),
+  memDelete=(se,id)=>memOp(se,e=>SFMem2.remove(e,id)),memRestore=(se,id)=>memOp(se,e=>SFMem2.restore(e,id)),memAdd=(se,r)=>memOp(se,e=>SFMem2.add(e,Object.assign({id:"p"+uid()},r))),memUndo=se=>memOp(se,e=>SFMem2.undo(e));
+function memConflicts(se){return(se.memDiag||[]).filter(d=>d.rp&&(d.rp.conflicts||[]).length&&!d.rp.resolved).map(d=>({id:"c"+d.t,t:d.t,items:d.rp.conflicts.slice(),src:d.rp.src||null}))}
+function memResolve(se,cid,choice){const d=(se.memDiag||[]).find(x=>"c"+x.t===cid&&x.rp);if(!d)return false;d.rp.resolved={choice:String(choice||"keep"),at:Date.now()};save();return true}
 /* UI contract (v91): memory status and retry for one reply. See docs/MEMORY-CONTRACT.md. */
 function memStatus(se){const d=(se&&se.memDiag)||[],rp=d.filter(x=>x.rp),last=rp.slice(-1)[0];
   return{mode:se.memExtract===true?"step":se.memExtract==="hybrid"?"hybrid":"narrator",pending:RPQ.has(se.id),checked:rp.length,ok:rp.filter(x=>x.rp.ok).length,
