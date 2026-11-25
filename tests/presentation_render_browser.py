@@ -72,6 +72,7 @@ try:
     pg.get_by_role("button", name="Pause saved replies").click()
     ok(playback.get_attribute("aria-pressed") == "false" and pg.locator("#input").is_visible(), "playback pauses and the story input stays available")
     ok(pg.get_by_role("button", name="Toggle fullscreen").is_visible(), "fullscreen is exposed as a user action")
+    pg.evaluate(f"cvSetScene({S},{{lighting:'dusk'}})"); pg.evaluate("render()"); pg.wait_for_timeout(150)  # a real scene change (re-renders alone no longer replay it)
     ok(pg.locator("#log").evaluate("node=>getComputedStyle(node).animationName") == "sf-cv-fade", "scene transition reaches computed styles")
     pg.evaluate(f"cvSet({S},{{reducedMotion:true}})"); chat(pg)
     ok(ds(pg, "sfCvReduced") == "true" and ds(pg, "sfCvTransition") == "none" and ds(pg, "sfCvReveal") == "fade-in", "cinematic reduced motion removes transitions and typewriter")

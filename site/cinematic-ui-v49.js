@@ -35,6 +35,7 @@ function readerControls(log,settings){
  }
  if(bar.children.length)log.before(bar);
 }
+const SCENE_KEYS=new Map();
 function decorate(){
  const page=document.querySelector('#app>.page'),tabs=document.querySelector('#app>.tabs');
  /* The Discover hero needs the home page; the reader part below runs on the story view, which has no .page. */
@@ -73,11 +74,13 @@ function decorate(){
    const appearanceArt=backdrop&&typeof cvArt==='function'?cvArt(se,backdrop):null;
    const src=(cv.layout?.caps?.background?sceneArt:null)||appearanceArt;
    if(log0){
-    if(src)log0.style.backgroundImage='linear-gradient(#0005,#0009),url('+JSON.stringify(src)+')';
+    if(src)log0.style.backgroundImage='var(--sf-cv-rain,linear-gradient(transparent,transparent)),linear-gradient(#0005,#0009),url('+JSON.stringify(src)+')';
     else log0.style.removeProperty('background-image');
     const sceneKey=JSON.stringify([ref,backdrop,scene.lighting,scene.overlay,root.dataset.sfCvTransition]);
-    if(log0.dataset.sceneKey!==sceneKey){
-     log0.dataset.sceneKey=sceneKey;
+    /* Remember the last scene per playthrough, not on #log: menus re-render #log, and that must not replay the transition. */
+    const lastKey=SCENE_KEYS.get(se.id);log0.dataset.sceneKey=sceneKey;
+    if(lastKey!==sceneKey){
+     SCENE_KEYS.set(se.id,sceneKey);
      log0.classList.remove('sf-cv-scene-enter');
      if(root.dataset.sfCvTransition!=='none'){
       requestAnimationFrame(()=>{if(log0.dataset.sceneKey===sceneKey)log0.classList.add('sf-cv-scene-enter')});

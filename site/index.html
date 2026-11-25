@@ -326,7 +326,7 @@ const KEY="story-forge-v2",app=document.getElementById("app"),$=s=>document.quer
 function ap(p,...k){for(const c of k.flat(4)){if(c==null||c===false)continue;p.appendChild(c.nodeType?c:document.createTextNode(String(c)))}}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const num=(v,d)=>{const n=parseFloat(v);return isFinite(n)?n:d};
-const VER=101,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
+const VER=102,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
 function fixCh(se){const c=(se.chaps||[]).filter(x=>x&&x.i>=0&&x.i<Math.max(1,se.turns.length)).sort((a,b)=>a.i-b.i),out=[];c.forEach(x=>{if(!out.length||x.i>out[out.length-1].i)out.push(x)});if(!out.length||out[0].i!==0)out.unshift({i:0,t:""});se.chaps=out;return out}
 function autoCh(se){const N=se.chapN==null?1500:se.chapN,out=[{i:0,t:""}];if(N>0){let acc=0;se.turns.forEach((t,i)=>{if(t.role==="user"&&i>0&&(N===1?acc>0:acc>=N)){out.push({i,t:""});acc=0}if(t.role==="ai")acc+=words(t.text)})}return out}
 function chapsOf(se){if(!se.chaps)se.chaps=autoCh(se);return fixCh(se)}
@@ -1752,8 +1752,9 @@ async function send(text,hide,show,days=0,replay=null){const se=DB.sessions.find
   let raw="",committed=false;
   /* Stall watchdog: a reply stream that sends nothing for DB.stallWait seconds (default 300) is stopped the same way as the Stop button. */
   const myCtrl=ctrl;let lastTick=Date.now(),stalled=false;const stallT=setInterval(()=>{if(Date.now()-lastTick>num(DB.stallWait,300)*1000){clearInterval(stallT);stalled=true;myCtrl.abort()}},Math.min(5000,num(DB.stallWait,300)*250));
+  const tReply=Date.now();
   try{const r=await ask(msgs,{signal:ctrl.signal,se,think:se.think||0,max:Math.min(16000,Math.round((+se.len||300)*2.2)+900),onTick:()=>{lastTick=Date.now()},onText:t=>{lastTick=Date.now();raw=t;ai.text=vis(t);paintLast(se,ai.text)}});
-    raw=r.text;
+    raw=r.text;LAST_REPLY_MS=Date.now()-tReply;
     if(replay&&!vis(raw))throw Error("No chapter reply was returned.");
     if(days&&(vis(raw)||raw.trim()))u.worldDays=days;ai.text=vis(raw)||raw.trim();{const mi=metaAt(raw);if(mi>=0)ai.mt=raw.slice(mi,mi+1500).trim();else delete ai.mt}delete se.newc;if(r.usage)ai.u={i:r.usage.prompt_tokens||0,o:r.usage.completion_tokens||0,c:typeof r.usage.cost==="number"?r.usage.cost:null};if(isOC())ai.gp=ocPct();applyMeta(se,st,raw);memRecord(se,st,ai,raw);canonRecord(se,st,ai,raw);if(se.canon&&window.SFFan)try{const fi=ffCheck(se,ai.text);if(fi.length)ai.ffc=fi;else delete ai.ffc}catch(e){}if(window.SFChar)try{chEvolve(se);chAdvance(se,ai);const vi=chCheckVoice(se,ai.text);if(vi.length)ai.voice=vi;else delete ai.voice}catch(e){}if(memOn(se)&&st.kind!=="character"&&(se.memExtract?true:((DB.metaRepair||se.metaRepair)&&metaAt(raw)<0&&!RPQ.has(se.id)))){const prev=RPQ.get(se.id)||Promise.resolve();const pr=prev.catch(()=>{}).then(()=>metaRepair(se,st,ai,{extract:!!se.memExtract,hybrid:se.memExtract==="hybrid"})).finally(()=>{if(RPQ.get(se.id)===pr)RPQ.delete(se.id)});RPQ.set(se.id,pr)}if(se.newc){ai.newc=se.newc;delete se.newc}ai.st2=Object.assign({},se.stats);if(se.info){ai.info=se.info;delete se.info}if(REG){ai.vs=REG.concat([{t:ai.text,s:ai.st2,sg:(se.sugg||[]).slice(),mx:ai.mx,mt:ai.mt,tid:ai.tid}]).slice(-6);ai.vi=ai.vs.length-1}committed=true;if(RBK?.sid===se.id)RBK=null}
   catch(e){const ab=e&&e.name==="AbortError";if(ab&&stalled)toast("The reply stopped arriving, so it was cancelled. Nothing was lost; try sending again.");
@@ -2483,13 +2484,16 @@ function cvDo(se,fn){const r=fn(se.cv);if(r.applied){se.cv=r.cv;save()}return{ok
 function cvScenePresets(){try{return JSON.parse(localStorage.getItem("sf-v54-scene-presets")||"{}")||{}}catch(e){return{}}}
 const cvLayouts=()=>SFCinema.LAYOUTS.map(l=>({id:l.id,name:l.name,caps:Object.assign({},l.caps)})),cvPresets=()=>SFCinema.PRESETS.map(p=>({id:p.id,name:p.name,settings:Object.assign({},p.settings)})),
   cvState=se=>SFCinema.state(se&&se.cv),cvSet=(se,p)=>cvDo(se,cv=>SFCinema.set(cv,p)),cvApplyPreset=(se,id)=>cvDo(se,cv=>SFCinema.applyPreset(cv,id)),
-  cvSetScene=(se,p)=>cvDo(se,cv=>SFCinema.setScene(cv,p)),cvSetCharacter=(se,name,p)=>cvDo(se,cv=>SFCinema.setCharacter(cv,name,p)),
+  cvSetScene=(se,p)=>p&&!cvRefOk(se,p.background)?{ok:false,applied:false,reason:"No artwork found for that reference in this playthrough"}:cvDo(se,cv=>SFCinema.setScene(cv,p)),cvSetCharacter=(se,name,p)=>p&&!cvRefOk(se,p.portrait)?{ok:false,applied:false,reason:"No artwork found for that reference in this playthrough"}:cvDo(se,cv=>SFCinema.setCharacter(cv,name,p)),
   cvReset=se=>se.cv?cvDo(se,cv=>SFCinema.reset(cv)):{ok:false,applied:false,reason:"unchanged"};
 function cvScene(se){const st=cvState(se).scene,v=cvScenePresets()[se.id];if(!st.background&&v&&v.background)st.background="v54:"+se.id;if(!st.caption&&v&&v.caption)st.caption=v.caption;return st}
 function cvCast(se){const cv=cvState(se).cast,names=[...new Set(Object.keys(se.cast||{}).concat(Object.keys(cv)))];
   return names.map(n=>Object.assign({name:n,expression:"neutral",position:"center",scale:1,visible:true,portrait:(se.cast&&se.cast[n]&&se.cast[n].pic)?"cast:"+n:null},cv[n]||{}))}
 function cvArt(se,ref){if(!ref||typeof ref!=="string")return null;let m=ref.match(/^v54:(.+)$/);if(m){const v=cvScenePresets()[m[1]];return v&&v.background||null}
-  m=ref.match(/^cast:(.+)$/);if(m){const c=se&&se.cast&&se.cast[m[1]];return c&&c.pic||null}return null}
+  m=ref.match(/^cast:(.+)$/);if(m){const c=se&&se.cast&&se.cast[m[1]];return c&&c.pic||null}
+  m=ref.match(/^story:(.+)$/);if(m){const st=getStory(m[1]);return st&&(st.coverT||st.bannerT)||null}return null}
+/* A background or portrait reference must resolve to real artwork now; otherwise it is refused with a reason instead of saving a reference that shows nothing. */
+const cvRefOk=(se,ref)=>ref==null||ref===""||!SFCinema.isRef(ref)||!!cvArt(se,ref);
 function cvExpressionArt(se,character){
   return cvArt(se,character.expressionArt?.[character.expression])||cvArt(se,character.portrait);
 }
@@ -2561,8 +2565,10 @@ function memStatus(se){const d=(se&&se.memDiag)||[],rp=d.filter(x=>x.rp),last=rp
     last:last?{t:last.t,ok:last.rp.ok,why:last.rp.why||null,ms:last.rp.ms,src:last.rp.src||null}:null}}
 function memRetry(se,t){const ai=se&&se.turns[t],st=se&&getStory(se.storyId);if(!ai||ai.role!=="ai"||!st||!memOn(se))return Promise.resolve({ok:false,why:"not a reply"});
   const prev=RPQ.get(se.id)||Promise.resolve();const pr=prev.catch(()=>{}).then(()=>metaRepair(se,st,ai,{extract:true,hybrid:se.memExtract==="hybrid"})).finally(()=>{if(RPQ.get(se.id)===pr)RPQ.delete(se.id)});RPQ.set(se.id,pr);return pr}
+let LAST_REPLY_MS=0;
 async function metaRepair(se,st,ai,o){o=o||{};const t0=Date.now(),bind={sid:se.id,n:se.turns.length,ns:DB.sessions.length,text:ai.text,vi:ai.vi},res={ok:false,ms:0};
-  const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),num(DB.repairWait,90)*1000);if(o.signal)o.signal.addEventListener("abort",()=>ac.abort());
+  /* Time limit adapts to how slow the provider is right now: 1.5x the last reply, at least DB.repairWait (90 s), at most 240 s. */
+  const waitS=Math.min(240,Math.max(num(DB.repairWait,90),Math.round(LAST_REPLY_MS*1.5/1000)));const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),waitS*1000);if(o.signal)o.signal.addEventListener("abort",()=>ac.abort());
   try{const r=await ask(repairMsgs(se,ai),{model:cheapId(),max:700,temp:0.1,se,signal:ac.signal,lite:true});res.ms=Date.now()-t0;if(r.usage)res.tok=[r.usage.prompt_tokens||0,r.usage.completion_tokens||0];
     const blk=repairBlock(r.text);res.block=blk;if(!blk){res.why="unreadable";return res}
     const pp=repairFilter(SFMemory.parseMeta(blk),ai.text,se.char&&se.char.name);res.dropped=pp.dropped;
@@ -2572,7 +2578,7 @@ async function metaRepair(se,st,ai,o){o=o||{};const t0=Date.now(),bind={sid:se.i
     let rec=pp;if(o.hybrid){const m=memReconcile(SFMemory.parseMeta(ai.mt||""),pp);rec=m.rec;ai.msrc=m.src;res.src=m.src;if(m.conflicts.length)res.conflicts=m.conflicts}
     if(ai.mx)try{SFMemory.undo(se.mem,ai.mx)}catch(e){}
     const k=se.turns.indexOf(ai);if(!ai.tid)ai.tid=uid();ai.mx=SFMemory.record(se.mem,rec,{t:k,ch:Math.max(0,chapsOf(se).length-1),tid:ai.tid});ai.rmt=blk;if(Array.isArray(ai.vs)){const v=ai.vs.find(x=>x&&x.t===ai.text);if(v){v.mx=ai.mx;v.rmt=blk;if(ai.msrc)v.msrc=ai.msrc}}res.ok=true;return res}
-  catch(e){res.ms=Date.now()-t0;res.why=ac.signal.aborted?"timeout":"error";return res}
+  catch(e){res.ms=Date.now()-t0;res.why=ac.signal.aborted?"timeout":"error";if(!o.dry&&!(o.signal&&o.signal.aborted)&&view.n==="chat"&&view.id===se.id)toast(res.why==="timeout"?"Memory notes for the last reply took too long and were skipped. The story continues normally.":"Memory notes for the last reply could not be saved. The story continues normally.");return res}
   finally{clearTimeout(tm);if(!o.dry){const d=(se.memDiag||[]).filter(x=>x.t===se.turns.indexOf(ai)).pop();if(d)d.rp={ok:res.ok,ms:res.ms,tok:res.tok,why:res.why,dropped:res.dropped,src:res.src,conflicts:res.conflicts};save()}}}
 /* Trial helper: run chapter recaps again without saving them, to compare speed and output with and without reasoning. */
 async function recapReplay(se,o){o=o||{};const C=chapsOf(se),out=[],rec=recText(se,true);for(let k=0;k<C.length&&out.length<(o.max||6);k++){if(!chDone(se,C,k))continue;const txt=chText(se,C,k);if(words(txt)<40)continue;const t0=Date.now();

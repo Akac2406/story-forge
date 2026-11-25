@@ -19,7 +19,7 @@ Paid testing: the memory-overhaul OpenCode authorization (stop at 45% monthly, l
 
 | | |
 |---|---|
-| Live (production) | **101** (released 2026-11-25 with Anna's approval): complete visual overhaul (ChatGPT): Fanfiction Studio dashboard, universe artwork, eight distinct reader styles, portraits and expression art, 14 icon families, appearance previews, custom career forms; readable studio panels. 100: wizard extensions + first rendering |
+| Live (production) | **102** (released 2026-11-25): post-release reliability fixes. 101: complete visual overhaul (official release) |
 | Test address | https://deploy-preview-7--celebrated-brigadeiros-580c41.netlify.app (draft PR #7 = `memory-overhaul`) |
 | Integration branch | `memory-overhaul`: Claude merges, runs the full suite, pushes |
 | ChatGPT branch | `ui-overhaul` (fast-forwarded to `memory-overhaul` after each integration) |
@@ -166,3 +166,11 @@ Bug-only batch; no new features or recall-default change without approval. Agree
 7. cvArt in index.html resolves v54: and cast: only, despite documented art:/idb:/story: references. Verify UI accepts only resolvable refs or reports unsupported reference clearly; no silent blank artwork. Expression art already implemented with base portrait fallback.
 
 v101 has transitions, saved-reply auto-advance, native fullscreen, expression artwork, distinct main-navigation SVG paths for 14 families. Static atmospheric effects and extending icon designs to every control are polish, not release bugs. No code changes requested beyond verified fixes; no paid tests by ChatGPT.
+
+### Release 102 — post-release reliability (Claude, 2026-11-25)
+
+Fixed and covered by tests (`presend_watchdog_browser.py`, `reliability_102_browser.py`):
+- Pre-send steps (memory snapshot, scene save, story check, memory tidy-up, references, wiki) have a time limit (`DB.prepWait`, 120 s) and error handling; a failing tidy-up used to drop the send silently (likely the trial wedge).
+- Memory-step time limit adapts to provider speed (1.5x the last reply, 90–240 s) and the player is told when notes are skipped.
+- ChatGPT's list: (1) switching universes cancels an in-flight import (`epoch`/abort in the wizard); (2) typewriter + Stop keeps and shows the whole reply; (3) studio panels honour transparency; (4) lighting and fog/vignette stack via `--sf-cv-light`/`--sf-cv-veil`, rain layers over scene artwork via `--sf-cv-rain`; (5) menus no longer replay the scene transition (last scene remembered per playthrough, not on `#log`); (6) draft universe switch resets only universe-specific choices (reviewed); (8) `cvArt` resolves `story:<id>`, and background/portrait references that resolve to nothing are refused with a reason. (7) editing-scope previews are covered by ChatGPT's presentation test.
+Full suite pass; upgrade 101 -> 102 check 26/26.

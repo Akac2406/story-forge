@@ -31,9 +31,9 @@ html[data-sf-cv-dialogue=terminal] #log .turn.ai .body{font-family:monospace}
 html[data-sf-cv-dialogue=minimal] #log .turn.ai{border:0;box-shadow:none}
 html[data-sf-cv-narration=italic] #log .turn.ai .body{font-style:italic}
 html[data-sf-cv-narration=centered] #log .turn.ai .body{text-align:center}
-html[data-sf-cv-lighting=night] #log{box-shadow:inset 0 0 80px #071b4666}
-html[data-sf-cv-lighting=candle] #log{box-shadow:inset 0 0 80px #b46b2033}
-html[data-sf-cv-overlay=vignette] #log{box-shadow:inset 0 0 90px #0009}
+html[data-sf-cv-lighting=night]{--sf-cv-light:inset 0 0 80px #071b4666}
+html[data-sf-cv-lighting=candle]{--sf-cv-light:inset 0 0 80px #b46b2033}
+html[data-sf-cv-overlay=vignette]{--sf-cv-veil:inset 0 0 90px #0009}
 html[data-sf-cv-overlay=scanlines] #log .turn.ai{background-image:repeating-linear-gradient(0deg,transparent 0 3px,#0002 3px 4px)}
 
 /* Extended presentation styles. Keep controls reachable on narrow screens. */
@@ -64,15 +64,16 @@ html[data-sf-cv-nameplate=false] #log .turn .who{display:none}
 html[data-sf-cv-dialogue=parchment] #log .turn.ai{background:#eee1c2;color:#392b1e;border:1px solid #a48755}
 html[data-sf-cv-dialogue=comic] #log .turn.ai{border:2px solid currentColor;border-radius:24px;box-shadow:3px 3px 0 var(--accent)}
 html[data-sf-cv-narration=boxed] #log .turn.ai .body{padding:12px;border:1px solid var(--border)}
-html[data-sf-cv-lighting=dawn] #log{box-shadow:inset 0 0 80px #ffb58a55}
-html[data-sf-cv-lighting=day] #log{box-shadow:inset 0 0 80px #fff2b733}
-html[data-sf-cv-lighting=dusk] #log{box-shadow:inset 0 0 80px #9a477855}
-html[data-sf-cv-lighting=storm] #log{box-shadow:inset 0 0 80px #49566c88}
-html[data-sf-cv-lighting=neon] #log{box-shadow:inset 0 0 60px #9a38ff55}
-html[data-sf-cv-lighting=underwater] #log{box-shadow:inset 0 0 90px #007f9b88}
-html[data-sf-cv-overlay=fog] #log{box-shadow:inset 0 0 100px #b9c9d477}
+html[data-sf-cv-lighting=dawn]{--sf-cv-light:inset 0 0 80px #ffb58a55}
+html[data-sf-cv-lighting=day]{--sf-cv-light:inset 0 0 80px #fff2b733}
+html[data-sf-cv-lighting=dusk]{--sf-cv-light:inset 0 0 80px #9a477855}
+html[data-sf-cv-lighting=storm]{--sf-cv-light:inset 0 0 80px #49566c88}
+html[data-sf-cv-lighting=neon]{--sf-cv-light:inset 0 0 60px #9a38ff55}
+html[data-sf-cv-lighting=underwater]{--sf-cv-light:inset 0 0 90px #007f9b88}
+html[data-sf-cv-overlay=fog]{--sf-cv-veil:inset 0 0 100px #b9c9d477}
 html[data-sf-cv-overlay=film-grain] #log .turn.ai{background-image:radial-gradient(#8882 1px,transparent 1px);background-size:4px 4px}
-html[data-sf-cv-overlay=rain] #log{background-image:repeating-linear-gradient(110deg,transparent 0 24px,#aaccff22 25px 26px)}
+html[data-sf-cv-overlay=rain]{--sf-cv-rain:repeating-linear-gradient(110deg,transparent 0 24px,#aaccff22 25px 26px)}
+html[data-sf-cv-overlay=rain] #log{background-image:var(--sf-cv-rain)}
 html[data-sf-cv-overlay=snow] #log .turn.ai{background-image:radial-gradient(#fff6 1px,transparent 2px);background-size:24px 31px}
 html[data-sf-cv-overlay=embers] #log .turn.ai{background-image:radial-gradient(#ff8a3066 1px,transparent 2px);background-size:29px 37px}
 html[data-sf-cv-overlay=petals] #log .turn.ai{background-image:radial-gradient(ellipse at center,#ff99bb55 1px,transparent 4px);background-size:33px 43px}
@@ -233,3 +234,9 @@ html[data-sf-icons=glyph] .look-icon [data-icon-art=glyph]{display:inline}
 .ff-appearance-preview[data-preview-nav=top] small{order:-1}
 .ff-appearance-preview[data-preview-nav=side]{border-inline-start-width:8px}
 .ff-appearance-preview[data-preview-nav=floating] small{display:table;margin:auto;padding:4px 8px;border-radius:999px;background:var(--card)}
+
+/* Lighting and veil overlays (fog, vignette) combine instead of overriding each other; rain is layered over scene artwork by cinematic-ui-v49.js. */
+html[data-sf-cv-layout] #log{box-shadow:var(--sf-cv-light,0 0 0 transparent),var(--sf-cv-veil,0 0 0 transparent)}
+/* Panel transparency applies to studio panels too (this rule comes after the solid panel background). */
+.ff-ui .ff-panel{background:color-mix(in srgb,var(--card) calc((1 - var(--sf-transparency,0))*100%),transparent)}
+.ff-ui .ff-panel .ff-panel{background:color-mix(in srgb,var(--bg) calc((1 - var(--sf-transparency,0))*100%),transparent)}
