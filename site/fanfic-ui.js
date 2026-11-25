@@ -580,3 +580,20 @@ function quickCreate(root,back,guided=false){
 }
 Object.assign(window.SFFanUI,{quickCreate});
 })();
+
+(function(){
+function storyChanges(se){
+ const root=h("div",{class:"ff-ui"}),status=h("p",{role:"status","aria-live":"polite"}),body=h("div",{});let pending=null,busy=false,ctl=null,epoch=0;
+ const btn=(text,onclick)=>h("button",{text,onclick}),show=v=>JSON.stringify(v,null,2),panel=(...kids)=>h("section",{class:"ff-panel"},...kids);
+ function draw(){body.replaceChildren();if(busy){body.append(btn("Cancel request",()=>{epoch++;ctl?.abort();busy=false;status.textContent="Cancelled.";draw()}));return}
+ const view=qcStoryView(se);body.append(panel(h("h3",{text:"Protected story history"}),h("p",{text:"Past chapters, recorded outcomes and starting setup cannot be rewritten."}),h("details",{},h("summary",{text:"Frozen history and upcoming events"}),h("pre",{text:show(view.frozen)}))));
+ if(pending){body.append(panel(h("h3",{text:"Proposed changes"}),...(pending.changes||[]).map(c=>h("article",{},h("strong",{text:c.path}),h("pre",{text:"Before: "+show(c.from)+"\nAfter: "+show(c.to)}))),h("h3",{text:"Refused changes"}),...(pending.refused||[]).map(c=>h("p",{text:c.path+": "+c.reason})),pending.staged?btn("Apply approved changes",()=>{const r=qcChangeApply(se,pending.proposalId);status.textContent=r.ok?"Changes saved.":r.reason;if(r.ok||String(r.reason).includes("preview again"))pending=null;draw()}):null,btn(pending.staged?"Reject changes":"Close preview",()=>{if(pending.staged)qcChangeReject(pending.proposalId);pending=null;draw()})));return}
+ const instruction=h("textarea",{rows:5,placeholder:"Describe what should change in future chapters"});
+ body.append(panel(h("h3",{text:"AI Story Architect"}),instruction,btn("Preview story changes",async()=>{const t=instruction.value.trim();if(!t)return;const e=qcEstimateChange(se,t);if(!e.ok){status.textContent=e.reason;return}if(!confirm("Model requests: "+e.requests+"\nEstimated input tokens: "+e.inputTokens+"\nMaximum output tokens: "+e.maxOutputTokens+"\nProceed?"))return;busy=true;ctl=new AbortController();const n=++epoch;draw();try{const r=await qcChangePreview(se,t,{signal:ctl.signal});if(n!==epoch||!root.isConnected){if(r.staged)qcChangeReject(r.proposalId);return}if(r.ok)pending=r;else status.textContent=r.reason}catch(e){if(n===epoch)status.textContent=e.message}finally{if(n===epoch){busy=false;draw()}}})));
+ for(const [k,v] of Object.entries(view)){if(k==="frozen"||v===undefined)continue;const ed=h("textarea",{rows:5,value:show(v)});body.append(h("details",{},h("summary",{text:k}),ed,btn("Preview "+k+" edit",()=>{try{const r=qcChangePreviewPatch(se,{set:{[k]:JSON.parse(ed.value)},remove:[]});if(r.ok){pending=r;draw()}else status.textContent=r.reason}catch(e){status.textContent=e.message}})))}
+ body.append(panel(h("h3",{text:"Change history"}),...qcChangeHistory(se).map(c=>h("details",{},h("summary",{text:new Date(c.at).toLocaleString()+" · "+(c.instruction||"Manual change")}),h("pre",{text:show(c.changes)}))),btn("Undo last story change",()=>{if(!confirm("Undo the last settings change?"))return;const r=qcChangeUndo(se);status.textContent=r.ok?"Change undone.":r.reason;draw()})))
+ }
+ root.append(status,body);sheet("AI Story Architect",root);draw();
+}
+Object.assign(window.SFFanUI,{storyChanges});
+})();
