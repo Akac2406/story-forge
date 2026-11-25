@@ -63,7 +63,8 @@ function apply(store,edits){const byId=new Map(store.records.map(r=>[r.id,Object
 
 /* query(view, q) — deterministic order: pinned first, then layer order, then turn, then id. */
 function query(view,q){q=q||{};const words=low(q.text).split(/\s+/).filter(Boolean);
-  return arr(view&&view.records).filter(r=>(q.deleted?true:!r.deleted)&&(!q.layer||(Array.isArray(q.layer)?q.layer.includes(r.layer):r.layer===q.layer))&&(!q.who||arr(r.who).some(w=>low(w)===low(q.who)||low(w).split(/\s+/)[0]===low(q.who)))
+  const asOf=q.asOf==null?null:Number(q.asOf);
+  return arr(view&&view.records).filter(r=>(q.deleted==='only'?r.deleted:q.deleted?true:!r.deleted)&&(asOf==null||((r.t==null||r.t<=asOf)&&(r.since==null||r.since<=asOf)&&(r.until==null||r.until>asOf)))&&(!q.layer||(Array.isArray(q.layer)?q.layer.includes(r.layer):r.layer===q.layer))&&(!q.who||arr(r.who).some(w=>low(w)===low(q.who)||low(w).split(/\s+/)[0]===low(q.who)))
     &&(!q.src||r.src===q.src)&&(q.pinned==null||!!r.pin===!!q.pinned)&&(q.from==null||(r.t!=null&&r.t>=q.from))&&(q.to==null||(r.t!=null&&r.t<=q.to))&&words.every(w=>low(r.text+' '+arr(r.who).join(' ')+' '+r.where).includes(w)))
    .sort((a,b)=>(b.pin-a.pin)||(LAYERS.indexOf(a.layer)-LAYERS.indexOf(b.layer))||((a.t??-1)-(b.t??-1))||(a.id<b.id?-1:a.id>b.id?1:0))
    .slice(0,q.limit||500)}
@@ -72,8 +73,11 @@ function query(view,q){q=q||{};const words=low(q.text).split(/\s+/).filter(Boole
 function knows(view,name){const c=arr(view&&view.records).find(r=>r.layer==='character'&&low(r.who[0])===low(name));if(!c)return[];const ids=new Set(c.links.filter(l=>l.startsWith('knows:')).map(l=>l.slice(6)));
   return arr(view.records).filter(r=>r.layer==='semantic'&&ids.has(r.id)&&!r.deleted)}
 
+/* history(edits, id) -> the player operations on one record, oldest first. check(view, id) -> the record as it now stands (for confirming a change applied). */
+function history(edits,id){return arr(edits&&edits.ops).filter(o=>o.id===id).map(o=>({op:o.op,at:o.at,patch:o.patch||null,on:o.on??null}))}
+function check(view,id){return arr(view&&view.records).find(r=>r.id===id)||null}
 function stats(view){const n={};LAYERS.forEach(l=>n[l]=0);arr(view&&view.records).forEach(r=>{if(!r.deleted)n[r.layer]=(n[r.layer]||0)+1});return n}
 function integrity(view){const errors=[],ids=new Set();arr(view&&view.records).forEach(r=>{if(!r.id)errors.push('record without id');else if(ids.has(r.id))errors.push('duplicate id '+r.id);ids.add(r.id);if(!LAYERS.includes(r.layer))errors.push('bad layer '+r.layer+' on '+r.id)});return {ok:!errors.length,errors}}
 
-root.SFMem2=Object.freeze({LAYERS,TRUST,build,emptyEdits,edit,pin,lock,remove,restore,add,undo,apply,query,knows,stats,integrity});
+root.SFMem2=Object.freeze({LAYERS,TRUST,build,emptyEdits,edit,pin,lock,remove,restore,add,undo,apply,query,knows,history,check,stats,integrity});
 })(typeof window!=='undefined'?window:globalThis);

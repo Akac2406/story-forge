@@ -2310,11 +2310,20 @@ function memSource(se){const st=getStory(se.storyId)||{},ep=typeof eraProfile===
     universe:((DB.universes||{})[st.universe]||{}).records||[]}}
 function memView(se){if(!window.SFMem2)return{v:2,records:[]};return SFMem2.apply(SFMem2.build(memSource(se)),se.memEdits)}
 function memQuery(se,q){return SFMem2.query(memView(se),q)}
-function memOp(se,fn){const before=se.memEdits;se.memEdits=fn(se.memEdits||SFMem2.emptyEdits());save();return se.memEdits!==before}
-const memEdit=(se,id,patch)=>memOp(se,e=>SFMem2.edit(e,id,patch)),memPin=(se,id,on)=>memOp(se,e=>SFMem2.pin(e,id,on)),memLock=(se,id,on)=>memOp(se,e=>SFMem2.lock(e,id,on)),
-  memDelete=(se,id)=>memOp(se,e=>SFMem2.remove(e,id)),memRestore=(se,id)=>memOp(se,e=>SFMem2.restore(e,id)),memAdd=(se,r)=>memOp(se,e=>SFMem2.add(e,Object.assign({id:"p"+uid()},r))),memUndo=se=>memOp(se,e=>SFMem2.undo(e));
+/* Mutations return {ok, applied, reason, record}. applied=false (with the op not stored) when the engine refused it, e.g. a locked canon record. */
+function memOp(se,id,fn,test){const prev=se.memEdits||SFMem2.emptyEdits(),next=fn(prev),before=SFMem2.check(memView(se),id);se.memEdits=next;const rec=SFMem2.check(memView(se),id);
+  const applied=!test||test(rec,before);if(!applied){se.memEdits=prev;return{ok:false,applied:false,reason:rec?(rec.lock?"locked":"unchanged"):"not found",record:before}}save();return{ok:true,applied:true,reason:null,record:rec}}
+const memEdit=(se,id,patch)=>memOp(se,id,e=>SFMem2.edit(e,id,patch),r=>r&&Object.keys(patch||{}).every(k=>JSON.stringify(r[k])===JSON.stringify(patch[k]))),
+  memPin=(se,id,on)=>memOp(se,id,e=>SFMem2.pin(e,id,on),r=>r&&r.pin===(on!==false)),memLock=(se,id,on)=>memOp(se,id,e=>SFMem2.lock(e,id,on),r=>r&&r.lock===(on!==false)),
+  memDelete=(se,id)=>memOp(se,id,e=>SFMem2.remove(e,id),r=>r&&r.deleted),memRestore=(se,id)=>memOp(se,id,e=>SFMem2.restore(e,id),r=>r&&!r.deleted),
+  memAdd=(se,r)=>{const id=r&&r.id||("p"+uid());return memOp(se,id,e=>SFMem2.add(e,Object.assign({},r,{id})),x=>!!x)},
+  memUndo=se=>{const ops=(se.memEdits||{}).ops||[];if(!ops.length)return{ok:false,applied:false,reason:"nothing to undo",record:null};const id=ops[ops.length-1].id;return memOp(se,id,e=>SFMem2.undo(e))},
+  memHistory=(se,id)=>SFMem2.history(se.memEdits,id);
 function memConflicts(se){return(se.memDiag||[]).filter(d=>d.rp&&(d.rp.conflicts||[]).length&&!d.rp.resolved).map(d=>({id:"c"+d.t,t:d.t,items:d.rp.conflicts.slice(),src:d.rp.src||null}))}
-function memResolve(se,cid,choice){const d=(se.memDiag||[]).find(x=>"c"+x.t===cid&&x.rp);if(!d)return false;d.rp.resolved={choice:String(choice||"keep"),at:Date.now()};save();return true}
+/* memResolve only marks the conflict resolved. To also change memory, pass {edit:{id, patch}}: it goes through memEdit (player-trusted, undoable). */
+function memResolve(se,cid,choice,o){const d=(se.memDiag||[]).find(x=>"c"+x.t===cid&&x.rp);if(!d)return{ok:false,reason:"not found"};let edit=null;
+  if(o&&o.edit&&o.edit.id){edit=memEdit(se,o.edit.id,o.edit.patch||{});if(!edit.applied)return{ok:false,reason:edit.reason,edit}}
+  d.rp.resolved={choice:String(choice||"keep"),at:Date.now(),edited:edit?o.edit.id:null};save();return{ok:true,reason:null,edit}}
 /* UI contract (v91): memory status and retry for one reply. See docs/MEMORY-CONTRACT.md. */
 function memStatus(se){const d=(se&&se.memDiag)||[],rp=d.filter(x=>x.rp),last=rp.slice(-1)[0];
   return{mode:se.memExtract===true?"step":se.memExtract==="hybrid"?"hybrid":"narrator",pending:RPQ.has(se.id),checked:rp.length,ok:rp.filter(x=>x.rp.ok).length,

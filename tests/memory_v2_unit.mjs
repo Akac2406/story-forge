@@ -48,4 +48,7 @@ ok(JSON.stringify(M.query(store, {})) === JSON.stringify(M.query(M.build(fx), {}
 // purity
 ok(JSON.stringify(fx) === JSON.stringify(JSON.parse(fs.readFileSync(path.join(here, 'fixtures/mem2-source.json'), 'utf8'))), 'build does not mutate the source');
 const before = JSON.stringify(store); M.apply(store, ed); ok(JSON.stringify(store) === before, 'apply does not mutate the store');
+ok(M.query(store, { asOf: 3, layer: 'episodic' }).map(r => r.id).join() === 'e1', 'asOf: only events up to that turn');
+ok(M.query(store, { asOf: 2, layer: 'semantic' }).every(r => r.id !== 'f1'), 'asOf: a fact learned at turn 3 is not known at turn 2');
+ok(M.history(ed, 'e1').length === 1 && M.history(ed, 'e1')[0].op === 'edit', 'history lists operations per record');
 console.log(`memory v2: ${n} checks passed`);
