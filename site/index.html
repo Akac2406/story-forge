@@ -1517,7 +1517,21 @@ function vChat(){const se=DB.sessions.find(s=>s.id===view.id),st=se&&getStory(se
   let pt=null;log.addEventListener("scroll",()=>{clearTimeout(pt);pt=setTimeout(()=>{if(view.n!=="chat"||view.id!==se.id)return;const top=log.scrollTop;if(log.scrollHeight-top-log.clientHeight<40){if(se.pos){delete se.pos;save()}return}
     for(const el of log.querySelectorAll("[data-i]")){const y=el.offsetTop-log.offsetTop;if(y+el.offsetHeight>top){se.pos={i:+el.getAttribute("data-i"),o:Math.round(top-y)};save();break}}},300)},{passive:true})}
 function paintLast(se,text){if(view.n!=="chat"||view.id!==se.id)return;const lg=$("#log");if(!lg)return;const all=lg.querySelectorAll(".turn .body"),b=all[all.length-1];if(!b)return;
-  const near=lg.scrollHeight-lg.scrollTop-lg.clientHeight<120;fill(b,text);if(near)lg.scrollTop=lg.scrollHeight}
+  const near=lg.scrollHeight-lg.scrollTop-lg.clientHeight<120;const cv=typeof cvState==="function"?cvState(se).settings:null,root=document.documentElement.dataset;
+  const reduced=root.sfReducedMotion==="true"||root.sfCvReduced==="true"||matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const mode=cv?.textReveal||"instant";if(mode==="typewriter"&&!reduced){sfRevealStream(b,text,cv.revealSpeed,lg,near)}else{sfCancelReveal(b);fill(b,text);if(mode==="fade-in"&&!reduced&&!b.classList.contains("sf-cv-stream"))b.classList.add("sf-cv-stream");if(near)lg.scrollTop=lg.scrollHeight}}
+const sfRevealJobs=new WeakMap();
+function sfCancelReveal(b){const job=sfRevealJobs.get(b);if(job){cancelAnimationFrame(job.frame);sfRevealJobs.delete(b)}}
+function sfRevealStream(b,text,speed,lg,near){
+ let job=sfRevealJobs.get(b);if(job&&!text.startsWith(job.text.slice(0,job.shown))){sfCancelReveal(b);job=null}
+ if(job){job.text=text;job.near=near;return}
+ job={text,shown:0,last:performance.now(),near,frame:0};sfRevealJobs.set(b,job);
+ function tick(now){if(!b.isConnected||!busy||view.n!=="chat"){if(b.isConnected)fill(b,job.text);sfRevealJobs.delete(b);return}
+ const n=Math.floor((now-job.last)*Math.max(5,Math.min(120,Number(speed)||40))/1000);
+ if(n>0){job.last=now;job.shown=Math.min(job.text.length,job.shown+n);fill(b,job.text.slice(0,job.shown));if(job.near)lg.scrollTop=lg.scrollHeight}
+ job.frame=requestAnimationFrame(tick)}
+ job.frame=requestAnimationFrame(tick)
+}
 function loreFor(st,se,hist,action){const es=st.entries||[];if(!es.length)return"";
   const hay=(action+" "+hist.slice(-3).map(t=>t.text).join(" ")+" "+(se.start||"")+" "+Object.keys(se.cast||{}).join(" ")+(hist.length?"":" "+(st.setting||""))).toLowerCase();
   const out=[];let used=0;const add=e=>{const t=String(e.t||"");if(!t||used+t.length>[7000,3500,1800][DB.saver||0])return;used+=t.length;const n=String(e.k||"").split(",")[0].trim();out.push("- "+(n?n+": ":"")+t)};
