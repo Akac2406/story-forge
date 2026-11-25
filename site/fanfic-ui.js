@@ -134,7 +134,7 @@ function journal(se){open(se,"Character Journal",(b,apply)=>{
 })}
 function agenda(se){open(se,"NPC Agenda",(b,apply)=>{
  const ns=names(se),pick=sel(ns[0]||"",ns.map(n=>[n,n]),()=>draw()),out=h("div",{class:"ff-ui"}),day=chStoryDay(se);
- function draw(){out.replaceChildren();if(!pick.value)return;const n=pick.value,a=chAgenda(se,n,day,day+7),p=chNpcs(se)[n]||{goals:[],schedule:[]};
+ function draw(){out.replaceChildren();if(!pick.value)return;const n=pick.value,a=chAgenda(se,n,day,day+7)||{},p=chNpcs(se)[n]||{goals:[],schedule:[]};
  const goals=h("div",{class:"ff-ui"}),schedule=h("div",{class:"ff-ui"}),gr=[],sr=[];
  function goal(g={}){if(typeof g==="string")g={text:g};const text=h("textarea",{rows:2,value:g.text||""}),priority=h("input",{type:"number",min:1,max:5,value:g.priority||3}),term=sel(g.term||"short",opts(["short","long"]),()=>{}),conflicts=h("input",{value:(g.conflictsWith||[]).join(", ")});const row={read:()=>({...g,text:text.value.trim(),priority:Number(priority.value),term:term.value,conflictsWith:conflicts.value.split(",").map(x=>x.trim()).filter(Boolean)})};const el=panel(fld("Goal",text),fld("Priority (1–5)",priority),fld("Duration",term),fld("Conflicting goal IDs",conflicts),btn("Remove from draft",()=>{gr.splice(gr.indexOf(row),1);el.remove()}));gr.push(row);goals.append(el)}
  function slot(v={}){const d=h("input",{type:"number",min:0,value:v.day??day}),where=h("input",{value:v.where||""}),doing=h("input",{value:v.doing||""});const row={read:()=>({...v,day:Number(d.value),where:where.value,doing:doing.value})};const el=panel(fld("Story day",d),fld("Location",where),fld("Activity",doing),btn("Remove from draft",()=>{sr.splice(sr.indexOf(row),1);el.remove()}));sr.push(row);schedule.append(el)}

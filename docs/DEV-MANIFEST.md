@@ -19,7 +19,7 @@ Paid testing: the memory-overhaul OpenCode authorization (stop at 45% monthly, l
 
 | | |
 |---|---|
-| Live (production) | **98** (released 2026-11-25): final stabilization: backups now carry appearance settings and presets; "Add stories from a backup" brings the fanfiction universes and character templates those stories need. 97: Cinematic / Appearance studios |
+| Live (production) | **98** (released 2026-11-25): final stabilization (backups carry appearance; add-stories brings universes and templates) + ChatGPT's refinements (relationship graph zoom/portraits and edits, NPC plan forms, continuity voice warnings, memory conflict corrections, Manage favorites moved to Advanced & Settings). 97: Cinematic / Appearance studios |
 | Test address | https://deploy-preview-7--celebrated-brigadeiros-580c41.netlify.app (draft PR #7 = `memory-overhaul`) |
 | Integration branch | `memory-overhaul`: Claude merges, runs the full suite, pushes |
 | ChatGPT branch | `ui-overhaul` (fast-forwarded to `memory-overhaul` after each integration) |
@@ -73,10 +73,10 @@ Workflow per batch: ChatGPT commits to `ui-overhaul`; Claude merges into `memory
 | 2026-11-25 | 8f75d79, 11ca838, 9652d79 | ui-overhaul: Cinematic, Appearance screens + menu | no fixes needed; `presentation_screens_browser.py` 12 checks |
 | 2026-11-25 | release 97 | screens + names fix | full suite pass; upgrade 96 -> 97 check 26/26 |
 | 2026-11-25 | release 98 | stabilization: skip upgrade 92 -> 97 26/26; all-features 300-turn stress test (load 0.16 s, 0.2 MB, prompt 19.5k chars, every screen < 2 s, no phone overflow); backup round trip (`backup_roundtrip_browser.py` 13; caught a crash where a new variable shadowed the app's append helper before release) | full suite pass; upgrade 97 -> 98 check 26/26 |
+| 2026-11-25 | 12b6c3e, ddcdc08 | ui-overhaul refinements | **bug fixed:** NPC Agenda crashed for a character with no plan (chAgenda returns null); menu test now ignores the favorites manager's checkbox copies; full suite pass; upgrade 97 -> 98 26/26 |
 
 ## Known issues / notes
 
-- "Manage favorites" repeats every menu item as a checkbox above the categories (collapsed). Consider moving it into Advanced & Settings to keep the drawer short.
 
 - Phase 8 engine API (SFFan): upgradePreview(u, canon, state), upgrade(canon, u), promote(u, record, {session, canon?}) -> fanon, demote(u, id) (fanon only), crossover([u...]), powerRule(canon, from, to), knowsX(u, canon, charId). Adapters + UI next.
 - Upgrade checks: give the new site files a newer modification time than the old copy (`touch`), or the test server answers 304 and the browser keeps the old page.

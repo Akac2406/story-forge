@@ -23,13 +23,13 @@ try:
     names = pg.evaluate("[...document.querySelectorAll('details.story-tools>summary')].map(s=>s.textContent.trim())")
     ok(names == CATS, f"eight categories in the agreed order: {names}")
     ok(pg.evaluate("[...document.querySelectorAll('details.story-tools')].every(d=>!d.open)"), "all categories start collapsed")
-    total = pg.evaluate("document.querySelectorAll('details.story-tools button.drow, details.story-tools label.chk').length")
+    total = pg.evaluate("[...document.querySelectorAll('details.story-tools button.drow, details.story-tools label.chk')].filter(e=>!e.closest('.ff-menu-favorites')).length")  # favorites manager (in Advanced & Settings) repeats every item as a checkbox
     reached = set()
     for c in CATS:
         pg.click(f"details.story-tools>summary:text-is('{c}')"); pg.wait_for_timeout(150)
         open_ = pg.evaluate("[...document.querySelectorAll('details.story-tools')].filter(d=>d.open).map(d=>d.querySelector('summary').textContent.trim())")
         ok(open_ == [c], f"opening {c} shows only that category")
-        vis = pg.evaluate("[...document.querySelectorAll('details.story-tools[open] button.drow, details.story-tools[open] label.chk')].filter(b=>b.offsetParent!==null&&b.getBoundingClientRect().width>0).map(b=>b.textContent.trim().slice(0,40))")
+        vis = pg.evaluate("[...document.querySelectorAll('details.story-tools[open] button.drow, details.story-tools[open] label.chk')].filter(b=>!b.closest('.ff-menu-favorites')&&b.offsetParent!==null&&b.getBoundingClientRect().width>0).map(b=>b.textContent.trim().slice(0,40))")
         reached.update(vis)
     ok(len(reached) >= total - 1 and total >= 40, f"every control is reachable through its category ({len(reached)} of {total})")
     outside = pg.evaluate("[...document.querySelectorAll('#sheetbg .drawer button.drow')].filter(b=>!b.closest('details.story-tools')).map(b=>b.textContent.trim().slice(0,30))")
