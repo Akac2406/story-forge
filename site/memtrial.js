@@ -48,6 +48,7 @@ function drawSetup() {
     h("label", { text: "Stop if this trial’s estimated share of your 5-hour Go limit reaches (%)" }), h("input", { type: "number", min: "1", max: "50", value: opt.cap, oninput: e => opt.cap = e.target.value }),
     h("label", { class: "chk" }, h("input", { id: "rp", type: "checkbox", autocomplete: "off" }), "Repair missing metadata (trial setting, one extra request per missed reply)"),
     h("label", { class: "chk" }, h("input", { id: "p2", type: "checkbox", autocomplete: "off" }), "Memory Phase 2: the narrator uses story memory (who knows what)"),
+    h("label", { class: "chk" }, h("input", { id: "mx", type: "checkbox", autocomplete: "off" }), "Separate memory step: notes taken in a quick extra request after each reply"),
     h("label", { class: "chk" }, h("input", { id: "dry", type: "checkbox", autocomplete: "off", checked: opt.dry, onchange: e => { opt.dry = e.target.checked; conf.hidden = opt.dry } }), "Dry run (no requests, free, checks the page works)"),
   );
   const conf = h("div", { hidden: opt.dry }, h("label", { text: "Type opencode to confirm real requests (uses your Go allowance, about 0.5–1% of the 5-hour window)" }), h("input", { id: "confirm", autocapitalize: "off", autocomplete: "off", spellcheck: "false" }));
@@ -56,7 +57,7 @@ function drawSetup() {
     opt.dry = $("#dry").checked;
     if (!opt.dry) { if (!have) { alertBox("Set up OpenCode in the app first."); return } if ($("#confirm").value.trim().toLowerCase() !== "opencode") { alertBox("Type opencode to confirm."); return } }
     window.__trialReport = null; localStorage.removeItem(PROG); start.disabled = true;
-    await resetTrial(); prog = { v: 1, k: -1, rows: [], ops: {}, hosts: {}, opts: { turns: Math.max(5, Math.min(scen.turns.length, +opt.turns || 40)), len: opt.len, cap: Math.max(1, +opt.cap || 10), dry: opt.dry, rp: $("#rp").checked, p2: !!($("#p2") && $("#p2").checked), sc: curSc }, started: new Date().toISOString() }; saveProg(); run(true) } });
+    await resetTrial(); prog = { v: 1, k: -1, rows: [], ops: {}, hosts: {}, opts: { turns: Math.max(5, Math.min(scen.turns.length, +opt.turns || 40)), len: opt.len, cap: Math.max(1, +opt.cap || 10), dry: opt.dry, rp: $("#rp").checked, p2: !!($("#p2") && $("#p2").checked), mx: !!($("#mx") && $("#mx").checked), sc: curSc }, started: new Date().toISOString() }; saveProg(); run(true) } });
   box.append(start);
   if (prog && !prog.done) box.append(h("button", { text: "Continue the unfinished trial (turn " + (Math.max(0, prog.k) + 1) + ")", onclick: () => run(false) }));
   if (prog && prog.done && !opt.dry) box.append(h("button", { text: "Replay repair on missed replies (paid, needs the opencode box)", onclick: () => { if ($("#confirm").value.trim().toLowerCase() !== "opencode") { alertBox("Type opencode to confirm."); return } replay() } }));
@@ -95,7 +96,7 @@ function seedDB() {
   return { migrated: true, memv2: false, metaRepair: !!o.rp, ocLite: o.rp ? "effort" : null, prov: "opencode", ocKey: o.dry ? "dry-run" : OC.key, ocProxy: o.dry ? "dry-run.invalid" : OC.proxy, ocMon: OC.mon, ocDay: OC.day, ocScale: OC.scale,
     modes: [{ n: "Trial", id: "deepseek/deepseek-v4.1-flash", d: "", p: "", t: 0.8 }], mode: 0, saver: 0, sugg: true, syncAuto: false,
     stories: [{ id: "trial-story", kind: "story", title: scen.title, setting: st.setting, style: st.style, lore: st.lore, entries: st.entries, stats: [], endings: [], starts: [], follow: "strict" }],
-    sessions: [{ id: "trial", storyId: "trial-story", memv2: true, memDev: true, memPrompt: !!o.p2, start: "", follow: "strict", char: { name: scen.player.name, desc: scen.player.desc, trait: "" }, turns: [], temp: "", mems: [], note: "", stats: {}, upto: 0, len: o.len, sugg: [], ending: null, ended: [], people: {}, think: 0, wstyle: "default", wcustom: "", goal: "", updated: Date.now() }] };
+    sessions: [{ id: "trial", storyId: "trial-story", memv2: true, memDev: true, memPrompt: !!o.p2, memExtract: !!o.mx, start: "", follow: "strict", char: { name: scen.player.name, desc: scen.player.desc, trait: "" }, turns: [], temp: "", mems: [], note: "", stats: {}, upto: 0, len: o.len, sugg: [], ending: null, ended: [], people: {}, think: 0, wstyle: "default", wcustom: "", goal: "", updated: Date.now() }] };
 }
 
 /* ---------- dry-run stand-in model ---------- */
@@ -244,7 +245,7 @@ function reportMd() {
     "Your real stories unchanged: " + (prog.realUnchanged ? "yes (verified)" : "NO — check your app") + " · memory stayed off globally: " + (prog.globalOff ? "yes" : "NO"), "",
     "| Check | Result |", "|---|---|", ...S2.map(([k, v]) => `| ${k} | ${pct(v)} |`), "", "| Operation | Result |", "|---|---|", ...Object.entries(prog.ops).map(([k, v]) => `| ${k} | ${v} |`), "",
     `Possible duplicate events (same 6 turns, ≥60% word overlap): **${(prog.dups || []).length}** · replies that failed: **${prog.fail || 0}** · parser exceptions: **${prog.rows.filter(r => r.diag && r.diag.err).length}** · memory integrity: **${prog.integrity && prog.integrity.ok}**`, ""];
-  const pl = prog.rows.flatMap(r => (r.proseLeaks || []).map(x => `- turn ${r.turn}: ${x}`)); L.push("Memory Phase 2: " + (prog.opts.p2 ? "**ON**" : "off"), ""); if (pl.length) L.push("## Possible secret leaks in the narrator's text (heuristic; check by hand)", "", ...pl, "");
+  const pl = prog.rows.flatMap(r => (r.proseLeaks || []).map(x => `- turn ${r.turn}: ${x}`)); L.push("Memory Phase 2: " + (prog.opts.p2 ? "**ON**" : "off"), "Separate memory step: " + (prog.opts.mx ? "**ON**" : "off"), ""); if (pl.length) L.push("## Possible secret leaks in the narrator's text (heuristic; check by hand)", "", ...pl, "");
   const iss = prog.rows.flatMap(r => ((r.diag || {}).issues || []).map(i => `- turn ${r.turn}: ${i}`)); if (iss.length) L.push("## Malformed or missing metadata (first 20)", "", ...iss.slice(0, 20), "");
   const miss = prog.rows.flatMap(r => Object.entries(r.checks || {}).filter(([, v]) => !v).map(([c]) => `- turn ${r.turn}: ${c}`)); if (miss.length) L.push("## Missed expectations (first 25)", "", ...miss.slice(0, 25), "");
   const samples = prog.rows.filter(r => r.meta).slice(0, 3).map(r => "Turn " + r.turn + ":\n```\n" + r.meta + "\n```"); if (samples.length) L.push("## Sample META (first 3 turns)", "", ...samples, "");

@@ -1626,7 +1626,7 @@ function buildMsgs(se,st,hist,action,days=0){if(se.sim)st=Object.assign({},st,{t
     +(!isC&&(DB.saver||0)<2?"\nBONDS: how this reply changed main characters’ feelings toward the player, as Name=+number or Name=-number from 1 to 10, separated by ;, or none":"")
     +(!isC&&(DB.saver||0)<2?"\nQUESTS: goals, promises or mysteries that opened in this reply as +short description, and ones that were resolved as -short description, separated by ;, or none":"")
     +(rsOn(se)?"\nTOPICS: up to two real-world topics in this reply worth researching for realism (a job, school, sport, illness, place, era, skill or hobby), separated by ;, or none":"")
-    +(memOn(se)&&!isC?memMeta():"")
+    +(memOn(se)&&!isC&&!se.memExtract?memMeta():"")
     +(isC?"":SFCanon.metaLine(se,st))
     +(se.nc?"\nCHAPTER: a title of two to five words for the part of the story that begins with this reply":"")
     +(DB.sugg===false?"":"\nNEXT: three different replies the player could send next, separated by |. Write each as the player’s own message: a brief action, then a line of speech in double quotes");
@@ -1688,6 +1688,7 @@ async function send(text,hide,show,days=0,replay=null){const se=DB.sessions.find
   if(num(DB.budget,0)>0&&DB.budgetStop&&(!isOC()||orMode(DB.modes[DB.mode]||DB.modes[0]))&&monthSpend()>=num(DB.budget,0)&&!view.overOK){view.overOK=1;toast("You’ve reached your monthly budget of $"+num(DB.budget,0).toFixed(2)+". Tap send again to go over it.");return}
   if(memOn(se)&&!se.mem&&st.kind!=="character"&&!(se.memSnap&&se.memSnap.ok)){busy=true;try{await memSnapshot(se)}finally{busy=false}}
   if(PRE.cancel){PRE.cancel=false;toast("Cancelled.");return}
+  if(se.memExtract&&RPQ.has(se.id)){busy=true;toast("Saving the last scene to memory…");try{await RPQ.get(se.id)}catch(e){}finally{busy=false}}
   if(recP||needRec(se)){busy=true;toast("Checking the story so far…");try{await recWait(se)}catch(e){}finally{busy=false}}
   if(needSum(se)){busy=true;toast("Tidying the story’s memory first…");try{await summarize(se)}finally{busy=false}}
   const myRefs=[...new Set(refsFor(st.id).concat(refsFor(se.id),replay?refsFor(replay.sourceId):[]))];let rp="";if(myRefs.length){busy=true;try{rp=await refPick(se,st,text,myRefs)}catch(e){}finally{busy=false}}
@@ -1704,7 +1705,7 @@ async function send(text,hide,show,days=0,replay=null){const se=DB.sessions.find
   try{const r=await ask(msgs,{signal:ctrl.signal,se,think:se.think||0,max:Math.min(16000,Math.round((+se.len||300)*2.2)+900),onText:t=>{raw=t;ai.text=vis(t);paintLast(se,ai.text)}});
     raw=r.text;
     if(replay&&!vis(raw))throw Error("No chapter reply was returned.");
-    if(days&&(vis(raw)||raw.trim()))u.worldDays=days;ai.text=vis(raw)||raw.trim();{const mi=metaAt(raw);if(mi>=0)ai.mt=raw.slice(mi,mi+1500).trim();else delete ai.mt}delete se.newc;if(r.usage)ai.u={i:r.usage.prompt_tokens||0,o:r.usage.completion_tokens||0,c:typeof r.usage.cost==="number"?r.usage.cost:null};if(isOC())ai.gp=ocPct();applyMeta(se,st,raw);memRecord(se,st,ai,raw);canonRecord(se,st,ai,raw);if((DB.metaRepair||se.metaRepair)&&metaAt(raw)<0&&memOn(se)&&st.kind!=="character"&&!RPQ.has(se.id)){const pr=metaRepair(se,st,ai).finally(()=>RPQ.delete(se.id));RPQ.set(se.id,pr)}if(se.newc){ai.newc=se.newc;delete se.newc}ai.st2=Object.assign({},se.stats);if(se.info){ai.info=se.info;delete se.info}if(REG){ai.vs=REG.concat([{t:ai.text,s:ai.st2,sg:(se.sugg||[]).slice(),mx:ai.mx,mt:ai.mt,tid:ai.tid}]).slice(-6);ai.vi=ai.vs.length-1}committed=true;if(RBK?.sid===se.id)RBK=null}
+    if(days&&(vis(raw)||raw.trim()))u.worldDays=days;ai.text=vis(raw)||raw.trim();{const mi=metaAt(raw);if(mi>=0)ai.mt=raw.slice(mi,mi+1500).trim();else delete ai.mt}delete se.newc;if(r.usage)ai.u={i:r.usage.prompt_tokens||0,o:r.usage.completion_tokens||0,c:typeof r.usage.cost==="number"?r.usage.cost:null};if(isOC())ai.gp=ocPct();applyMeta(se,st,raw);memRecord(se,st,ai,raw);canonRecord(se,st,ai,raw);if(memOn(se)&&st.kind!=="character"&&(se.memExtract?true:((DB.metaRepair||se.metaRepair)&&metaAt(raw)<0&&!RPQ.has(se.id)))){const prev=RPQ.get(se.id)||Promise.resolve();const pr=prev.catch(()=>{}).then(()=>metaRepair(se,st,ai,{extract:!!se.memExtract})).finally(()=>{if(RPQ.get(se.id)===pr)RPQ.delete(se.id)});RPQ.set(se.id,pr)}if(se.newc){ai.newc=se.newc;delete se.newc}ai.st2=Object.assign({},se.stats);if(se.info){ai.info=se.info;delete se.info}if(REG){ai.vs=REG.concat([{t:ai.text,s:ai.st2,sg:(se.sugg||[]).slice(),mx:ai.mx,mt:ai.mt,tid:ai.tid}]).slice(-6);ai.vi=ai.vs.length-1}committed=true;if(RBK?.sid===se.id)RBK=null}
   catch(e){const ab=e&&e.name==="AbortError";
     if(REG&&RBK?.sid===se.id){se.turns.splice(ui,2);regenRollback(se);if(!ab)toast(errMsg(e)+" Your earlier version is kept.")}
     else if(ab&&vis(raw)&&!replay)ai.text=vis(raw);else if(REG){const o=REG[REG.length-1];ai.text=o.t;if(o.mt)ai.mt=o.mt;else delete ai.mt;if(o.mx){ai.mx=o.mx;if(se.mem&&window.SFMemory)try{SFMemory.apply(se.mem,o.mx)}catch(x){}}if(o.s)se.stats=Object.assign({},o.s);ai.st2=o.s;if(REG.length>1){ai.vs=REG;ai.vi=REG.length-1}if(!ab)toast(errMsg(e)+" Your earlier version is kept.")}else{const k=se.turns.indexOf(ai);if(k>0)se.turns.splice(k-1,2);if(!hide&&!show&&view.id===se.id)view.draft=text;if(!ab)toast(errMsg(e))}}
@@ -2296,10 +2297,10 @@ async function metaRepair(se,st,ai,o){o=o||{};const t0=Date.now(),bind={sid:se.i
     const blk=repairBlock(r.text);res.block=blk;if(!blk){res.why="unreadable";return res}
     const pp=repairFilter(SFMemory.parseMeta(blk),ai.text,se.char&&se.char.name);res.dropped=pp.dropped;
     if(o.dry){res.ok=true;res.parsed=pp;return res}
-    const live=DB.sessions.includes(se)&&se.id===bind.sid&&se.turns.includes(ai)&&se.turns.length===bind.n&&DB.sessions.length===bind.ns&&ai.text===bind.text&&ai.vi===bind.vi;
+    const live=DB.sessions.includes(se)&&se.id===bind.sid&&se.turns.includes(ai)&&(o.extract||(se.turns.length===bind.n&&DB.sessions.length===bind.ns))&&ai.text===bind.text&&ai.vi===bind.vi;
     if(!live){res.why="stale";return res}
     if(ai.mx)try{SFMemory.undo(se.mem,ai.mx)}catch(e){}
-    const k=se.turns.indexOf(ai);if(!ai.tid)ai.tid=uid();ai.mx=SFMemory.record(se.mem,pp,{t:k,ch:Math.max(0,chapsOf(se).length-1),tid:ai.tid});ai.rmt=blk;res.ok=true;return res}
+    const k=se.turns.indexOf(ai);if(!ai.tid)ai.tid=uid();ai.mx=SFMemory.record(se.mem,pp,{t:k,ch:Math.max(0,chapsOf(se).length-1),tid:ai.tid});ai.rmt=blk;if(Array.isArray(ai.vs)){const v=ai.vs.find(x=>x&&x.t===ai.text);if(v){v.mx=ai.mx;v.rmt=blk}}res.ok=true;return res}
   catch(e){res.ms=Date.now()-t0;res.why=ac.signal.aborted?"timeout":"error";return res}
   finally{clearTimeout(tm);if(!o.dry){const d=(se.memDiag||[]).filter(x=>x.t===se.turns.indexOf(ai)).pop();if(d)d.rp={ok:res.ok,ms:res.ms,tok:res.tok,why:res.why,dropped:res.dropped};save()}}}
 /* Trial helper: run chapter recaps again without saving them, to compare speed and output with and without reasoning. */
@@ -3267,6 +3268,7 @@ function memBetaSheet(se,st){const box=h("div"),m=se.mem,nEv=m?(m.events||[]).fi
   else{
     ap(box,h("p",{text:"On for this playthrough."+(m?" Remembered so far: "+nEv+" events, "+nFa+" facts.":" It starts with your next message.")}),
       chk("Fill in memory when a reply leaves it out (a small extra request, about 3 seconds, in the background)",se.metaRepair!==false,v=>{se.metaRepair=v;save()}),
+       chk("Take memory notes in a separate quick step after each reply (more reliable in long stories; one small extra request per reply, in the background)",!!se.memExtract,v=>{se.memExtract=v;save()}),
        chk("Let the narrator use story memory: who knows what, where the scene is, and recent key events (in testing)",!!se.memPrompt,v=>{se.memPrompt=v;save()}),
        h("p",{class:"sub",text:"When this is on, characters only act on what the memory says they know. No extra requests; it adds a short section to each message."}),
       rp.length?h("p",{class:"sub",text:"Filled in "+rpOk+" of "+rp.length+" replies that left it out."}):null,
