@@ -326,7 +326,7 @@ const KEY="story-forge-v2",app=document.getElementById("app"),$=s=>document.quer
 function ap(p,...k){for(const c of k.flat(4)){if(c==null||c===false)continue;p.appendChild(c.nodeType?c:document.createTextNode(String(c)))}}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const num=(v,d)=>{const n=parseFloat(v);return isFinite(n)?n:d};
-const VER=97,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
+const VER=98,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
 function fixCh(se){const c=(se.chaps||[]).filter(x=>x&&x.i>=0&&x.i<Math.max(1,se.turns.length)).sort((a,b)=>a.i-b.i),out=[];c.forEach(x=>{if(!out.length||x.i>out[out.length-1].i)out.push(x)});if(!out.length||out[0].i!==0)out.unshift({i:0,t:""});se.chaps=out;return out}
 function autoCh(se){const N=se.chapN==null?1500:se.chapN,out=[{i:0,t:""}];if(N>0){let acc=0;se.turns.forEach((t,i)=>{if(t.role==="user"&&i>0&&(N===1?acc>0:acc>=N)){out.push({i,t:""});acc=0}if(t.role==="ai")acc+=words(t.text)})}return out}
 function chapsOf(se){if(!se.chaps)se.chaps=autoCh(se);return fixCh(se)}
@@ -2449,6 +2449,10 @@ function apDeletePreset(id){const r=SFAppearance.deletePreset(apPresetsRaw(),id)
 function apApplyPreset(se,id,scope){const p=apPresetsRaw()[id];return p?apSet(se,p.settings,scope):{ok:false,applied:false,reason:"not found"}}
 function apExportPreset(id){const p=apPresetsRaw()[id];return p?SFAppearance.exportPreset(p):null}
 const apImportPreview=data=>SFAppearance.importPreview(data);
+/* Backups: appearance settings (v48 store) and presets travel with the backup. Replacing everything restores both; adding stories only adds presets that aren't here yet. */
+function apBackup(){const c=apCfg(),p=apPresetsRaw();const has=JSON.stringify(c)!==JSON.stringify(SFAppearance.empty())||Object.keys(p).length;return has?{settings:c,presets:p}:null}
+function apRestore(a,merge){if(!a||typeof a!=="object")return;try{const P=apPresetsRaw();for(const [id,v] of Object.entries(a.presets||{})){const pv=v&&SFAppearance.importPreview(SFAppearance.exportPreset(v));if(pv&&pv.ok&&(!merge||!P[id]))P[id]={id,name:pv.name,settings:pv.settings,created:v.created||Date.now()}}localStorage.setItem(AP_PRESETS,JSON.stringify(P));
+  if(!merge&&a.settings&&a.settings.version===1)apWrite(a.settings)}catch(e){}}
 function apImport(data){const v=SFAppearance.importPreview(data);if(!v.ok)return{ok:false,applied:false,reason:v.issues.join("; ")};return apSavePreset(v.name,v.settings)}
 function dirBlock(se){return se.director&&se.director.enabled?SFDirector.block(se.director.settings,dirAnalyze(se)):""}
 /* NPC plans and character development notes (living characters UI). Return {ok, applied, reason}. */
@@ -3774,7 +3778,7 @@ function vSettings(){ap(app,h("header",null,back(()=>go({n:"home",tab:"discover"
   let merge=false;
   const file=h("input",{type:"file",accept:"application/json,.json",style:"display:none",onchange:e=>{const fl=e.target.files[0];e.target.value="";if(!fl)return;const rd=new FileReader();
     rd.onload=()=>{try{const parsed=JSON.parse(rd.result);if(!parsed||!Array.isArray(parsed.sessions)||!Array.isArray(parsed.stories))throw 0;
-      const {scenePresets,...d}=parsed;
+      const {scenePresets,appearance,...d}=parsed;
       const restoreScenes=sessions=>window.SFScenesV54?.importPresets(scenePresets,sessions)===false
         ?" Scene artwork could not be saved. Browser storage may be full.":"";
       if(merge){const n=norm(d),add=(a,b)=>{let c=0;(b||[]).forEach(x=>{if(x&&x.id&&!a.some(y=>y.id===x.id)){a.push(x);c++}});return c};
@@ -3785,12 +3789,17 @@ function vSettings(){ap(app,h("header",null,back(()=>go({n:"home",tab:"discover"
           for(const [id,settings] of Object.entries(n.storyCanon))if(id.startsWith("lib:")&&!Object.hasOwn(DB.storyCanon,id))DB.storyCanon[id]=settings;
         }
         DB.found=DB.found||{};Object.keys(n.found||{}).forEach(k=>{DB.found[k]=Array.from(new Set((DB.found[k]||[]).concat(n.found[k]||[])))});
+        /* Fanfiction universes and character templates the added stories rely on; existing ones are never overwritten. */
+        if(n.universes&&typeof n.universes==="object"){DB.universes=DB.universes||{};for(const [id,u] of Object.entries(n.universes))if(u&&!Object.hasOwn(DB.universes,id))DB.universes[id]=u}
+        if(Array.isArray(n.characterTemplates)){const T=sfTemplates();n.characterTemplates.forEach(t=>{if(t&&typeof t.name==="string"&&!T.some(x=>String(x.name).toLowerCase()===t.name.toLowerCase()))T.push(t)})}
+        if(typeof apRestore==="function")apRestore(appearance,true);
         save();const sceneNotice=restoreScenes(DB.sessions.filter(s=>incomingSessions.has(s.id)));
         render();toast("Added "+c2+" playthrough"+(c2===1?"":"s")+" and "+c1+" world"+(c1===1?"":"s")+"."+sceneNotice)}
-      else{DB=norm(Object.assign({},d,{key:DB.key,ocKey:DB.ocKey,ocProxy:DB.ocProxy,prov:DB.prov,syncPass:DB.syncPass,syncKeys:DB.syncKeys,keysAt:DB.keysAt,refs:DB.refs||[],migrated:true}));save();const sceneNotice=restoreScenes(DB.sessions);applyFs();render();toast("Backup restored."+sceneNotice)}}catch(x){toast("That file is not a Story Forge backup.")}};rd.readAsText(fl)}});
+      else{DB=norm(Object.assign({},d,{key:DB.key,ocKey:DB.ocKey,ocProxy:DB.ocProxy,prov:DB.prov,syncPass:DB.syncPass,syncKeys:DB.syncKeys,keysAt:DB.keysAt,refs:DB.refs||[],migrated:true}));save();if(typeof apRestore==="function")apRestore(appearance,false);const sceneNotice=restoreScenes(DB.sessions);applyFs();render();toast("Backup restored."+sceneNotice)}}catch(x){toast("That file is not a Story Forge backup.")}};rd.readAsText(fl)}});
   const backup=async()=>{const d=savedDB();delete d.key;delete d.ocKey;delete d.syncPass;delete d.ocProxy;delete d.price;delete d.quirk;delete d.refs;
     const presets=window.SFScenesV54?.exportPresets(d.sessions);
     if(presets&&Object.keys(presets).length)d.scenePresets=presets;
+    const apb=typeof apBackup==="function"?apBackup():null;if(apb)d.appearance=apb;
     const blob=new Blob([JSON.stringify(d)],{type:"application/json"}),name="story-forge-backup.json";
     try{const f=new File([blob],name,{type:"application/json"});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:"Story Forge backup"});return}}catch(x){if(x&&x.name==="AbortError")return}
     const a=h("a",{href:URL.createObjectURL(blob),download:name});ap(document.body,a);a.click();a.remove()};

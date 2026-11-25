@@ -19,7 +19,7 @@ Paid testing: the memory-overhaul OpenCode authorization (stop at 45% monthly, l
 
 | | |
 |---|---|
-| Live (production) | **97** (released 2026-11-25): Cinematic / Visual Novel and Appearance Studio screens (ChatGPT) on the new cv*/ap* adapters (docs/PRESENTATION-API.md); bracketed notes no longer become memory characters. 96: Universe/Gameplay/Creator studios, name resolution |
+| Live (production) | **98** (released 2026-11-25): final stabilization: backups now carry appearance settings and presets; "Add stories from a backup" brings the fanfiction universes and character templates those stories need. 97: Cinematic / Appearance studios |
 | Test address | https://deploy-preview-7--celebrated-brigadeiros-580c41.netlify.app (draft PR #7 = `memory-overhaul`) |
 | Integration branch | `memory-overhaul`: Claude merges, runs the full suite, pushes |
 | ChatGPT branch | `ui-overhaul` (fast-forwarded to `memory-overhaul` after each integration) |
@@ -72,6 +72,7 @@ Workflow per batch: ChatGPT commits to `ui-overhaul`; Claude merges into `memory
 | 2026-11-25 | 71d5fe9 | presentation engines + cv*/ap* adapters; v48 reload/palette | 26 unit + 24 browser checks |
 | 2026-11-25 | 8f75d79, 11ca838, 9652d79 | ui-overhaul: Cinematic, Appearance screens + menu | no fixes needed; `presentation_screens_browser.py` 12 checks |
 | 2026-11-25 | release 97 | screens + names fix | full suite pass; upgrade 96 -> 97 check 26/26 |
+| 2026-11-25 | release 98 | stabilization: skip upgrade 92 -> 97 26/26; all-features 300-turn stress test (load 0.16 s, 0.2 MB, prompt 19.5k chars, every screen < 2 s, no phone overflow); backup round trip (`backup_roundtrip_browser.py` 13; caught a crash where a new variable shadowed the app's append helper before release) | full suite pass; upgrade 97 -> 98 check 26/26 |
 
 ## Known issues / notes
 
