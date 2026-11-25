@@ -95,7 +95,7 @@ const write=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
 window.SFFanUI.polishMenu=function(bg,se){
  const drawer=bg.querySelector(".drawer"),groups=[...drawer.querySelectorAll("details[name='sf-novel-menu']")];if(!groups.length)return;
  const key="sf-ui-menu-"+se.id,last=read(key),search=h("input",{type:"search",placeholder:"Search story tools","aria-label":"Search story tools"}),favorites=h("div",{class:"ff-menu-favorites"}),favKey="sf-ui-favorites";let fav=[];try{fav=JSON.parse(read(favKey)||"[]");if(!Array.isArray(fav))fav=[]}catch(e){}
- const groupName=g=>g.querySelector("summary").textContent,rows=groups.flatMap(g=>[...g.children].filter(x=>x.tagName!=="SUMMARY").map((el,i)=>({el,g,id:groupName(g)+":"+(el.querySelector("b,span")?.textContent||el.textContent).trim(),name:el.textContent.trim()})));
+ const groupName=g=>g.querySelector("summary").textContent,rows=groups.flatMap(g=>[...g.children].filter(x=>x.tagName!=="SUMMARY").map((el,i)=>({el,g,id:groupName(g)+":"+(el.classList.contains("drow")?el.firstChild?.textContent:el.textContent).trim(),name:el.textContent.trim()})));
  let searching=false;
  function drawFavorites(){favorites.replaceChildren();const chosen=rows.filter(r=>fav.includes(r.id));if(chosen.length)favorites.append(h("p",{class:"sub",text:"Favorites"}),...chosen.map(r=>h("button",{text:r.name,onclick:()=>{if(r.el.tagName==="BUTTON")r.el.click();else{r.g.open=true;r.el.scrollIntoView({block:"nearest"})}}))))}
  const manage=h("details",{class:"ff-menu-favorites"},h("summary",{text:"Manage favorites"}),...rows.map(r=>chk(r.name,fav.includes(r.id),v=>{fav=v?[...new Set([...fav,r.id])]:fav.filter(x=>x!==r.id);write(favKey,JSON.stringify(fav));drawFavorites()})));
