@@ -104,3 +104,48 @@ window.SFFanUI.polishMenu=function(bg,se){
  search.addEventListener("input",()=>{const q=search.value.trim().toLowerCase();searching=!!q;for(const g of groups){const matches=rows.filter(r=>r.g===g);for(const r of matches)r.el.hidden=!!q&&!r.name.toLowerCase().includes(q)&&!groupName(g).toLowerCase().includes(q);g.hidden=!!q&&matches.every(r=>r.el.hidden);if(q)g.open=false}if(q){const first=groups.find(g=>!g.hidden);if(first)first.open=true}else{for(const g of groups)g.open=groupName(g)===read(key)}});
 };
 })();
+
+(function(){
+"use strict";
+const btn=(text,onclick)=>h("button",{text,onclick}), panel=(...kids)=>h("div",{class:"ff-panel"},...kids), dump=x=>h("pre",{text:JSON.stringify(x,null,2)}), opts=a=>a.map(x=>[x,x]);
+function open(se,title,build){
+ const body=h("div",{class:"ff-ui"}),status=h("p",{role:"status","aria-live":"polite"}),content=h("div",{class:"ff-ui"});
+ const refresh=()=>{content.replaceChildren();build(content,apply,refresh)};
+ const apply=fn=>{try{const r=fn();status.textContent=(r.applied??r.ok)?"Saved":r.reason||"No change applied";if(r.applied??r.ok)refresh()}catch(e){status.textContent=String(e.message||e)}};
+ body.append(status,content);refresh();sheet(title,body);
+}
+const nameOf=(se,id)=>id==="player"?(se.char?.name||"Player"):se.canon?(ffIdentity(se,id)?.canon?.name||id):id;
+function names(se){return [...new Set([...Object.keys(chNpcs(se)||{}),...chRelationships(se).flatMap(r=>[nameOf(se,r.a),nameOf(se,r.b)]),...memQuery(se,{layer:"character",limit:1000}).flatMap(r=>r.who||[])])].filter(Boolean).sort()}
+function web(se){open(se,"Relationship Web",(b,apply)=>{
+ const all=chRelationships(se),ids=[...new Set(all.flatMap(r=>[r.a,r.b]))],pick=sel("",[["","All characters"],...ids.map(id=>[id,nameOf(se,id)])],()=>draw()),out=h("div",{class:"ff-ui"}),graph=h("div",{});
+ function draw(){const rows=all.filter(r=>!pick.value||r.a===pick.value||r.b===pick.value);out.replaceChildren(...rows.slice(0,100).map(r=>panel(h("b",{text:nameOf(se,r.a)+" → "+nameOf(se,r.b)}),h("p",{text:chLabel(r)+(r.private?" · Private (author view)":"")}),...["trust","affection","respect","familiarity","rivalry"].map(k=>h("p",{text:k+": "+(r[k]??0)})),h("details",{},h("summary",{text:"Event history"}),dump(chHistory(se,r.a,r.b))))));if(!rows.length)out.append(h("p",{text:"No recorded relationships."}));
+ graph.replaceChildren();const nodes=[...new Set(rows.flatMap(r=>[r.a,r.b]))].slice(0,20);if(!nodes.length)return;const ns="http://www.w3.org/2000/svg",svg=document.createElementNS(ns,"svg");svg.setAttribute("viewBox","0 0 400 400");svg.setAttribute("width","100%");svg.setAttribute("aria-label","Directional relationship graph");const pos=new Map(nodes.map((id,i)=>[id,[200+145*Math.cos(i*2*Math.PI/nodes.length),200+145*Math.sin(i*2*Math.PI/nodes.length)]]));
+ function shape(tag,attrs){const e=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,String(v));svg.append(e);return e}
+ for(const r of rows){if(!pos.has(r.a)||!pos.has(r.b)||r.a===r.b)continue;const [x,y]=pos.get(r.a),[u,v]=pos.get(r.b),d=Math.hypot(u-x,v-y),dx=(u-x)/d,dy=(v-y)/d;shape("line",{x1:x+dx*23,y1:y+dy*23,x2:u-dx*27,y2:v-dy*27,stroke:"currentColor","stroke-opacity":0.4});shape("polygon",{points:[ [u-dx*23,v-dy*23],[u-dx*34-dy*5,v-dy*34+dx*5],[u-dx*34+dy*5,v-dy*34-dx*5]].map(p=>p.join(",")).join(" "),fill:"currentColor"})}
+ for(const id of nodes){const [x,y]=pos.get(id);shape("circle",{cx:x,cy:y,r:22,fill:"#526f99"});shape("text",{x,y:y+4,"text-anchor":"middle",fill:"white","font-size":10}).textContent=nameOf(se,id).slice(0,7)}
+ graph.append(svg,h("p",{class:"sub",text:"Graph shows up to 20 characters. Select a character to narrow the view."}));
+ }b.append(h("p",{class:"sub",text:"Author view: private relationships may be visible."}),fld("Character",pick),graph,out);draw();
+})}
+function journal(se){open(se,"Character Journal",(b,apply)=>{
+ const ns=names(se),pick=sel(ns[0]||"",ns.map(n=>[n,n]),()=>draw()),out=h("div",{class:"ff-ui"}),filter=sel("all",opts(["all","did","witnessed","learned","believes","rumor","feels","intends"]),()=>draw()),known=h("input",{type:"checkbox"});
+ function draw(){const n=pick.value;out.replaceChildren();if(!n)return;const rows=chJournal(se,n).filter(r=>(filter.value==="all"||r.role===filter.value)&&(!known.checked||r.playerKnows));out.append(...rows.slice(-100).reverse().map(r=>panel(h("b",{text:r.role+" · turn "+r.t}),h("p",{text:r.text}),h("p",{class:"sub",text:(r.source||"Unknown source")+" · "+(r.playerKnows?"Player knows":"Author only")}))));if(!rows.length)out.append(h("p",{text:"No matching journal entries."}));const dev=chDevelopments(se,n),note=h("textarea",{rows:2});out.append(panel(h("b",{text:"Development notes (author view)"}),dump(dev),fld("New development note",note),btn("Add note",()=>{if(note.value.trim())apply(()=>chAddDevelopment(se,n,note.value.trim()))})))}
+ known.addEventListener("change",draw);b.append(fld("Character",pick),fld("Entry type",filter),h("label",{},known," Player-known entries only"),out);draw();
+})}
+function agenda(se){open(se,"NPC Agenda",(b,apply)=>{
+ const ns=names(se),pick=sel(ns[0]||"",ns.map(n=>[n,n]),()=>draw()),out=h("div",{class:"ff-ui"}),day=chStoryDay(se);
+ function draw(){out.replaceChildren();if(!pick.value)return;const n=pick.value,a=chAgenda(se,n,day,day+7);out.append(panel(h("b",{text:"Current and upcoming commitments"}),dump(a)),panel(h("b",{text:"Recorded off-screen developments"}),dump(chAgendaLog(se).filter(x=>x.name===n))));const p=chNpcs(se)[n]||{goals:[],schedule:[]},edit=h("textarea",{rows:8});edit.value=JSON.stringify(p,null,2);out.append(panel(fld("Edit goals and schedule (JSON)",edit),btn("Save plan",()=>apply(()=>{const v=JSON.parse(edit.value);return chSetNpc(se,n,v)}))))}
+ b.append(h("p",{text:"Story day "+day+" · Viewing does not advance time."}),fld("Character",pick),out);draw();
+})}
+function memory(se){open(se,"Memory Studio",(b,apply)=>{
+ const layers=["permanent","working","episodic","semantic","character","relationship","temporal","world","universe"],q=h("input",{placeholder:"Search memories"}),layer=sel("",[["","All layers"],...opts(layers)],()=>draw()),deleted=sel("active",opts(["active","deleted","all"]),()=>draw()),out=h("div",{class:"ff-ui"});let limit=30;
+ function draw(){const rows=memQuery(se,{text:q.value,layer:layer.value||undefined,deleted:deleted.value==="deleted"?"only":deleted.value==="all",limit:limit+1});out.replaceChildren(...rows.slice(0,limit).map(r=>{const edit=h("textarea",{rows:3});edit.value=r.text;return panel(h("b",{text:r.layer+" · "+r.kind}),h("p",{class:"sub",text:r.src+" · "+r.id+(r.pin?" · Pinned":"")+(r.lock?" · Locked":"")}),h("p",{text:r.text}),h("details",{},h("summary",{text:"Edit and history"}),edit,btn("Save text",()=>apply(()=>memEdit(se,r.id,{text:edit.value}))),btn(r.pin?"Unpin":"Pin",()=>apply(()=>memPin(se,r.id,!r.pin))),btn(r.lock?"Unlock":"Lock",()=>apply(()=>memLock(se,r.id,!r.lock))),btn(r.deleted?"Restore":"Soft delete",()=>apply(()=>r.deleted?memRestore(se,r.id):memDelete(se,r.id))),dump(memHistory(se,r.id))))}));if(rows.length>limit)out.append(btn("Show more",()=>{limit+=30;draw()}));if(!rows.length)out.append(h("p",{text:"No matching memories."}))}
+ q.addEventListener("input",()=>{limit=30;draw()});const add=h("textarea",{rows:3}),addLayer=sel("permanent",opts(layers),()=>{});
+ b.append(h("p",{text:memView(se).records.length+" records across nine layers"}),dump(memStatus(se)),btn("Undo last memory edit",()=>apply(()=>memUndo(se))),fld("Search",q),fld("Layer",layer),fld("Visibility",deleted),out,panel(h("b",{text:"Add memory"}),addLayer,add,btn("Save memory",()=>{if(add.value.trim())apply(()=>memAdd(se,{layer:addLayer.value,text:add.value.trim(),kind:"note"}))})),h("h3",{text:"Open conflicts"}),...memConflicts(se).map(c=>{const choice=sel("dismissed",opts(["keep-narrator","keep-step","edited","dismissed"]),()=>{});return panel(dump(c),choice,btn("Mark resolved (no memory edit)",()=>apply(()=>memResolve(se,c.id,choice.value))))}),panel(h("b",{text:"Detected contradictions"}),dump(SFMem2.contradictions(memView(se)))));draw();
+})}
+function director(se){open(se,"Story Director",(b,apply)=>{
+ const s=dirSettings(se),levels=["off","low","secondary","balanced","high"];b.append(chk("Enable Story Director",s.enabled,v=>apply(()=>dirEnable(se,v))),h("p",{class:"sub",text:"Guidance never overrides player choices."}),h("h3",{text:"Narrative focus"}),...Object.entries(s.focus).map(([k,v])=>fld(k,sel(v,opts(levels),x=>apply(()=>dirSet(se,{focus:{[k]:x}}))))));
+ for(const [k,values] of Object.entries({pacing:["slow","natural","fast"],dialogue:levels,humor:levels,suspense:levels,description:levels,timeSkips:["ask","allowed","never"],subplots:["none","allowed","encouraged"],canonSpeed:["slow","natural","fast"]}))b.append(fld(k,sel(s[k],opts(values),v=>apply(()=>dirSet(se,{[k]:v})))));
+ b.append(panel(h("b",{text:"Recent narrative analysis (heuristic)"}),dump(dirAnalyze(se))));
+})}
+Object.assign(window.SFFanUI,{web,journal,agenda,memory,director});
+})();
