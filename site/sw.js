@@ -1,5 +1,5 @@
 // Offline shell only. Never persist arbitrary story, API, or user-data responses.
-const CACHE = "sf-v104";
+const CACHE = "sf-v105";
 const APP_FILES = [
   "./", "index.html", "listen.html", "manifest.webmanifest",
   "illustrated-reader.css", "memory-engine.js", "canon-engine.js", "memory-v2.js", "fanfic-engine.js", "source-index.js", "source-index-app.js", "character-engine.js", "director-engine.js", "gameplay-engine.js", "creator-engine.js", "presentation-engine.js", "quick-create-engine.js", "fanfic-ui.js", "fanfic-ui.css", "icon-192.png", "icon-512.png",
@@ -14,7 +14,7 @@ const APP_FILES = [
 const APP_PATHS = new Set(APP_FILES.map(file => new URL(file, self.registration.scope).pathname));
 
 self.addEventListener("install", event => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(APP_FILES))
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(APP_FILES.map(file => new Request(file, {cache: "reload"}))))
     .then(() => self.skipWaiting()));
 });
 
