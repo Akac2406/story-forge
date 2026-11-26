@@ -326,7 +326,7 @@ const KEY="story-forge-v2",app=document.getElementById("app"),$=s=>document.quer
 function ap(p,...k){for(const c of k.flat(4)){if(c==null||c===false)continue;p.appendChild(c.nodeType?c:document.createTextNode(String(c)))}}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const num=(v,d)=>{const n=parseFloat(v);return isFinite(n)?n:d};
-const VER=115,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
+const VER=116,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
 function fixCh(se){const c=(se.chaps||[]).filter(x=>x&&x.i>=0&&x.i<Math.max(1,se.turns.length)).sort((a,b)=>a.i-b.i),out=[];c.forEach(x=>{if(!out.length||x.i>out[out.length-1].i)out.push(x)});if(!out.length||out[0].i!==0)out.unshift({i:0,t:""});se.chaps=out;return out}
 function autoCh(se){const N=se.chapN==null?1500:se.chapN,out=[{i:0,t:""}];if(N>0){let acc=0;se.turns.forEach((t,i)=>{if(t.role==="user"&&i>0&&(N===1?acc>0:acc>=N)){out.push({i,t:""});acc=0}if(t.role==="ai")acc+=words(t.text)})}return out}
 function chapsOf(se){if(!se.chaps)se.chaps=autoCh(se);return fixCh(se)}
@@ -1014,7 +1014,7 @@ function play(st,d){if(!hasKey()){toast("Add your OpenRouter key in Settings fir
   const se={id:uid(),storyId:st.id,start:d.start||"",follow:d.follow||"strict",char:ch,turns:[],temp:"",mems:[],note:d.storyDescription||"",stats:{},upto:0,len:d.len||"300",sugg:[],ending:null,ended:[],people:{},think:0,wstyle:"default",wcustom:"",goal:"",cid,updated:Date.now()};
   if(d.canonMode)se.canonMode=d.canonMode;
   if(st.sim){se.sim={ph:"setup",log:[{role:"ai",text:SIMHI,g:1}],canon:"",prev:"",ready:false};se.follow="Use canon as the starting point and keep its characters true to themselves, but the player’s choices can change what happens next.";se.nmode="auto";DB.sessions.push(se);save();view={n:"chat",id:se.id};render();return}
-  if(life){se.sdefs=lifeStats(st);se.edefs=lifeEnds(st);se.life={age:Math.max(0,Math.min(110,Math.round(num(d.age==="c"?d.agec:d.age,0)))),time:""};se.log=[]}
+  if(life){se.sdefs=lifeStats(st);se.edefs=lifeEnds(st);se.life={age:Math.max(0,Math.min(110,Math.round(num(d.age==="c"?d.agec:d.age,0)))),time:""};se.life0=JSON.parse(JSON.stringify(se.life));se.log=[]}
   sd(se,st).forEach(s=>{se.stats[s.n]=num(s.v,0)});
   if(st.cast0&&st.cast0.length){se.cast={};st.cast0.forEach(c=>{se.cast[c.n]={r:c.role||"",l:[c.age?"age "+c.age:"",c.looks].filter(Boolean).join(", "),t:[],a:c.hook||"",ch:0,u:Date.now(),pic:c.th||undefined}})}
   if(st.ctr&&st.ctr.length){se.ctr={};st.ctr.forEach(c=>{se.ctr[c.n]=0})}if(st.ooc)se.fmt=Object.assign(fmtOf(se),{tag:1});
@@ -1851,7 +1851,7 @@ async function send(text,hide,show,days=0,replay=null){const se=DB.sessions.find
   try{const r=await ask(msgs,{signal:ctrl.signal,se,think:se.think||0,max:Math.min(16000,Math.round((+se.len||300)*2.2)+900),onTick:()=>{lastTick=Date.now()},onText:t=>{lastTick=Date.now();raw=t;ai.text=vis(t);paintLast(se,ai.text)}});
     raw=r.text;LAST_REPLY_MS=Date.now()-tReply;
     if(replay&&!vis(raw))throw Error("No chapter reply was returned.");
-    if(days&&(vis(raw)||raw.trim()))u.worldDays=days;ai.text=vis(raw)||raw.trim();{const mi=metaAt(raw);if(mi>=0)ai.mt=raw.slice(mi,mi+1500).trim();else delete ai.mt}delete se.newc;if(r.usage)ai.u={i:r.usage.prompt_tokens||0,o:r.usage.completion_tokens||0,c:typeof r.usage.cost==="number"?r.usage.cost:null};if(isOC())ai.gp=ocPct();applyMeta(se,st,raw);memRecord(se,st,ai,raw);canonRecord(se,st,ai,raw);if(se.canon&&window.SFFan)try{const fi=ffCheck(se,ai.text);if(fi.length)ai.ffc=fi;else delete ai.ffc}catch(e){}if(window.SFChar)try{chEvolve(se);chAdvance(se,ai);const vi=chCheckVoice(se,ai.text);if(vi.length)ai.voice=vi;else delete ai.voice}catch(e){}if(memOn(se)&&st.kind!=="character"&&(se.memExtract?true:((DB.metaRepair||se.metaRepair)&&metaAt(raw)<0&&!RPQ.has(se.id)))){const prev=RPQ.get(se.id)||Promise.resolve();const pr=prev.catch(()=>{}).then(()=>metaRepair(se,st,ai,{extract:!!se.memExtract,hybrid:se.memExtract==="hybrid"})).finally(()=>{if(RPQ.get(se.id)===pr)RPQ.delete(se.id)});RPQ.set(se.id,pr)}if(se.newc){ai.newc=se.newc;delete se.newc}ai.st2=Object.assign({},se.stats);if(se.info){ai.info=se.info;delete se.info}if(REG){ai.vs=REG.concat([{t:ai.text,s:ai.st2,sg:(se.sugg||[]).slice(),mx:ai.mx,mt:ai.mt,tid:ai.tid}]).slice(-6);ai.vi=ai.vs.length-1}committed=true;if(RBK?.sid===se.id)RBK=null}
+    if(days&&(vis(raw)||raw.trim()))u.worldDays=days;ai.text=vis(raw)||raw.trim();{const mi=metaAt(raw);if(mi>=0)ai.mt=raw.slice(mi,mi+1500).trim();else delete ai.mt}delete se.newc;if(r.usage)ai.u={i:r.usage.prompt_tokens||0,o:r.usage.completion_tokens||0,c:typeof r.usage.cost==="number"?r.usage.cost:null};if(isOC())ai.gp=ocPct();applyMeta(se,st,raw);memRecord(se,st,ai,raw);canonRecord(se,st,ai,raw);if(se.canon&&window.SFFan)try{const fi=ffCheck(se,ai.text);if(fi.length)ai.ffc=fi;else delete ai.ffc}catch(e){}if(window.SFChar)try{chEvolve(se);chAdvance(se,ai);const vi=chCheckVoice(se,ai.text);if(vi.length)ai.voice=vi;else delete ai.voice}catch(e){}if(memOn(se)&&st.kind!=="character"&&(se.memExtract?true:((DB.metaRepair||se.metaRepair)&&metaAt(raw)<0&&!RPQ.has(se.id)))){const prev=RPQ.get(se.id)||Promise.resolve();const pr=prev.catch(()=>{}).then(()=>metaRepair(se,st,ai,{extract:!!se.memExtract,hybrid:se.memExtract==="hybrid"})).finally(()=>{if(RPQ.get(se.id)===pr)RPQ.delete(se.id)});RPQ.set(se.id,pr)}if(se.newc){ai.newc=se.newc;delete se.newc}ai.st2=Object.assign({},se.stats);svRecord(se,ai);if(se.info){ai.info=se.info;delete se.info}if(REG){ai.vs=REG.concat([{t:ai.text,s:ai.st2,sg:(se.sugg||[]).slice(),mx:ai.mx,mt:ai.mt,tid:ai.tid}]).slice(-6);ai.vi=ai.vs.length-1}committed=true;if(RBK?.sid===se.id)RBK=null}
   catch(e){const ab=e&&e.name==="AbortError";if(ab&&stalled)toast("The reply stopped arriving, so it was cancelled. Nothing was lost; try sending again.");
     if(REG&&RBK?.sid===se.id){se.turns.splice(ui,2);regenRollback(se);if(!ab)toast(errMsg(e)+" Your earlier version is kept.")}
     else if(ab&&vis(raw)&&!replay)ai.text=vis(raw);else if(REG){const o=REG[REG.length-1];ai.text=o.t;if(o.mt)ai.mt=o.mt;else delete ai.mt;if(o.mx){ai.mx=o.mx;if(se.mem&&window.SFMemory)try{SFMemory.apply(se.mem,o.mx)}catch(x){}}if(o.s)se.stats=Object.assign({},o.s);ai.st2=o.s;if(REG.length>1){ai.vs=REG;ai.vi=REG.length-1}if(!ab)toast(errMsg(e)+" Your earlier version is kept.")}else{const k=se.turns.indexOf(ai);if(k>0)se.turns.splice(k-1,2);if(!hide&&!show&&view.id===se.id)view.draft=text;if(!ab)toast(errMsg(e))}}
@@ -3028,11 +3028,36 @@ function branchAt(se,i,o){o=o||{};const n=JSON.parse(JSON.stringify(se)),root=se
 /* trimState(n, src, cut): make playthrough n match its first `cut` turns. src is the untrimmed playthrough (may be n's earlier copy).
    Shared by branches and Rewind (v114: Rewind used to keep story facts, chapter summaries, stats, life log and reviews from the removed
    turns, so the narrator rebuilt the old storyline — Anna's report). Memory v2 is handled by the caller (SFMemory.undo / memDrop). */
+/* Story-state snapshots (v116, Anna: "make sure everything resets during a rewind or deleting"). After each reply, ai.sv holds the
+   story-state fields that changed since the previous reply (the first reply after v116 holds all of them, ai.svBase). svAt rebuilds the
+   state at any turn, so Rewind / deleting the last messages put every field back exactly. Older replies without snapshots fall back to
+   the per-field rules in trimState. */
+const SV_KEYS=["status","quests","goal","cast","dead","game","relationships","rel2","agDay","agLog","ctr","rs","delta","vis"];
+const svStr=(k,v)=>JSON.stringify(v,k==="cast"?(key,x)=>key==="u"?undefined:x:undefined);
+function svCur(se){const o={};SV_KEYS.forEach(k=>{if(se[k]!==undefined)o[k]=svStr(k,se[k])});return o}
+function svRecord(se,ai){try{const cur=svCur(se),prev=svAt(se.turns,se.turns.indexOf(ai));const out={};let base=!prev.complete;
+    SV_KEYS.forEach(k=>{const a=cur[k],b=prev.state[k]!==undefined?svStr(k,prev.state[k]):undefined;if(base||a!==b)out[k]=se[k]===undefined?null:JSON.parse(JSON.stringify(se[k]))});
+    if(base)ai.svBase=true;else delete ai.svBase;if(Object.keys(out).length||base)ai.sv=out;else delete ai.sv}catch(e){console.warn("snapshot failed",e)}}
+/* svAt(turns, cut) -> {complete, state}: story state after turns[0..cut-1]. complete is false when no full snapshot exists before cut. */
+function svAt(turns,cut){let st={},complete=false;for(let j=0;j<Math.min(cut,turns.length);j++){const t=turns[j];if(!t||!t.sv)continue;
+    if(t.svBase){st={};complete=true}if(!complete)continue;for(const [k,v] of Object.entries(t.sv)){if(v===null)delete st[k];else st[k]=v}}
+  return{complete,state:JSON.parse(JSON.stringify(st))}}
+/* svReset(n): the state of a playthrough with no replies left: as a new playthrough of this story starts (setup cast and gameplay),
+   keeping only quests the player added by hand. */
+function svReset(n){const st=getStory(n.storyId);n.status={};n.quests=(n.quests||[]).filter(q=>q&&q.ch==null&&!q.done);delete n.goal;n.dead=[];n.relationships={};delete n.rel2;delete n.agDay;n.agLog=[];n.ctr={};n.rs=[];n.delta={};n.vis=[];
+  if(st&&st.cast0&&st.cast0.length){n.cast={};st.cast0.forEach(c=>{n.cast[c.n]={r:c.role||"",l:[c.age?"age "+c.age:"",c.looks].filter(Boolean).join(", "),t:[],a:c.hook||"",ch:0,u:Date.now(),pic:c.th||undefined}})}else n.cast={};
+  if(st&&st.blueprint&&st.blueprint.game&&window.SFCreator)try{n.game=SFCreator.gameSetup(st.blueprint.game)}catch(e){}else delete n.game;
+  n.stats={};if(n.life0){n.life=JSON.parse(JSON.stringify(n.life0));n.log=[]}delete n.recap;n.goal="";n.facts=[];delete n.saga;delete n.fprev}
 function trimState(n,src,cut){
-  if(n.chaps){const before=n.chaps.length;n.chaps=n.chaps.filter(c=>c.i<cut);if(n.chaps.length<before){n.facts=[];delete n.saga;delete n.fprev;
-    /* cast: drop people first met in removed chapters; feelings and bonds of the others were updated later, so reset them to the setup */
-    if(n.cast&&typeof n.cast==="object"){const k=n.chaps.length,st=getStory(n.storyId),c0={};((st&&st.cast0)||[]).forEach(c=>{c0[c.n]=c.hook||""});
-      for(const [name,c] of Object.entries(n.cast)){if(!c||(c.ch||0)>=k){delete n.cast[name];continue}delete c.b;c.a=c0[name]||""}}}}
+  /* Removing chapters only undoes those chapters (Anna: "when i delete a single chapter it only deleted the stats and quests from that
+     single chapter and not everything"). Story facts go back to before the first removed chapter's summary (src.fprev) when that is the
+     last summary; they are cleared only when several removed chapters were summarized and no earlier copy exists. */
+  if(n.chaps){const before=n.chaps.length;n.chaps=n.chaps.filter(c=>c.i<cut);const K=n.chaps.length;if(K<before){const fp=src.fprev;
+    if(fp&&fp.k>=K){if(fp.k===K&&Array.isArray(fp.f))n.facts=fp.f.slice();else{n.facts=[];delete n.saga}}
+    else if(!fp&&(src.chaps||[]).some((c,j)=>j>=K&&c.sum)){n.facts=[];delete n.saga}
+    delete n.fprev;
+    /* people first met in removed chapters (exact feelings and bonds come from the reply snapshots below) */
+    if(n.cast&&typeof n.cast==="object")for(const [name,c] of Object.entries(n.cast))if(!c||(c.ch||0)>=K)delete n.cast[name]}}
   for(const link of Array.isArray(n.relationshipLinks)?n.relationshipLinks:[]){
     if(Array.isArray(link?.history))link.history=link.history.filter(entry=>entry&&relationshipMilestoneAt(entry)<=cut);
   }
@@ -3041,6 +3066,14 @@ function trimState(n,src,cut){
   trimProgression(n,cut);SFCanon.trimForBranch(n,cut);
   if((src.upto||0)>cut){n.upto=0;n.temp="";n.mems=[]}
   const last=n.turns[cut-1];if(last&&last.st2)n.stats=Object.assign({},last.st2);
+  /* v116: status window, quests, goal, cast, bonds… come back exactly from the reply snapshots (svAt). Replies from before v116 have
+     none: then only quests the narrator opened in removed chapters (q.ch) are dropped and the rest is kept, since it cannot be told
+     apart; with no reply left everything returns to a fresh start (svReset). Hand-added quests are kept. */
+  {const lastAi=n.turns.slice(0,cut).reverse().find(t=>t.role==="ai"),kept=(n.chaps||[]).length,removed=(src.chaps||[]).filter(c=>c.i<Math.max(1,src.turns.length)).length>kept,sv=svAt(n.turns,cut);
+    if(!lastAi)svReset(n);
+    else if(sv.complete){SV_KEYS.forEach(k=>{if(sv.state[k]!==undefined)n[k]=sv.state[k];else delete n[k]})}
+    else if(Array.isArray(n.quests)&&removed)n.quests=n.quests.filter(q=>q&&q.ch!=null?q.ch<kept:true);
+    if(n.recap&&n.recap.n>cut)delete n.recap;if(Array.isArray(n.ended)&&!lastAi)n.ended=[]}
   if(src.life){const nx=src.turns.slice(cut).find(t=>t.pl);if(nx){n.life=Object.assign({},nx.pl);n.log=(src.log||[]).slice(0,nx.ln||0)}}
   if(n.chaps&&n.chaps.length){const lc=n.chaps[n.chaps.length-1],end=(src.chaps||[]).find(c=>c.i>lc.i);if(end&&end.i>cut||!end&&src.turns.length>cut){delete lc.sum;if(n.fprev)n.facts=n.fprev.k===n.chaps.length-1&&Array.isArray(n.fprev.f)?n.fprev.f.slice():n.facts;delete n.fprev}}
   if(Array.isArray(n.canonReviews)){const nc=(n.chaps||[{}]).length;n.canonReviews=n.canonReviews.filter(r=>r.k<nc-1)}delete n.canonReviewed;delete n.posHint;delete n.posRemind;delete n.crPending}
@@ -4251,7 +4284,7 @@ function ideaSheet(se,st){let type="oc",extra="";const out=area("",()=>{},"Resul
 function turnMenu(se,i){if(busy)return;const t=se.turns[i],standing=t.role==="user"?detectStandingOoc(t.text):[],ta=area(t.text,()=>{},"",8),fix=h("input",{placeholder:"e.g. her eyes are green, not blue"}),stt=getStory(se.storyId),chOK=!!stt&&stt.kind!=="character";
   const C=chOK?chapsOf(se):[],ci=i>0&&t.role==="ai"&&se.turns[i-1].role==="user"?i-1:i,isStart=C.some(c=>c.i===ci);
   sheet("Message",h("div",null,ta,standing.length?h("button",{text:"Pin as note",onclick:()=>editCanonNote(se,se,null,standing.join("\n"))}):null,h("div",{class:"row"},h("button",{class:"primary",text:"Save edit",onclick:()=>{const v=ta.value.trim();if(v){t.text=v;save()}closeSheet()}}),
-    confirmBtn("Delete message",()=>{memDrop(se,[i]);se.turns.splice(i,1);shiftProgressionAfterDeletion(se,i);if(Array.isArray(se.divergences))se.divergences=se.divergences.filter(e=>e.turn!==i).map(e=>e.turn>i?{...e,turn:e.turn-1}:e);if(se.mem&&window.SFMemory)SFMemory.shiftTurns(se.mem,i,-1);if(i<se.upto)se.upto--;(se.chaps||[]).forEach(c=>{if(c.i>i)c.i--});if(chOK)fixCh(se);save();closeSheet()},""),
+    confirmBtn("Delete message",()=>{memDrop(se,[i]);const wasLast=i===se.turns.length-1,src=wasLast?JSON.parse(JSON.stringify(se)):null;if(!wasLast&&t.sv){const nx=se.turns.slice(i+1).find(x=>x.role==="ai");if(nx){nx.sv=Object.assign({},t.sv,nx.sv||{});if(t.svBase)nx.svBase=true}}se.turns.splice(i,1);if(wasLast)trimState(se,src,se.turns.length);shiftProgressionAfterDeletion(se,i);if(Array.isArray(se.divergences))se.divergences=se.divergences.filter(e=>e.turn!==i).map(e=>e.turn>i?{...e,turn:e.turn-1}:e);if(se.mem&&window.SFMemory)SFMemory.shiftTurns(se.mem,i,-1);if(i<se.upto)se.upto--;(se.chaps||[]).forEach(c=>{if(c.i>i)c.i--});if(chOK)fixCh(se);save();closeSheet()},""),
     confirmBtn("Rewind to here",()=>{memDrop(se,se.turns.map((_,j)=>j).filter(j=>j>i));const src=JSON.parse(JSON.stringify(se));se.turns.splice(i+1);trimState(se,src,se.turns.length);se.upto=Math.min(se.upto,se.turns.length);se.ending=null;se.sugg=[];if(chOK)fixCh(se);save();closeSheet()},"")),
     h("p",{class:"sub",text:"Edits and deletions change what the narrator remembers. Rewind removes everything after this message."}),
     chOK?h("div",{class:"row"},!isStart?h("button",{text:"Start a new chapter here",onclick:()=>{se.chaps.push({i:ci,t:""});fixCh(se);save();closeSheet()}}):ci>0?h("button",{text:"Join with the previous chapter",onclick:()=>{se.chaps=se.chaps.filter(c=>c.i!==ci);fixCh(se);save();closeSheet()}}):null):null,
