@@ -240,3 +240,25 @@ html[data-sf-cv-layout] #log{box-shadow:var(--sf-cv-light,0 0 0 transparent),var
 /* Panel transparency applies to studio panels too (this rule comes after the solid panel background). */
 .ff-ui .ff-panel{background:color-mix(in srgb,var(--card) calc((1 - var(--sf-transparency,0))*100%),transparent)}
 .ff-ui .ff-panel .ff-panel{background:color-mix(in srgb,var(--bg) calc((1 - var(--sf-transparency,0))*100%),transparent)}
+
+/* Quick Create and Story Architect: responsive form containment. */
+.ff-ui,.ff-ui .ff-panel,.ff-ui details,.ff-ui fieldset,.ff-ui .qc-form,.ff-ui .qc-entry{min-width:0;max-width:100%;box-sizing:border-box;overflow-wrap:anywhere}
+.ff-ui [hidden]{display:none!important}
+.ff-ui fieldset{margin:8px 0;padding:10px;border:1px solid var(--line,var(--accent));border-radius:10px}
+.ff-ui legend{max-width:100%;white-space:normal;padding:0 4px}
+.ff-ui .qc-entry{padding:8px 0;border-bottom:1px solid var(--line,transparent)}
+.ff-ui .qc-readable,.ff-ui pre{white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;max-width:100%}
+.ff-ui label{display:block;min-width:0;max-width:100%}
+.ff-ui input:not([type=checkbox]):not([type=radio]),.ff-ui textarea,.ff-ui select{box-sizing:border-box;min-width:0;max-width:100%;width:100%}
+.ff-ui button{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+@media(max-width:620px){
+ .ff-ui{padding-inline:8px}
+ .ff-ui .ff-panel{padding:10px}
+ .ff-ui .row{flex-wrap:wrap;gap:8px}
+ .ff-ui button,.ff-ui summary,.ff-ui select,.ff-ui input:not([type=checkbox]):not([type=radio]){min-height:44px}
+ .ff-ui button{margin-block:3px}
+ .ff-ui input,.ff-ui textarea,.ff-ui select{font-size:16px}
+ .ff-ui input[type=checkbox],.ff-ui input[type=radio]{width:24px;height:24px;vertical-align:middle}
+ .ff-ui label:has(input[type=checkbox]),.ff-ui label:has(input[type=radio]){min-height:44px;display:flex;align-items:center;gap:8px}
+ .ff-ui fieldset{padding:6px;margin-inline:0}
+}
