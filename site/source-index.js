@@ -103,19 +103,45 @@ function batches(chapters, from, to, ceiling = 22000) {
   return out;
 }
 
-function validate(raw, batch) {
+function evidenceMatch(text,evidence) {
+  const exact=text.indexOf(evidence);
+  if(exact>=0)return {offset:exact,length:evidence.length};
+  // EPUB formatting can split a quotation across lines or use typographic punctuation.
+  const pattern=evidence.split(/(\s+)/u).map(part=>/^\s+$/u.test(part)?"\\s+":Array.from(part,char=>{
+      if(/['‘’]/u.test(char))return "['‘’]";
+      if(/["“”]/u.test(char))return '["“”]';
+      return char.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+    }).join("")).join("");
+  const match=new RegExp(pattern,"u").exec(text);
+  return match?{offset:match.index,length:match[0].length}:null;
+}
+function reviewExtraction(raw,batch) {
   if (!raw || !Array.isArray(raw.entries)) throw Error("Expected an entries array.");
   if (raw.entries.length > 120) throw Error("Too many extracted entries.");
-  return raw.entries.map(item => {
-    const chapter = Number(item?.chapter), kind = clean(item?.kind,30);
-    const title = clean(item?.title,120), text = clean(item?.text,800), evidence = clean(item?.evidence,180);
-    const location = evidence.length >= 8 && batch.find(part => part.n===chapter && part.text.includes(evidence));
-    if (!location || !title || !text || (text.length>=60&&normalize(location.text).includes(normalize(text))) || !["summary","event","character","relationship","power","term","location","faction","style"].includes(kind))
-      throw Error("An extracted entry lacked chapter evidence or valid fields.");
-    return {chapter,kind,title,text,private:item.private!==false,length:evidence.length,offset:location.offset+location.text.indexOf(evidence),
-      aliases:Array.isArray(item.aliases)?[...new Set(item.aliases.map(value=>clean(value,80)).filter(Boolean))].slice(0,8):[]};
-  });
+  const entries=[], rejected=[];
+  const kinds=new Set(["summary","event","character","relationship","power","term","location","faction","style"]);
+  for(const item of raw.entries){
+    const chapter=Number(item?.chapter), kind=clean(item?.kind,30);
+    const title=clean(item?.title,120), text=clean(item?.text,800), evidence=typeof item?.evidence==="string"?item.evidence.trim():"";
+    const parts=batch.filter(part=>part.n===chapter);
+    let why;
+    if(!parts.length)why="chapter outside the requested text";
+    else if(!title||!text||!kinds.has(kind))why="missing or invalid fields";
+    else if(evidence.length<8||evidence.length>180)why="missing or invalid evidence quote";
+    else {
+      const match=parts.map(part=>({part,span:evidenceMatch(part.text,evidence)})).find(result=>result.span);
+      if(!match)why="evidence quote absent from its chapter";
+      else if(text.length>=60&&normalize(match.part.text).includes(normalize(text)))why="entry text copied from the source";
+      else {
+        entries.push({chapter,kind,title,text,private:item.private!==false,length:match.span.length,offset:match.part.offset+match.span.offset,
+          aliases:Array.isArray(item.aliases)?[...new Set(item.aliases.map(value=>clean(value,80)).filter(Boolean))].slice(0,8):[]});
+        continue;
+      }
+    }
+    rejected.push({chapter:parts.length?chapter:null,why});
+  }
+  return {entries,rejected};
 }
 
-root.SFSource = Object.freeze({candidates,search,batches,validate,terms,normalize});
+root.SFSource = Object.freeze({candidates,search,batches,reviewExtraction,terms,normalize});
 })(globalThis);

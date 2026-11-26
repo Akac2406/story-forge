@@ -40,7 +40,7 @@ function sourceIndex(id,preferred){
     summary.replaceChildren(h("h3",{text:"Source index"}),h("p",{text:state.readiness+" · "+state.text.chapters+" searchable chapters · "+state.characters+" name candidates · "+state.events+" events"}),
      h("p",{text:"Selected source uses "+(bytes/1024/1024).toFixed(2)+" MB on this device."}),
      ...state.warnings.map(text=>h("p",{class:"sub",text})),
-     ...(detail?[h("p",{text:"Analyzed chapters: "+detail.done.length+(detail.failed?.length?" · Last issue: "+detail.failed.at(-1).why:"")})]:[]));
+     ...(detail?[h("p",{text:"Analyzed chapters: "+detail.done.length+(detail.skipped?" · "+detail.skipped+" entries skipped in the last saved batch":"")+(detail.failed?.length?" · Last issue: "+detail.failed.at(-1).why:"")})]:[]));
    }catch(error){status.textContent=error.message}
  }
  function showEvidence(){
@@ -81,7 +81,9 @@ function sourceIndex(id,preferred){
    if(!confirm("Send the selected chapter range to your OpenCode provider for source analysis?"))return;
    resetEstimate();
    const r=await ffDeepIndex(id,{...opts,confirmed:true,signal,onProgress:p=>{status.textContent="Chapter "+p.chapter+" · "+p.done+" / "+p.total+" complete"}});
-   status.textContent=r.reason||(r.paused?"Paused. Finished chapters are saved.":"Analysis saved for "+r.done.length+" chapters.");
+   const saved=r.done.length?"Analysis saved for "+r.done.length+" chapter"+(r.done.length===1?"":"s")+". ":"";
+   const skipped=r.skipped?r.skipped+" entries skipped. ":"";
+   status.textContent=(saved+skipped+(r.reason||(r.paused?"Paused.":""))).trim()||"No new chapters were analyzed.";
  });
  const extract=btn("Start or resume AI analysis",start);
  body.append(summary,fld("Indexed source",source),status,

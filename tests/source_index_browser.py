@@ -35,6 +35,10 @@ def mock(route):
     records = [{"chapter": row["n"], "kind": "event", "title": f"Indexed event {row['n']}",
                 "text": "The archive research advances.", "evidence": "Mira Vale", "private": False}
                for row in raw]
+    if len(sent) == 1:
+        records[-1]["evidence"] = "This quote does not occur in the source."
+        records.append({"chapter": raw[0]["n"], "kind": "event", "title": "Unsupported event",
+                        "text": "Unsupported.", "evidence": "Also never present in the source."})
     route.fulfill(json={"choices":[{"message":{"content":json.dumps({"entries":records})}}],
                          "usage":{"prompt_tokens":200,"completion_tokens":100}})
 
@@ -82,9 +86,15 @@ with subprocess.Popen([sys.executable,"-m","http.server",str(port),"--bind","127
                 return await ffDeepIndex('archive-test',{from:1,to:2,confirmed:true,signal:c.signal});}""")["paused"]
             assert not sent
             first = page.evaluate("ffUniverse('archive-test').rev")
-            assert page.evaluate("ffDeepIndex('archive-test',{from:1,to:2,confirmed:true})")["done"] == [1,2]
+            mixed = page.evaluate("ffDeepIndex('archive-test',{from:1,to:2,confirmed:true})")
+            assert mixed["done"] == [1] and mixed["skipped"] == 2, mixed
+            assert [row["n"] for row in mixed["failed"]] == [2]
             assert len(sent) == 1
             assert page.evaluate(f"ffIndexedUniverse(ffUniverse('archive-test'),{first}).events.length") == 0
+            assert page.evaluate("ffIndexedUniverse(ffUniverse('archive-test')).events.map(e=>e.ch)") == [1]
+            assert page.evaluate("ffDeepEstimate('archive-test',{from:1,to:2})")["batches"] == [[2]]
+            resumed = page.evaluate("ffDeepIndex('archive-test',{from:1,to:2,confirmed:true})")
+            assert resumed["done"] == [2] and len(sent) == 2, resumed
             latest = page.evaluate("ffUniverse('archive-test').rev")
             assert page.evaluate("ffIndexedUniverse(ffUniverse('archive-test')).events.length") == 2
             assert page.evaluate("ffDeepEstimate('archive-test',{from:1,to:2})")["requests"] == 0

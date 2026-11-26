@@ -201,19 +201,20 @@ function ffIndexedUniverse(u,rev=u?.rev ?? Infinity,maxChapter=Infinity) {
   }
   return {...u,chars,aliases,summaries,events:(u.events||[]).filter(visible),records:(u.records||[]).filter(visible)};
 }
-function ffDeepMerge(u,source,chapters,entries) {
+function ffDeepMerge(u,source,chapters,entries,{skipped,issues}) {
   const next=structuredClone(u), rev=(next.rev||0)+1;
   next.deep ||= {v:1,sources:{},entries:[]};
-  const finished=new Set(chapters);
+  const finished=new Set(chapters),replace=new Set(skipped?[]:chapters);
   const retire = row => {
-    if (row.src==="deep" && row.source?.sourceId===source && finished.has(row.source.chapter) && !row.untilRev) row.untilRev=rev;
+    if (row.src==="deep" && row.source?.sourceId===source && replace.has(row.source.chapter) && !row.untilRev) row.untilRev=rev;
   };
   next.deep.entries.forEach(retire);
   next.events.forEach(retire);
   next.records.forEach(retire);
-  const seen=new Set(),added={events:0,chars:0,records:0};
+  const tagOf=item=>[item.chapter,item.kind,SFSource.normalize(item.title)].join(":");
+  const seen=new Set(next.deep.entries.filter(row=>row.source?.sourceId===source&&!row.untilRev).map(tagOf)),added={events:0,chars:0,records:0};
   for (const item of entries) {
-    const tag=[item.chapter,item.kind,SFSource.normalize(item.title)].join(":");
+    const tag=tagOf(item);
     if (seen.has(tag)) continue;
     seen.add(tag);
     const provenance={sourceId:source,chapter:item.chapter,offset:item.offset,length:item.length};
@@ -234,7 +235,7 @@ function ffDeepMerge(u,source,chapters,entries) {
   }
   const previous=next.deep.sources[source]||{};
   next.deep.sources[source]={done:[...new Set([...(previous.done||[]),...chapters])].sort((a,b)=>a-b),
-    failed:(previous.failed||[]).filter(f=>!finished.has(f.n)),at:Date.now()};
+    failed:[...(previous.failed||[]).filter(f=>!finished.has(f.n)&&!issues.some(issue=>issue.n===f.n)),...issues],skipped,at:Date.now()};
   next.indexMode="deep";
   next.rev=rev;
   next.updated=Date.now();
@@ -280,6 +281,7 @@ async function ffDeepIndex(id,options={}) {
   if (ffSourceJobs.has(id)||ffSourceWrites.has(id)) return {ok:false,reason:"Source indexing is already running."};
   if (!isOC()||orMode(DB.modes[DB.mode]||DB.modes[0])) return {ok:false,reason:"Select an OpenCode model to analyze the source."};
   ffSourceJobs.add(id);
+  let skipped=0;
   const done=[],failed=[],added={events:0,chars:0,records:0};
   try {
     const plan=await ffDeepPlan(id,options);
@@ -287,7 +289,7 @@ async function ffDeepIndex(id,options={}) {
     for (const job of plan.jobs) {
       if (options.signal?.aborted) break;
       if (ffUniverse(id)!==current) throw Error("Universe changed. Re-estimate before resuming.");
-      const entries=[];
+      const entries=[],rejected=[];
       try {
         for (const batch of job.batches) {
           if (options.signal?.aborted) break;
@@ -300,16 +302,25 @@ async function ffDeepIndex(id,options={}) {
           if(!reply.usage?.prompt_tokens)throw Error("The provider did not report usage. Paused before another request.");
           const parsed=SFQuick.parse(reply.text);
           if (!parsed.ok) throw Error("Model reply was not valid JSON.");
-          entries.push(...SFSource.validate(parsed.value,batch));
+          const reviewed=SFSource.reviewExtraction(parsed.value,batch);
+          entries.push(...reviewed.entries);rejected.push(...reviewed.rejected);
         }
         if (options.signal?.aborted) break;
         if (ffUniverse(id)!==current) throw Error("Universe changed during analysis.");
-        const result=ffDeepMerge(current,plan.sourceId,job.chapters,entries);
+        const supported=new Set(entries.map(row=>row.chapter));
+        const chapters=job.chapters.filter(chapter=>supported.has(chapter));
+        const issues=job.chapters.filter(chapter=>!supported.has(chapter)).map(n=>{
+          const item=rejected.find(issue=>issue.chapter===n)||rejected.find(issue=>issue.chapter===null);
+          return {n,why:"Chapter "+n+": "+(item?.why||"no verifiable entries returned")+"."};
+        });
+        if(!chapters.length)throw Error(issues[0].why+(rejected.length?" "+rejected.length+" entries skipped.":""));
+        const result=ffDeepMerge(current,plan.sourceId,chapters,entries,{skipped:rejected.length,issues});
         const saved=await ffSaveIndexedUniverse(result.next,{signal:options.signal});
         if(!saved.applied)return {ok:false,done,failed,added,reason:saved.reason};
         current=result.next;
         Object.keys(added).forEach(key=>added[key]+=result.added[key]);
-        done.push(...job.chapters);
+        done.push(...chapters);skipped+=rejected.length;
+        if(issues.length){failed.push(...issues);break}
       } catch(e) {
         if (options.signal?.aborted) break;
         if (ffUniverse(id)!==current) throw e;
@@ -326,7 +337,7 @@ async function ffDeepIndex(id,options={}) {
         options.onProgress?.({done:done.length,failed:failed.length,total:plan.jobs.length,chapter:job.n});
       }
     }
-    return {ok:!failed.length,done,failed,added,paused:!!options.signal?.aborted,reason:failed[0]?.why||null};
+    return {ok:!failed.length,done,failed,added,skipped,paused:!!options.signal?.aborted,reason:failed[0]?.why||null};
   } catch(e) {return {ok:false,reason:e.message,done,failed,added}}
   finally {ffSourceJobs.delete(id)}
 }
