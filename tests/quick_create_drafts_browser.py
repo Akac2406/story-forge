@@ -67,7 +67,7 @@ try:
     big = J("qcSaveDraft({name:'Huge',input:{concept:'x'},blueprint:{premise:'y'.repeat(250000)}})"); ok(not big["applied"] and big["reason"] == "draft too large", "oversized drafts are refused")
     lim = J("(()=>{let r;for(let i=0;i<25;i++)r=qcSaveDraft({name:'D'+i,input:{sourceTitle:'T'}});return r})()"); ok(not lim["applied"] and "limit" in lim["reason"] and len(J("qcDrafts()")) == 20, "at most 20 drafts")
     J("id=>{qcDeleteDraft(id);return null}", J("qcDrafts()")[-1]["id"]); g = J("qcSaveDraft({name:'Gone source',universeId:'nope',input:{sourceTitle:'T'}})")
-    ok(not J("id=>qcLoadDraft(id).ok", g["id"]) and "missing" in J("id=>qcLoadDraft(id).reason", g["id"]), "a draft whose imported source is gone says so")
+    ok(not J("async id=>(await qcLoadDraft(id)).ok", g["id"]) and "missing" in J("async id=>(await qcLoadDraft(id)).reason", g["id"]), "a draft whose imported source is gone says so")
     ok(J("id=>qcDeleteDraft(id).applied", g["id"]) and not J("id=>qcDeleteDraft(id).applied", g["id"]), "delete draft")
     # backups
     pg.evaluate("go({n:'settings'})"); pg.wait_for_timeout(250)

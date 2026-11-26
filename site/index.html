@@ -326,7 +326,7 @@ const KEY="story-forge-v2",app=document.getElementById("app"),$=s=>document.quer
 function ap(p,...k){for(const c of k.flat(4)){if(c==null||c===false)continue;p.appendChild(c.nodeType?c:document.createTextNode(String(c)))}}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const num=(v,d)=>{const n=parseFloat(v);return isFinite(n)?n:d};
-const VER=108,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
+const VER=109,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
 function fixCh(se){const c=(se.chaps||[]).filter(x=>x&&x.i>=0&&x.i<Math.max(1,se.turns.length)).sort((a,b)=>a.i-b.i),out=[];c.forEach(x=>{if(!out.length||x.i>out[out.length-1].i)out.push(x)});if(!out.length||out[0].i!==0)out.unshift({i:0,t:""});se.chaps=out;return out}
 function autoCh(se){const N=se.chapN==null?1500:se.chapN,out=[{i:0,t:""}];if(N>0){let acc=0;se.turns.forEach((t,i)=>{if(t.role==="user"&&i>0&&(N===1?acc>0:acc>=N)){out.push({i,t:""});acc=0}if(t.role==="ai")acc+=words(t.text)})}return out}
 function chapsOf(se){if(!se.chaps)se.chaps=autoCh(se);return fixCh(se)}
@@ -2693,7 +2693,7 @@ async function qcPreview(input,o){o=o||{};input=input||{};try{qcAbort(o.signal);
     const r=await ask(msgs,{max:SFQuick.MAX_OUT.preview,temp:0.4,signal:o.signal,lite:true});qcAbort(o.signal);const p=SFQuick.parse(r.text);if(!p.ok)return{ok:false,reason:p.reason,estimate:est,usage:r.usage||null};
     const raw=Object.assign({},p.value,{id:"qc"+Date.now().toString(36)+"-"+(++QC.seq)});delete raw.locked;
     const v=SFQuick.validate(raw,qcCtx(u,facts));QC.ctx={universe:u,facts,imported:!!o.universeId,input:Object.assign({},input)};QC.cur=raw.id;QC.prop=null;qcH(raw.id).now=v.blueprint;
-    return{ok:v.ok,reason:v.ok?null:v.issues[0],blueprint:v.blueprint,issues:v.issues,unsupported:v.unsupported,canon:v.canon,estimate:est,usage:r.usage||null}}
+    return{ok:v.ok,reason:v.ok?null:v.issues[0],blueprint:v.blueprint,issues:v.issues,unsupported:v.unsupported,canon:v.canon,estimate:est,usage:r.usage||null,facts}}
   catch(e){return{ok:false,reason:e&&e.name==="AbortError"?"cancelled":String(e&&e.message||e)}}}
 /* Stage an AI change: returns a proposal (blueprint after the change + diff). Nothing changes until qcAccept(proposalId). */
 function qcStage(bp,r,kind){if(!r.ok)return{ok:false,reason:r.reason,issues:r.issues||[],staged:false};if(!r.diff.length)return{ok:true,reason:"no change",blueprint:bp,diff:[],issues:r.issues,staged:false};
@@ -2811,12 +2811,17 @@ function qcSaveDraft(state){const c=SFQuick.cleanDraft({...state,facts:state?.un
   const D=DB.qcDrafts||{},id=state&&state.id&&D[state.id]?state.id:null;if(!id&&Object.keys(D).length>=QC_DRAFT_MAX)return{ok:false,applied:false,reason:"draft limit reached ("+QC_DRAFT_MAX+"); delete one first",id:null};
   const nid=id||"qd"+uid();DB.qcDrafts=Object.assign({},D,{[nid]:Object.assign({id:nid,updated:Date.now()},c.draft)});save();return{ok:true,applied:true,reason:null,id:nid}}
 function qcDrafts(){return Object.values(DB.qcDrafts||{}).sort((a,b)=>b.updated-a.updated).map(d=>({id:d.id,name:d.name,updated:d.updated,sourceTitle:d.input&&d.input.sourceTitle||"",universeId:d.universeId||null,hasBlueprint:!!d.blueprint,facts:(d.facts||[]).length,maxChapter:d.maxChapter??null}))}
-function qcLoadDraft(id){const raw=(DB.qcDrafts||{})[id];if(!raw)return{ok:false,reason:"not found"};const c=SFQuick.cleanDraft(raw);if(!c.ok)return{ok:false,reason:c.reason};const d=c.draft;
+async function qcLoadDraft(id){const raw=(DB.qcDrafts||{})[id];if(!raw)return{ok:false,reason:"not found"};const c=SFQuick.cleanDraft(raw);if(!c.ok)return{ok:false,reason:c.reason};const d=c.draft;
   const u=d.universeId?ffIndexedUniverse(ffUniverse(d.universeId)):qcResearchUniverse(d.input.sourceTitle||"Untitled",d.facts);if(!u)return{ok:false,reason:"the imported source for this draft is missing",draft:Object.assign({id},d)};
-  const input=Object.assign({},d.input,d.maxChapter!=null?{maxChapter:d.maxChapter}:{}),facts=SFQuick.spoilerFilter(d.universeId?SFQuick.factsFromUniverse(u):d.facts,d.maxChapter).facts;
+  const input=Object.assign({},d.input,d.maxChapter!=null?{maxChapter:d.maxChapter}:{});
+  /* Imported universes: the same facts a fresh preview gets (passages, analysis, named characters), not the bare name list. */
+  let facts;try{facts=SFQuick.spoilerFilter(d.universeId?await ffQuickSourceFacts(u,input):d.facts,d.maxChapter).facts}catch(e){facts=SFQuick.spoilerFilter(d.universeId?SFQuick.factsFromUniverse(u):d.facts,d.maxChapter).facts}
   QC.ctx={universe:u,facts,imported:!!d.universeId,input};QC.prop=null;let bp=null,issues=[];
+  /* A setup saved before the book could be searched cites only name entries (u0…, person0…): flag it so the player can generate it again. */
+  let stale=false;if(d.blueprint&&d.universeId){const cited=[].concat(d.blueprint.sources||[],...(d.blueprint.notes||[]).map(n=>n&&n.cite||[]));const nameOnly=x=>/^(u|person)\d+$/.test(String(x));stale=facts.some(f=>!nameOnly(f.id))&&!cited.some(x=>!nameOnly(x))}
   if(d.blueprint){const raw2=Object.assign({},d.blueprint);if(!raw2.id)raw2.id="qc"+Date.now().toString(36)+"-"+(++QC.seq);const v=SFQuick.validate(raw2,qcCtx(u,facts));bp=v.blueprint;issues=v.issues;QC.cur=bp.id;QC.hist[bp.id]={undo:[],redo:[],now:bp}}
-  return{ok:true,reason:null,draft:Object.assign({id},d),blueprint:bp,issues}}
+  if(stale)issues=["This setup was made before the book's text and analysis were used. Generate it again to use them."].concat(issues);
+  return{ok:true,reason:null,draft:Object.assign({id},d),blueprint:bp,issues,facts,stale}}
 function qcDeleteDraft(id){if(!(DB.qcDrafts||{})[id])return{ok:false,applied:false,reason:"not found"};const D=Object.assign({},DB.qcDrafts);delete D[id];DB.qcDrafts=D;save();return{ok:true,applied:true,reason:null}}
 /* Atomic: everything or nothing. Stages: universe → story → setup → appearance → save; a failure at any stage (including full storage)
    restores stories, universes and the appearance settings, and keeps the session so the player can retry. o.idempotencyKey (default: the

@@ -19,7 +19,7 @@ Paid testing: the memory-overhaul OpenCode authorization (stop at 45% monthly, l
 
 | | |
 |---|---|
-| Production release | **107**: Deep Indexing partial-result recovery. 106: atomic source storage hotfix. 105: Intelligent Source Indexing. 104: Quick Create editor fix and default memory recall for new playthroughs. 103: AI Quick Create. 102: reliability fixes. 101: visual overhaul |
+| Production release | **109**: Quick Create drafts use the indexed book (Anna's report). 108: EPUB chapter alignment for Deep Indexing. 107: Deep Indexing partial-result recovery. 106: atomic source storage. 105: Intelligent Source Indexing. 104: editor fix + recall default. 103: AI Quick Create |
 | Test address | https://deploy-preview-7--celebrated-brigadeiros-580c41.netlify.app (draft PR #7 = `memory-overhaul`) |
 | Integration branch | `memory-overhaul`: Claude merges, runs the full suite, pushes |
 | ChatGPT branch | `ui-overhaul` (fast-forwarded to `memory-overhaul` after each integration) |
@@ -174,6 +174,9 @@ Fixed and covered by tests (`presend_watchdog_browser.py`, `reliability_102_brow
 - Memory-step time limit adapts to provider speed (1.5x the last reply, 90–240 s) and the player is told when notes are skipped.
 - ChatGPT's list: (1) switching universes cancels an in-flight import (`epoch`/abort in the wizard); (2) typewriter + Stop keeps and shows the whole reply; (3) studio panels honour transparency; (4) lighting and fog/vignette stack via `--sf-cv-light`/`--sf-cv-veil`, rain layers over scene artwork via `--sf-cv-rain`; (5) menus no longer replay the scene transition (last scene remembered per playthrough, not on `#log`); (6) draft universe switch resets only universe-specific choices (reviewed); (8) `cvArt` resolves `story:<id>`, and background/portrait references that resolve to nothing are refused with a reason. (7) editing-scope previews are covered by ChatGPT's presentation test.
 Full suite pass; upgrade 101 -> 102 check 26/26.
+
+### Release 109 — Quick Create drafts use the indexed book (Claude, 2026-11-25)
+Anna's report on v108: Quick Create still said "source facts are mostly character-name fragments" with evidence u12/u13. Cause: `qcLoadDraft` built facts with the old `factsFromUniverse` (bare names) instead of `ffQuickSourceFacts`, and a draft saved before indexing kept its old blueprint with no way to rebuild it. Fix: `qcLoadDraft` is async and uses `ffQuickSourceFacts`; a setup citing only name entries (`u…`, `person…`) while passages/analysis exist is flagged (`stale`, first issue) and the screen offers "Generate again from the indexed book" (keeps idea, character, preferences); evidence shows source/chapter titles instead of ids (`qcPreview` returns `facts`). Test: quick_create_indexed_draft_browser.py (10). Full suite 105/105 run here (4 fixture-dependent skipped); upgrade 108 -> 109 check 31/31.
 
 ### Next: Source Indexing (v105) — contract posted (Claude, 2026-11-25)
 Contract: docs/SOURCE-INDEX-API.md (import modes basic/smart/deep; chapter text kept on the device; attach text to existing universes by hash; character mentions/aliases; passage search; Quick Create and play-time retrieval; AI deep indexing with estimates, checkpoints, pause/resume, provenance; explicit revision adoption). Approved by Anna incl. running deep indexing on her book within the 45% stop. ChatGPT: import-mode selector, indexing dashboard/progress, evidence inspector, enrichment and storage views.
