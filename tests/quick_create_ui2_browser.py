@@ -59,7 +59,7 @@ try:
     exact = lambda t: pg.locator(R + "label").filter(has_text=re.compile("^" + t + "$")).locator("input")
     exact("ID").last.fill("wisdom"); exact("Name").last.fill("Wisdom"); B("Apply gameplay").click()
     ok([s["id"] for s in J("QC.hist[QC.cur].now.gameplay.stats")] == ["courage", "wisdom"], "structured gameplay editor adds a stat through the engine")
-    pg.evaluate("document.querySelectorAll('#qcroot details').forEach(d=>d.open=true);null"); pg.locator(R + "label").filter(has_text=re.compile("^Humor")).locator("select").select_option("dry"); B("Apply styleProfile").click()
+    pg.evaluate("document.querySelectorAll('#qcroot details').forEach(d=>d.open=true);null"); pg.locator(R + "details[data-qc-section='Source style'] label").filter(has_text=re.compile("^Humor")).locator("select").select_option("dry"); B("Apply styleProfile").click()
     ok(J("QC.hist[QC.cur].now.styleProfile.humor") == "dry", "structured style editor applies a choice")
     # unapplied typing survives an unrelated redraw; create and draft save wait until it is applied or discarded
     pg.evaluate("document.querySelectorAll('#qcroot details').forEach(d=>d.open=true);null")

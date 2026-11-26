@@ -56,8 +56,9 @@ ok(gb.clean.rules.map(r => r.id).join() === 'burnout' && gb.issues.some(i => i.i
 ok(gb.issues.some(i => i.includes('Bad Id')) && gb.issues.some(i => i.includes('stat flat')), 'bad stat ids and ranges are reported');
 ok(Q.buildGame({}, ctx.SFGame).game === null && Q.buildGame({ career: 'wizard' }, ctx.SFGame).issues[0].includes('unknown career'), 'no gameplay means no game; unknown careers reported');
 const mm = Q.cleanMemory({ mode: 'turbo', recall: true, notes: Array.from({ length: 12 }, (_, i) => ({ text: 'Lys is alive ' + i, who: ['Lys'] })).concat([{ text: '"' + 'quoted '.repeat(12) + '"' }]) });
-ok(mm.clean.mode === 'on' && mm.clean.notes.length === 10 && mm.issues.some(i => i.includes('unknown mode')) && mm.issues.some(i => i.includes('recall needs')) && mm.issues.some(i => i.includes('only 10')), 'memory mode uses real values; recall turns memory on; notes capped');
+ok(mm.clean.mode === 'on' && mm.clean.notes.length === 10 && mm.issues.some(i => i.includes('unknown mode')) && mm.issues.some(i => i.includes('only 10')), 'memory mode uses real values; recall turns memory on; notes capped');
 ok(Q.cleanMemory({ recall: false }).clean.mode === 'app', 'memory mode defaults to following the app');
+ok(Q.cleanMemory({}).clean.recall === true && Q.cleanMemory({}).clean.mode === 'on' && Q.cleanMemory(undefined).clean.recall === true && Q.cleanMemory({ recall: true, mode: 'app' }).issues.some(i => i.includes('recall needs')), 'recall is on by default; an explicit recall with mode app is reported');
 const AC = Object.assign({}, C, { appearance: ctx.SFAppearance, apCatalog: null });
 const av = Q.cleanAppearance({ layout: 'visual-novel', preset: 'noir', cinematic: { lighting: 'night', overlay: 'lava' }, colors: { accent: '#ff3366', bg: 'red' }, sparkle: 1 }, AC);
 ok(av.clean.layout === 'visual-novel' && av.clean.preset === 'noir' && av.clean.cinematic.lighting === 'night' && !('overlay' in av.clean.cinematic) && av.issues.some(i => i.includes('cinematic.overlay')), 'cinematic settings checked one by one by the cinematic engine');

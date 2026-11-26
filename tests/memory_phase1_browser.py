@@ -21,7 +21,7 @@ def model(route):
     txt = f"Reply number {n}. Kevin moves." + meta
     body = "data: " + json.dumps({"choices": [{"delta": {"content": txt}}]}) + "\n\ndata: " + json.dumps({"choices": [{"delta": {}, "finish_reason": "stop"}], "usage": {"prompt_tokens": 5, "completion_tokens": 5}}) + "\n\ndata: [DONE]\n\n"
     route.fulfill(status=200, content_type="text/event-stream", body=body)
-SEED = lambda flag: "()=>{localStorage.clear();localStorage.setItem('story-forge-v2',JSON.stringify({key:'k',migrated:true,%smodes:[{n:'Swift',id:'a/b',d:''}],mode:0,stories:[{id:'s1',kind:'story',title:'Ledger Test',setting:'A hall.',entries:[],stats:[],endings:[],starts:[]}]}))}" % ("memv2:true," if flag else "")
+SEED = lambda flag: "()=>{localStorage.clear();localStorage.setItem('story-forge-v2',JSON.stringify({key:'k',migrated:true,memRecallDefault:false,%smodes:[{n:'Swift',id:'a/b',d:''}],mode:0,stories:[{id:'s1',kind:'story',title:'Ledger Test',setting:'A hall.',entries:[],stats:[],endings:[],starts:[]}]}))}" % ("memv2:true," if flag else "")
 DEEDS = "s=>s.mem?s.mem.events.filter(e=>e.src==='meta').map(e=>+e.text.match(/\\d+/)[0]):null"
 def sess(pg, i=0): return pg.evaluate(f"JSON.parse(localStorage.getItem('story-forge-v2')).sessions[{i}]")
 def deeds(pg, i=0): return pg.evaluate(f"({DEEDS})(JSON.parse(localStorage.getItem('story-forge-v2')).sessions[{i}])")
@@ -100,7 +100,7 @@ with sync_playwright() as p:
 
     # C. An older save (v30 shape, no memv2 key) loads, plays, and is not migrated unless the flag is on
     state["n"] = 0; pg.goto(f"http://127.0.0.1:{PORT}/index.html"); pg.wait_for_selector(".cta")
-    pg.evaluate("()=>{localStorage.clear();localStorage.setItem('story-forge-v2',JSON.stringify({key:'k',migrated:true,modes:[{n:'Swift',id:'a/b',d:''}],mode:0,stories:[{id:'s1',kind:'story',title:'Old',setting:'x',entries:[],stats:[],endings:[],starts:[]}],sessions:[{id:'old1',storyId:'s1',char:{name:'Anna'},turns:[{role:'user',text:'hi',hide:true},{role:'ai',text:'Old reply.'}],chaps:[{i:0,t:'',sum:'Anna arrived.'}],facts:['Anna is a duchess.'],temp:'',mems:[],note:'',stats:{},len:'300',sugg:[],ended:[],cast:{Lenox:{r:'duke',t:['proud']}},updated:1}]}))}")
+    pg.evaluate("()=>{localStorage.clear();localStorage.setItem('story-forge-v2',JSON.stringify({key:'k',migrated:true,memRecallDefault:false,modes:[{n:'Swift',id:'a/b',d:''}],mode:0,stories:[{id:'s1',kind:'story',title:'Old',setting:'x',entries:[],stats:[],endings:[],starts:[]}],sessions:[{id:'old1',storyId:'s1',char:{name:'Anna'},turns:[{role:'user',text:'hi',hide:true},{role:'ai',text:'Old reply.'}],chaps:[{i:0,t:'',sum:'Anna arrived.'}],facts:['Anna is a duchess.'],temp:'',mems:[],note:'',stats:{},len:'300',sugg:[],ended:[],cast:{Lenox:{r:'duke',t:['proud']}},updated:1}]}))}")
     pg.reload(); pg.wait_for_selector(".cta"); pg.evaluate("go({n:'chat',id:'old1'})"); pg.wait_for_selector("text=Old reply.")
     send(pg, "Hello.", 1); s = sess(pg)
     check("old save: plays with the engine off and is left unmigrated", "mem" not in s and s["facts"] == ["Anna is a duchess."])

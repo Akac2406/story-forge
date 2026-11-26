@@ -37,6 +37,12 @@ Sample data for building screens: tests/fixtures/mem2-source.json (all nine laye
 
 Mutations never throw. `applied:false` means nothing was stored; `reason` is `locked`, `unchanged`, `not found` or `nothing to undo`.
 
+## Recall on by default (v104, approved by Anna 2026-11-25)
+- New playthroughs get `se.memv2 = true` and `se.memRecall = true` unless Settings → Saving money → "Recall relevant memories in new stories" (`DB.memRecallDefault`, default on) is off. Character chats are excluded (they don't use recall). A Quick Create setup with `memory.recall: false` is respected (`st.fanfic.setup.memoryRecallSet`); Quick Create's own default is now recall on.
+- Existing playthroughs are never changed. The per-story switch in the story menu still turns recall off.
+- No extra requests: the narrator writes the notes in the same reply (memory notes "Narrator writes them", the default) and recall picks memories on the device. "Hybrid" / "separate step" notes, which do add a request, stay opt-in.
+- Measured overhead (tests/memory_default_browser.py): about 1,150 characters (~290 tokens) per message in a short story; the recall section is capped at 6,000 / 4,000 / 2,500 characters by the money-saving setting. The same test checks relevance (asking about a key recalls the key memory), isolation between playthroughs of one story, and every way of starting a playthrough.
+
 ## Storage
 
 - Player edits: `se.memEdits = {v:1, ops:[{op, id, at, patch|on|record}]}`. Separate from per-reply deltas, so regeneration and rollback can't erase them.

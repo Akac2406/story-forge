@@ -326,7 +326,7 @@ const KEY="story-forge-v2",app=document.getElementById("app"),$=s=>document.quer
 function ap(p,...k){for(const c of k.flat(4)){if(c==null||c===false)continue;p.appendChild(c.nodeType?c:document.createTextNode(String(c)))}}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const num=(v,d)=>{const n=parseFloat(v);return isFinite(n)?n:d};
-const VER=103,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
+const VER=104,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
 function fixCh(se){const c=(se.chaps||[]).filter(x=>x&&x.i>=0&&x.i<Math.max(1,se.turns.length)).sort((a,b)=>a.i-b.i),out=[];c.forEach(x=>{if(!out.length||x.i>out[out.length-1].i)out.push(x)});if(!out.length||out[0].i!==0)out.unshift({i:0,t:""});se.chaps=out;return out}
 function autoCh(se){const N=se.chapN==null?1500:se.chapN,out=[{i:0,t:""}];if(N>0){let acc=0;se.turns.forEach((t,i)=>{if(t.role==="user"&&i>0&&(N===1?acc>0:acc>=N)){out.push({i,t:""});acc=0}if(t.role==="ai")acc+=words(t.text)})}return out}
 function chapsOf(se){if(!se.chaps)se.chaps=autoCh(se);return fixCh(se)}
@@ -934,7 +934,10 @@ function play(st,d){if(!hasKey()){toast("Add your OpenRouter key in Settings fir
   sd(se,st).forEach(s=>{se.stats[s.n]=num(s.v,0)});
   if(st.cast0&&st.cast0.length){se.cast={};st.cast0.forEach(c=>{se.cast[c.n]={r:c.role||"",l:[c.age?"age "+c.age:"",c.looks].filter(Boolean).join(", "),t:[],a:c.hook||"",ch:0,u:Date.now(),pic:c.th||undefined}})}
   if(st.ctr&&st.ctr.length){se.ctr={};st.ctr.forEach(c=>{se.ctr[c.n]=0})}if(st.ooc)se.fmt=Object.assign(fmtOf(se),{tag:1});
-  if(st.fanfic&&st.fanfic.setup)try{const x=st.fanfic.setup;if(x.memoryMode==="on"||x.memoryRecall)se.memv2=true;if(x.memoryRecall)se.memRecall=true;
+  /* Memory recall is on by default for new playthroughs (Anna, 2026-11-25): structured memory notes are written by the narrator in the same reply and
+     recall picks them on this device, so no extra requests. Existing playthroughs keep their settings. Character chats don't use recall. */
+  if(DB.memRecallDefault!==false&&st.kind!=="character"){se.memv2=true;se.memRecall=true}
+  if(st.fanfic&&st.fanfic.setup)try{const x=st.fanfic.setup;if(x.memoryMode==="on"||x.memoryRecall)se.memv2=true;if(x.memoryRecall)se.memRecall=true;else if(x.memoryRecall===false&&x.memoryRecallSet)delete se.memRecall;
     if(x.cv)se.cv=JSON.parse(JSON.stringify(x.cv));else if(x.layout)se.cv={settings:{layout:x.layout},scene:{},cast:{},preset:null};
     if(window.SFMem2&&Array.isArray(x.memoryNotes)&&x.memoryNotes.length){let E=se.memEdits||SFMem2.emptyEdits();x.memoryNotes.slice(0,10).forEach((n,i)=>{E=SFMem2.add(E,{id:"qcnote"+i,layer:"permanent",kind:"fact",text:String(n.text||"").slice(0,300),who:(n.who||[]).slice(0,6),pin:true,lock:true,src:"player",t:0})});se.memEdits=E}}catch(e){console.warn("quick create setup failed",e)}
   if(st.fanfic&&st.fanfic.canon&&window.SFFan)try{se.canon=JSON.parse(JSON.stringify(st.fanfic.canon));if(se.canon.mode&&se.canon.mode.player&&se.canon.mode.player.name&&!(d.name||"").trim())se.char.name=se.canon.mode.player.name}catch(e){}
@@ -2721,7 +2724,7 @@ function qcCommit(bp,o){o=o||{};if(!QC.ctx)return{ok:false,applied:false,reason:
     const st=getStory(r.storyId);let game=null;if(window.SFGame){const gb=SFQuick.buildGame(B.gameplay,SFGame);if(gb.issues.length)throw new Error(gb.issues[0]);game=gb.game}
     let director=null;if(B.director&&window.SFDirector){const d=SFDirector.set(SFDirector.defaults(),B.director);if(d.applied===false&&d.reason)throw new Error("director: "+d.reason);director={enabled:true,settings:d.settings}}
     if(game||director)st.blueprint={game,director};const M=B.memory||{},cb=SFQuick.buildCinema(B.appearance,window.SFCinema);if(cb.issues.length)throw new Error(cb.issues[0]);
-    st.fanfic.setup={memoryRecall:!!M.recall,memoryMode:M.mode||"app",memoryNotes:M.notes||[],layout:B.appearance&&B.appearance.layout||null,cv:cb.cv||null};if(B.styleProfile&&Object.keys(B.styleProfile).length)st.fanfic.styleProfile=B.styleProfile;
+    st.fanfic.setup={memoryRecall:!!M.recall,memoryRecallSet:true,memoryMode:M.mode||"app",memoryNotes:M.notes||[],layout:B.appearance&&B.appearance.layout||null,cv:cb.cv||null};if(B.styleProfile&&Object.keys(B.styleProfile).length)st.fanfic.styleProfile=B.styleProfile;
     st.fanfic.quick={key:key||null,characters:B.characters,notes:B.notes,sources:(QC.ctx.facts||[]).filter(f=>B.sources.includes(f.id)).map(f=>f.source),uncertain:B.uncertain};
     fail("setup");
     const P=SFQuick.appearancePatch(B.appearance);if(Object.keys(P).length&&window.SFAppearance){const a=SFAppearance.set(apCfg(),P,"story:"+r.storyId,apCatalog());if(!a.applied)throw new Error("appearance: "+a.reason);apTouched=true;if(!apWrite(a.cfg))throw new Error("storage full")}
@@ -4146,6 +4149,7 @@ function vSettings(){ap(app,h("header",null,back(()=>go({n:"home",tab:"discover"
     h("p",{class:"sub",text:"Used once per picture you add to a story. It needs an OpenRouter key and a model that can see images. The default costs a fraction of a cent per picture."}),
     h("h2",{text:"Saving money"}),fld("How much is resent each turn, in every story",sel(String(DB.saver||0),SAVER.map((x,i)=>[String(i),x[0]]),v=>{DB.saver=+v;save()})),
     h("p",{class:"sub",text:"Recommended trims the prompt with little loss. To see what each choice costs, open Save money in a story’s menu."}),
+    chk("Recall relevant memories in new stories (no extra requests; adds a little text to each message)",DB.memRecallDefault!==false,v=>{DB.memRecallDefault=v;save()}),
     h("h2",{text:"Avatars"}),h("p",{class:"sub",text:DB.chars.length+" saved. These are the characters you play."}),h("div",{class:"row"},h("button",{text:"Manage avatars",onclick:()=>avatarSheet(null)})),
     h("h2",{text:"Look"}),h("p",{class:"sub",text:"Story and device theme overrides are managed in Appearance."}),h("div",{class:"opts"},THEMES.map(t=>h("button",{class:"opt"+((DB.theme||"midnight")===t[0]?" on":""),onclick:()=>{DB.theme=t[0];save();window.SFVisualV48?.useAppTheme();applyLook();soft()}},h("span",{class:"swatch"},h("i",{style:"background:"+t[2]}),h("i",{style:"background:"+t[3]})),h("b",{text:t[1]})))),
     interfaceLookSettings(),

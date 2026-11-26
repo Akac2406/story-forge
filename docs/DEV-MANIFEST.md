@@ -19,7 +19,7 @@ Paid testing: the memory-overhaul OpenCode authorization (stop at 45% monthly, l
 
 | | |
 |---|---|
-| Live (production) | **103** (released 2026-11-25, approved by Anna): AI Quick Create, Guided Creation and the AI Story Architect. 102: reliability fixes. 101: complete visual overhaul (official release) |
+| Live (production) | **104** (released 2026-11-25): Quick Create editor fix (omitted sections editable, all rules/Director settings, named pickers) and memory recall on by default for new playthroughs (approved by Anna). 103: AI Quick Create. 102: reliability fixes. 101: visual overhaul |
 | Test address | https://deploy-preview-7--celebrated-brigadeiros-580c41.netlify.app (draft PR #7 = `memory-overhaul`) |
 | Integration branch | `memory-overhaul`: Claude merges, runs the full suite, pushes |
 | ChatGPT branch | `ui-overhaul` (fast-forwarded to `memory-overhaul` after each integration) |
@@ -174,6 +174,12 @@ Fixed and covered by tests (`presend_watchdog_browser.py`, `reliability_102_brow
 - Memory-step time limit adapts to provider speed (1.5x the last reply, 90–240 s) and the player is told when notes are skipped.
 - ChatGPT's list: (1) switching universes cancels an in-flight import (`epoch`/abort in the wizard); (2) typewriter + Stop keeps and shows the whole reply; (3) studio panels honour transparency; (4) lighting and fog/vignette stack via `--sf-cv-light`/`--sf-cv-veil`, rain layers over scene artwork via `--sf-cv-rain`; (5) menus no longer replay the scene transition (last scene remembered per playthrough, not on `#log`); (6) draft universe switch resets only universe-specific choices (reviewed); (8) `cvArt` resolves `story:<id>`, and background/portrait references that resolve to nothing are refused with a reason. (7) editing-scope previews are covered by ChatGPT's presentation test.
 Full suite pass; upgrade 101 -> 102 check 26/26.
+
+### Release 104 — editor fix + recall default (Claude + ChatGPT, 2026-11-25)
+- ChatGPT fd03a08: every editable Quick Create section is shown even when the AI omits it; all 14 canon rules and every Director setting; named takeover and fate pickers. Test: quick_create_fields_browser.py (9).
+- Memory recall on by default for new playthroughs (Anna approved): narrator-written notes + on-device recall, no extra requests; existing playthroughs unchanged; Settings switch `DB.memRecallDefault`; character chats excluded; Quick Create recall default on. Test: memory_default_browser.py (16) covers ChatGPT's checks (overhead ~290 tokens in a short story, capped; relevance; isolation; every creation method). Older "memory off" tests now seed the switch off.
+- EPUB root cause (investigation, no code change yet): the fanfiction import is a basic index (chapter list + name candidates, text not kept, no events/records); Quick Create took the first 15 bare names. Anna approved Phase 1 (keep text, story-relevant passages, free) and Phase 2 (AI deep indexing, run on her book).
+- Full suite 101/101; upgrade 103 -> 104 check 31/31.
 
 ### Release 103 — AI Quick Create (Claude + ChatGPT, 2026-11-25; release approved by Anna)
 - Engine `site/quick-create-engine.js` (SFQuick) and adapters `qc*` (docs/QUICK-CREATE-API.md): research with citations, coverage and spoiler limit; validated blueprints through the fanfiction, gameplay, director, cinematic and appearance engines; estimates, staged edits, locks, section regeneration, per-blueprint undo/redo; drafts in backups; research cache; atomic commit with rollback and no duplicates; change preview for stories in play.
