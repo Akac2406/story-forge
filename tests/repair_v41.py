@@ -46,13 +46,14 @@ async def main():
         check("repair prompt uses the reply as evidence and forbids invention", "only evidence" in st["last_repair"] and "Do not invent" in st["last_repair"] and "hidden ledger" in st["last_repair"])
         check("repaired event, knowledge and scene recorded in memory", any("hidden ledger" in e["text"] for e in s["mem"]["events"]) and s["mem"]["scene"]["where"] == "cellar" and any("ledger" in f["text"] for f in s["mem"]["facts"]))
         check("only EVENTS / LEARNED / SCENE kept from the repair (NEXT and GOAL dropped)", "NEXT" not in ai.get("rmt", "") and "GOAL" not in ai.get("rmt", "") and "EVENTS" in ai.get("rmt", ""), ai.get("rmt"))
-        check("repaired block stored as rmt, not mt (kept out of the model's history examples)", "rmt" in ai and "mt" not in ai)
+        check("repaired block stored separately as rmt", "rmt" in ai and "mt" not in ai)
         check("diagnostics: native block missing, repair flagged ok with time and tokens", d["block"] is False and d.get("rp", {}).get("ok") is True and d["rp"].get("tok") == [900, 80], d)
         check("story text unchanged, nothing shown", "EVENTS" not in ai["text"] and "EVENTS:" not in await pg.inner_text("body"))
         await send("I wait again.", 3)
         check("partial native block (marker present, keys missing): no repair", st["repairs"] == 1)
         msgs = await pg.evaluate("buildMsgs(DB.sessions[0],getStory('s1'),DB.sessions[0].turns.slice(),'x')")
-        check("repaired metadata is not sent back to the model as an example", not any("hidden ledger | none" in m["content"] for m in msgs if m["role"] == "assistant"))
+        repaired = [m["content"] for m in msgs if m["role"] == "assistant" and "hidden ledger | none" in m["content"]]
+        check("repaired metadata appears as one delimited history example", len(repaired) == 1 and "[[META]]" in repaired[0] and "GOAL:" not in repaired[0])
         # undo works with a repaired delta
         await pg.evaluate("()=>{const se=DB.sessions[0];memDrop(se,[se.turns.length-3]);}")
         s = await S()

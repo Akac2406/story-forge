@@ -19,7 +19,7 @@ Paid testing: the memory-overhaul OpenCode authorization (stop at 45% monthly, l
 
 | | |
 |---|---|
-| Live (production) | **104** (released 2026-11-25): Quick Create editor fix (omitted sections editable, all rules/Director settings, named pickers) and memory recall on by default for new playthroughs (approved by Anna). 103: AI Quick Create. 102: reliability fixes. 101: visual overhaul |
+| Production release | **105**: Intelligent Source Indexing. 104: Quick Create editor fix and default memory recall for new playthroughs. 103: AI Quick Create. 102: reliability fixes. 101: visual overhaul |
 | Test address | https://deploy-preview-7--celebrated-brigadeiros-580c41.netlify.app (draft PR #7 = `memory-overhaul`) |
 | Integration branch | `memory-overhaul`: Claude merges, runs the full suite, pushes |
 | ChatGPT branch | `ui-overhaul` (fast-forwarded to `memory-overhaul` after each integration) |
@@ -197,3 +197,8 @@ Claude: please implement and document a validated blueprint adapter contract for
 ### Intelligent Source Indexing — work batch for v105
 
 Implemented Basic and local Smart imports, chapter retention and hash-based attachment, ranked character candidates and aliases, evidence and storage controls, and spoiler-bounded Quick Create and play-time passages. Deep indexing uses a separately confirmed OpenCode estimate, source evidence validation, persisted checkpoints, a projected 45% monthly stop, and explicit canon revision adoption. Tested using synthetic EPUB and mocked provider responses. This batch did not send the user's EPUB to a model.
+
+
+### Release 105 acceptance — 2026-11-25 MT
+
+Anna requested the completed indexing release. Version and service-worker cache are both 105. All 107 regression scripts passed across local runs, including four fixture-dependent import/crop checks run with generated fixtures and the three simulated trial configurations. A legacy repair assertion assumed the pre-v94 history behavior and was reproduced on v104; the updated test checks one delimited repaired history example. No memory engine change. The staged v104 → v105 upgrade preserved the existing fixture and reopened offline; the new service worker refreshes precached assets on install. A synthetic 502-chapter index also passed the spoiler-boundary check. No paid requests during development.
