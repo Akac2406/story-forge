@@ -19,7 +19,7 @@ Paid testing: the memory-overhaul OpenCode authorization (stop at 45% monthly, l
 
 | | |
 |---|---|
-| Production release | **106**: atomic source storage hotfix. 105: Intelligent Source Indexing. 104: Quick Create editor fix and default memory recall for new playthroughs. 103: AI Quick Create. 102: reliability fixes. 101: visual overhaul |
+| Production release | **107**: Deep Indexing partial-result recovery. 106: atomic source storage hotfix. 105: Intelligent Source Indexing. 104: Quick Create editor fix and default memory recall for new playthroughs. 103: AI Quick Create. 102: reliability fixes. 101: visual overhaul |
 | Test address | https://deploy-preview-7--celebrated-brigadeiros-580c41.netlify.app (draft PR #7 = `memory-overhaul`) |
 | Integration branch | `memory-overhaul`: Claude merges, runs the full suite, pushes |
 | ChatGPT branch | `ui-overhaul` (fast-forwarded to `memory-overhaul` after each integration) |
@@ -212,3 +212,7 @@ v106 stages the chapter write and current app metadata together in IndexedDB. A 
 ### Release 106 acceptance — 2026-11-25 MT
 
 All 108 regression scripts passed across local runs, with the older EPUB and screenshot workflows covered using generated fixtures. Reproduced v105's exact error and verified the same 502-chapter fixture attaches successfully on the patched build in Chromium and WebKit using the iPhone viewport. Confirmed atomic rollback on a simulated IndexedDB quota error, cancellation and stale cross-tab write, and recovery after temporary IndexedDB unavailability. The staged v105 upgrade kept existing data and opened offline with the v106 cache. No paid model requests. Ready for the authorized production release.
+
+### Release 107 acceptance — Deep Indexing
+
+Deep Indexing retains entries supported by the EPUB when other entries in the response fail validation. Chapters with no supported entries remain pending. Targeted syntax, indexing, phone-viewport storage, service-worker and offline v106 upgrade checks passed. Provider responses were mocked.
