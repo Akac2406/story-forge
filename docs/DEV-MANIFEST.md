@@ -216,3 +216,9 @@ All 108 regression scripts passed across local runs, with the older EPUB and scr
 ### Release 107 acceptance — Deep Indexing
 
 Deep Indexing retains entries supported by the EPUB when other entries in the response fail validation. Chapters with no supported entries remain pending. Targeted syntax, indexing, phone-viewport storage, service-worker and offline v106 upgrade checks passed. Provider responses were mocked.
+
+### Release 108 — EPUB chapter labels in Deep Indexing
+
+A user-provided 502-entry EPUB exposed the distinction between source index positions and the EPUB's numbered headings. The title page occupied entry 1, so entries 1–5 included the title page and book Chapters 1–4. Deep Indexing now defaults past the recognized title page and previews the book's headings as the range changes. Extraction uses section references scoped to the supplied text. Legacy chapter-number replies can be verified against a matching heading or source position when the quotation identifies a single chapter. Existing source positions, hashes and saved evidence remain compatible.
+
+Verified using the uploaded EPUB locally with an intercepted provider response in phone-viewport Chromium and WebKit. Book Chapters 1–5 indexed at positions 2–6 and survived reload, with all 502 entries remaining searchable. Synthetic regressions cover ambiguity, provenance, front matter, quota recovery and offline v107-to-v108 upgrade on saved data. No paid or external model requests.

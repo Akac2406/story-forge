@@ -32,12 +32,12 @@ def mock(route):
     data = json.loads(route.request.post_data)
     sent.append(data)
     raw = json.loads(data["messages"][-1]["content"])
-    records = [{"chapter": row["n"], "kind": "event", "title": f"Indexed event {row['n']}",
+    records = [{"sourceRef": row["sourceRef"], "kind": "event", "title": f"Indexed event {row['sourceRef']}",
                 "text": "The archive research advances.", "evidence": "Mira Vale", "private": False}
                for row in raw]
     if len(sent) == 1:
         records[-1]["evidence"] = "This quote does not occur in the source."
-        records.append({"chapter": raw[0]["n"], "kind": "event", "title": "Unsupported event",
+        records.append({"sourceRef": raw[0]["sourceRef"], "kind": "event", "title": "Unsupported event",
                         "text": "Unsupported.", "evidence": "Also never present in the source."})
     route.fulfill(json={"choices":[{"message":{"content":json.dumps({"entries":records})}}],
                          "usage":{"prompt_tokens":200,"completion_tokens":100}})
@@ -110,6 +110,30 @@ with subprocess.Popen([sys.executable,"-m","http.server",str(port),"--bind","127
             assert page.evaluate("ffDropSourceText('archive-test',ffUniverse('archive-test').sources[0].id)")["ok"]
             assert page.evaluate("ffSourceStatus('archive-test')")["text"]["missing"] == ["Archive Test"]
             assert page.evaluate("ffIndexedUniverse(ffUniverse('archive-test')).events.length") == 2
+            numbered = io.BytesIO()
+            with zipfile.ZipFile(book) as fixture, zipfile.ZipFile(numbered, "w") as epub:
+                for path in fixture.namelist():
+                    data = fixture.read(path)
+                    if path == "book.opf":
+                        data = data.replace(b"Archive Test", b"Numbered Archive").replace(
+                            b"<manifest>", b'<manifest><item id="title" href="title-page.xhtml"/>').replace(
+                            b"<spine>", b'<spine><itemref idref="title"/>')
+                    epub.writestr(path, data)
+                epub.writestr("title-page.xhtml", "<html><body><h1>Numbered Archive</h1><p>Credits.</p></body></html>")
+            page.evaluate("""async bytes=>{const file=new File([new Uint8Array(bytes)],"numbered.epub");
+                const r=await ffImportPreview(file,{mode:"smart"});
+                if(!r.ok)throw Error(r.reason);
+                if(!(await r.commit()).applied)throw Error("Import failed");
+                window.SFFanUI.sourceIndex(r.preview.universe);
+            }""", list(numbered.getvalue()))
+            page.get_by_text("Deep indexing · optional AI analysis").last.click()
+            page.get_by_text("Entry 2 · Chapter 1", exact=True).wait_for()
+            assert page.evaluate("ffDeepEstimate('numbered-archive',{from:1,to:1})")["requests"] == 0
+            assert page.evaluate("ffDeepEstimate('numbered-archive',{from:1,to:3})")["batches"] == [[2,3]]
+            assert page.evaluate("ffDeepIndex('numbered-archive',{from:1,to:3,confirmed:true})")["done"] == [2,3]
+            payload = json.loads(sent[-1]["messages"][-1]["content"])
+            assert [row["sourceRef"] for row in payload] == ["section-2-0", "section-3-0"]
+            assert page.evaluate("ffSourceStatus('numbered-archive')")["text"]["chapters"] == 3
             assert not errors, errors
             browser.close()
     finally:

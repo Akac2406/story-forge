@@ -30,4 +30,22 @@ assert.deepEqual(reviewed.rejected.map(row=>row.chapter),[1,null]);
 assert.throws(()=>reviewExtraction({},batch));
 const long=batches([{n:1,title:'Long',text:'x'.repeat(50000)}],1,1);
 assert.equal(long.flat().map(x=>x.text).join('').length,50000);
+const shifted=[
+  {n:1,title:'The Silver Archive',offset:0,text:'A note on the silver lock appears in the title page note.'},
+  {n:2,title:'Chapter 1',offset:25,text:'Mira checks the silver lock beside the bronze gate.'},
+  {n:3,title:'Chapter 2',offset:0,text:'The archive opens under a crescent moon.'}
+];
+const fact={title:'The lock',kind:'term',text:'Mira examines the lock.'};
+const numbered=reviewExtraction({entries:[
+  {...fact,chapter:'Chapter 1',evidence:'beside the bronze gate'},
+  {...fact,chapter:1,evidence:'the silver lock'},
+  {...fact,sourceRef:'section-2-25',chapter:1,evidence:'the silver lock'},
+  {...fact,sourceRef:'section-2-0',chapter:2,evidence:'the silver lock'},
+  {...fact,sourceRef:'section-2-25',evidence:'under a crescent moon'}
+]},shifted);
+assert.deepEqual(numbered.entries.map(row=>row.chapter),[2,2]);
+assert.equal(numbered.entries[0].offset,25+shifted[1].text.indexOf('beside the bronze gate'));
+assert.match(numbered.rejected[0].why,/multiple chapters/);
+assert.match(numbered.rejected[1].why,/outside/);
+assert.match(numbered.rejected[2].why,/absent/);
 console.log('Source indexing unit checks passed');

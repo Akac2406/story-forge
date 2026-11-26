@@ -20,27 +20,43 @@ function sourceIndex(id,preferred){
  const u=ffUniverse(id);
  if(!u)return;
  const body=h("div",{class:"ff-ui"}),status=h("p",{role:"status","aria-live":"polite"}),summary=h("section",{class:"ff-panel"}),results=h("div",{class:"ff-ui"});
- const source=sel(preferred||u.sources[0]?.id||"",u.sources.map(item=>[item.id,item.title]),()=>{estimate=null;review.textContent="";refresh();showEvidence()});
+ const source=sel(preferred||u.sources[0]?.id||"",u.sources.map(item=>[item.id,item.title]),()=>{setDefaultRange();refresh();showEvidence()});
  const query=h("input",{type:"search",placeholder:"Names, places or events"}),limit=h("input",{type:"number",min:0,placeholder:"Any chapter"});
  const from=h("input",{type:"number",min:1,value:1}),to=h("input",{type:"number",min:1,value:1}),rerun=h("input",{type:"checkbox"});
  const file=h("input",{type:"file",accept:".epub,.txt,.md"});
  const book=sel("",[["","Select a Library book"],...(DB.books||[]).map(b=>[b.id,b.title])],()=>{});
- const review=h("p",{role:"status"}),evidence=h("div",{class:"ff-ui"});
+ const review=h("p",{role:"status"}),range=h("p",{class:"sub"}),evidence=h("div",{class:"ff-ui"});
  let estimate=null,active=null;
  const btn=(text,onclick)=>h("button",{type:"button",text,onclick});
  const deepOptions=()=>({sourceId:source.value,from:from.value,to:to.value,rerun:rerun.checked});
+ const selectedSource=()=>ffUniverse(id)?.sources.find(item=>item.id===source.value);
  function resetEstimate(){estimate=null;review.textContent=""}
- [from,to,rerun].forEach(input=>input.addEventListener("input",resetEstimate));
+ function showRange(){
+   const selected=selectedSource(),first=ffDeepFirstChapter(selected);
+   const chapters=(selected?.chapters||[]).filter(ch=>ch.n>=Math.max(Number(from.value),first)&&ch.n<=Number(to.value));
+   const describe=ch=>ffDeepEntryLabel(selected,ch.n);
+   range.textContent=chapters.length?describe(chapters[0])+(chapters.length>1?" through "+describe(chapters.at(-1)):""):"No chapters in this range.";
+   if(first>1&&Number(from.value)<first)range.textContent+=" The title page is skipped.";
+ }
+ function setDefaultRange(){
+   from.value=to.value=ffDeepFirstChapter(selectedSource());
+   resetEstimate();
+   showRange();
+ }
+ [from,to,rerun].forEach(input=>input.addEventListener("input",()=>{resetEstimate();showRange()}));
+ setDefaultRange();
  async function refresh(){
    try{
     const [state,storage]=await Promise.all([ffSourceStatus(id),ffSourceStorage(id)]);
     if(!body.isConnected||!state)return;
     const bytes=storage.rows.find(r=>r.sourceId===source.value)?.bytes||0;
     const detail=ffUniverse(id).deep?.sources?.[source.value];
+    const first=ffDeepFirstChapter(selectedSource());
+    const issue=detail?.failed?.findLast(row=>row.n>=first);
     summary.replaceChildren(h("h3",{text:"Source index"}),h("p",{text:state.readiness+" · "+state.text.chapters+" searchable chapters · "+state.characters+" name candidates · "+state.events+" events"}),
      h("p",{text:"Selected source uses "+(bytes/1024/1024).toFixed(2)+" MB on this device."}),
      ...state.warnings.map(text=>h("p",{class:"sub",text})),
-     ...(detail?[h("p",{text:"Analyzed chapters: "+detail.done.length+(detail.skipped?" · "+detail.skipped+" entries skipped in the last saved batch":"")+(detail.failed?.length?" · Last issue: "+detail.failed.at(-1).why:"")})]:[]));
+     ...(detail?[h("p",{text:"Analyzed chapters: "+detail.done.length+(detail.skipped?" · "+detail.skipped+" entries skipped in the last saved batch":"")+(issue?" · Last issue: "+issue.why:"")})]:[]));
    }catch(error){status.textContent=error.message}
  }
  function showEvidence(){
@@ -68,7 +84,10 @@ function sourceIndex(id,preferred){
    status.textContent="Matching chapters…";
    const r=await ffAttachSourceText(id,input,{signal,onProgress:(i,n)=>{status.textContent="Reading "+i+" / "+n}});
    status.textContent=r.ok?"Stored "+r.matched+" matching chapters.":r.reason;
-   if(r.ok){source.value=r.sourceId;resetEstimate()}
+   if(r.ok){
+     if(source.value!==r.sourceId){source.value=r.sourceId;setDefaultRange()}
+     else {resetEstimate();showRange()}
+   }
  });
  const search=()=>work(async()=>{
    const hits=await ffSearchSource(id,query.value,{sourceId:source.value,maxChapter:limit.value});
@@ -80,7 +99,8 @@ function sourceIndex(id,preferred){
    if(!estimate||estimate.key!==JSON.stringify(opts)||!estimate.requests){status.textContent="Estimate the selected range first.";return}
    if(!confirm("Send the selected chapter range to your OpenCode provider for source analysis?"))return;
    resetEstimate();
-   const r=await ffDeepIndex(id,{...opts,confirmed:true,signal,onProgress:p=>{status.textContent="Chapter "+p.chapter+" · "+p.done+" / "+p.total+" complete"}});
+   const indexed=selectedSource();
+   const r=await ffDeepIndex(id,{...opts,confirmed:true,signal,onProgress:p=>{status.textContent=ffDeepEntryLabel(indexed,p.chapter)+" · "+p.done+" / "+p.total+" complete"}});
    const saved=r.done.length?"Analysis saved for "+r.done.length+" chapter"+(r.done.length===1?"":"s")+". ":"";
    const skipped=r.skipped?r.skipped+" entries skipped. ":"";
    status.textContent=(saved+skipped+(r.reason||(r.paused?"Paused.":""))).trim()||"No new chapters were analyzed.";
@@ -95,7 +115,8 @@ function sourceIndex(id,preferred){
   h("details",{class:"ff-panel"},h("summary",{text:"Analysis evidence"}),evidence),
   h("details",{class:"ff-panel",open:!!preferred},h("summary",{text:"Deep indexing · optional AI analysis"}),
    h("p",{class:"sub",text:"Deep indexing sends selected chapter text to OpenCode. Local search works without model requests."}),
-   fld("First chapter",from),fld("Last chapter",to),h("label",{},rerun," Re-analyze completed chapters"),
+   h("p",{class:"sub",text:"Range numbers use the source index order. The book’s own chapter titles appear below."}),
+   fld("First index entry",from),fld("Last index entry",to),range,h("label",{},rerun," Re-analyze completed chapters"),
    btn("Estimate analysis",()=>work(async()=>{
     const opts=deepOptions(),r=await ffDeepEstimate(id,opts);
     if(JSON.stringify(opts)!==JSON.stringify(deepOptions()))return;

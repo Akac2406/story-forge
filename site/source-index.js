@@ -115,33 +115,46 @@ function evidenceMatch(text,evidence) {
   const match=new RegExp(pattern,"u").exec(text);
   return match?{offset:match.index,length:match[0].length}:null;
 }
+// The heading can use the book's numbering while n is the original import position.
+function chapterNumber(label) {
+  const match=/^chapter\s+(\d+)(?:\s*$|\s*[:.\u2013\u2014-]\s)/i.exec(String(label||"").trim());
+  return match ? Number(match[1]) : null;
+}
+function segmentRef(part) {return "section-"+part.n+"-"+part.offset}
+
 function reviewExtraction(raw,batch) {
   if (!raw || !Array.isArray(raw.entries)) throw Error("Expected an entries array.");
   if (raw.entries.length > 120) throw Error("Too many extracted entries.");
   const entries=[], rejected=[];
   const kinds=new Set(["summary","event","character","relationship","power","term","location","faction","style"]);
   for(const item of raw.entries){
-    const chapter=Number(item?.chapter), kind=clean(item?.kind,30);
+    const kind=clean(item?.kind,30);
     const title=clean(item?.title,120), text=clean(item?.text,800), evidence=typeof item?.evidence==="string"?item.evidence.trim():"";
-    const parts=batch.filter(part=>part.n===chapter);
+    const claimed=chapterNumber(item?.chapter)??Number(item?.chapter);
+    const parts=item?.sourceRef!=null
+      ?batch.filter(part=>segmentRef(part)===item.sourceRef)
+      :batch.filter(part=>part.n===claimed||chapterNumber(part.title)===claimed);
     let why;
     if(!parts.length)why="chapter outside the requested text";
     else if(!title||!text||!kinds.has(kind))why="missing or invalid fields";
     else if(evidence.length<8||evidence.length>180)why="missing or invalid evidence quote";
     else {
-      const match=parts.map(part=>({part,span:evidenceMatch(part.text,evidence)})).find(result=>result.span);
+      const matches=parts.map(part=>({part,span:evidenceMatch(part.text,evidence)})).filter(result=>result.span);
+      const match=matches[0];
       if(!match)why="evidence quote absent from its chapter";
+      else if(matches.some(result=>result.part.n!==match.part.n))why="evidence matches multiple chapters; use the source reference";
       else if(text.length>=60&&normalize(match.part.text).includes(normalize(text)))why="entry text copied from the source";
       else {
-        entries.push({chapter,kind,title,text,private:item.private!==false,length:match.span.length,offset:match.part.offset+match.span.offset,
+        entries.push({chapter:match.part.n,kind,title,text,private:item.private!==false,length:match.span.length,offset:match.part.offset+match.span.offset,
           aliases:Array.isArray(item.aliases)?[...new Set(item.aliases.map(value=>clean(value,80)).filter(Boolean))].slice(0,8):[]});
         continue;
       }
     }
-    rejected.push({chapter:parts.length?chapter:null,why});
+    const chapter=parts[0]?.n;
+    rejected.push({chapter:parts.every(part=>part.n===chapter)?chapter??null:null,why});
   }
   return {entries,rejected};
 }
 
-root.SFSource = Object.freeze({candidates,search,batches,reviewExtraction,terms,normalize});
+root.SFSource = Object.freeze({candidates,search,batches,reviewExtraction,terms,normalize,chapterNumber,segmentRef});
 })(globalThis);
