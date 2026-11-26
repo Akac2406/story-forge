@@ -54,18 +54,13 @@ function ffApplySourceCandidates(u,rows) {
   }
 }
 
-function ffSaveIndexedUniverse(u) {
-  const ts=Date.now(),universes={...DB.universes,[u.id]:u};
-  try {localStorage.setItem(KEY,JSON.stringify({...savedDB(),universes,ts}))}
-  catch(e) {return {ok:false,applied:false,reason:"Could not save the index metadata. Browser storage may be full."}}
-  DB.universes=universes;
-  save(ts);
-  return {ok:true,applied:true};
+function ffSaveIndexedUniverse(u,options) {
+  return commitSourceIndex(u,options);
 }
 async function ffWriteSource(u,sourceId,chapters,expected,signal) {
   const fail = reason=>({ok:false,applied:false,reason});
   if (!idb) return fail("This device could not open local source storage.");
-  if (ffSourceWrites.has(u.id)) return fail("Another source update is in progress.");
+  if (ffSourceWrites.has(u.id)||ffSourceJobs.has(u.id)) return fail("Another source update is in progress.");
   const key = ffSourceKey(u.id,sourceId);
   ffSourceWrites.add(u.id);
   try {
@@ -78,14 +73,7 @@ async function ffWriteSource(u,sourceId,chapters,expected,signal) {
     const chars = merged.reduce((sum,c)=>sum+c.text.length,0);
     source.text={stored:true,chapters:merged.length,chars,at:Date.now()};
     ffApplySourceCandidates(u,SFSource.candidates(merged));
-    await idbSet(key,merged);
-    if (signal?.aborted || ffUniverse(u.id)!==expected) {
-      if (previous) await idbSet(key,previous); else await idbDel(key);
-      return fail("Source update cancelled or the universe changed.");
-    }
-    const result=ffSaveIndexedUniverse(u);
-    if(!result.applied){if(previous)await idbSet(key,previous);else await idbDel(key)}
-    return result;
+    return await ffSaveIndexedUniverse(u,{key,chapters:merged,signal});
   } catch (e) {return fail(e?.message||"Could not store the source on this device.")}
   finally {ffSourceWrites.delete(u.id)}
 }
@@ -317,8 +305,8 @@ async function ffDeepIndex(id,options={}) {
         if (options.signal?.aborted) break;
         if (ffUniverse(id)!==current) throw Error("Universe changed during analysis.");
         const result=ffDeepMerge(current,plan.sourceId,job.chapters,entries);
-        const saved=ffSaveIndexedUniverse(result.next);
-        if(!saved.applied)throw Error(saved.reason);
+        const saved=await ffSaveIndexedUniverse(result.next,{signal:options.signal});
+        if(!saved.applied)return {ok:false,done,failed,added,reason:saved.reason};
         current=result.next;
         Object.keys(added).forEach(key=>added[key]+=result.added[key]);
         done.push(...job.chapters);
@@ -331,8 +319,8 @@ async function ffDeepIndex(id,options={}) {
         next.deep||={v:1,sources:{},entries:[]};
         const status=next.deep.sources[plan.sourceId]||{done:[],failed:[]};
         next.deep.sources[plan.sourceId]={...status,failed:[...(status.failed||[]).filter(f=>f.n!==job.n),issue]};
-        ffSaveIndexedUniverse(next);
-        current=next;
+        const saved=await ffSaveIndexedUniverse(next,{signal:options.signal});
+        if(saved.applied)current=next;
         break;
       } finally {
         options.onProgress?.({done:done.length,failed:failed.length,total:plan.jobs.length,chapter:job.n});

@@ -14,12 +14,12 @@ const realBefore = localStorage.getItem(REAL);
 let real = {}; try { real = JSON.parse(realBefore) || {} } catch (e) {}
 /* The app keeps its data in IndexedDB ("story-forge", key "story-forge-v2") when there is too much for localStorage.
    Read it from there too, read-only, and only if that database already exists (never create it). */
-if (!real.ocKey) {
+{
   try {
     const dbs = indexedDB.databases ? await indexedDB.databases() : [];
     if (dbs.some(d => d.name === "story-forge")) {
       const txt = await new Promise(res => { const q = indexedDB.open("story-forge"); q.onsuccess = () => { const db = q.result; try { if (!db.objectStoreNames.contains("kv")) { db.close(); res(null); return } const g = db.transaction("kv", "readonly").objectStore("kv").get(REAL); g.onsuccess = () => { db.close(); res(g.result || null) }; g.onerror = () => { db.close(); res(null) } } catch (e) { db.close(); res(null) } }; q.onerror = () => res(null); q.onupgradeneeded = () => { try { q.transaction.abort() } catch (e) {} res(null) } });
-      if (typeof txt === "string") { const d = JSON.parse(txt); if (d && d.ocKey) real = Object.assign({}, real, { ocKey: d.ocKey, ocProxy: d.ocProxy, ocMon: d.ocMon, ocDay: d.ocDay, ocScale: d.ocScale }) }
+      if (typeof txt === "string") { const d = JSON.parse(txt); if (d && (((real.ts||d.sourceIndexStore) && (Number(d.ts)||0) > (Number(real.ts)||0)) || (!real.ocKey && !real.ts && !d.sourceIndexStore))) real = d }
     }
   } catch (e) {}
 }

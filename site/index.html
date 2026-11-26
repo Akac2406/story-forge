@@ -326,7 +326,7 @@ const KEY="story-forge-v2",app=document.getElementById("app"),$=s=>document.quer
 function ap(p,...k){for(const c of k.flat(4)){if(c==null||c===false)continue;p.appendChild(c.nodeType?c:document.createTextNode(String(c)))}}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const num=(v,d)=>{const n=parseFloat(v);return isFinite(n)?n:d};
-const VER=105,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
+const VER=106,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
 function fixCh(se){const c=(se.chaps||[]).filter(x=>x&&x.i>=0&&x.i<Math.max(1,se.turns.length)).sort((a,b)=>a.i-b.i),out=[];c.forEach(x=>{if(!out.length||x.i>out[out.length-1].i)out.push(x)});if(!out.length||out[0].i!==0)out.unshift({i:0,t:""});se.chaps=out;return out}
 function autoCh(se){const N=se.chapN==null?1500:se.chapN,out=[{i:0,t:""}];if(N>0){let acc=0;se.turns.forEach((t,i)=>{if(t.role==="user"&&i>0&&(N===1?acc>0:acc>=N)){out.push({i,t:""});acc=0}if(t.role==="ai")acc+=words(t.text)})}return out}
 function chapsOf(se){if(!se.chaps)se.chaps=autoCh(se);return fixCh(se)}
@@ -422,7 +422,8 @@ function loadDB(){let d=null;try{d=JSON.parse(localStorage.getItem(KEY))}catch(e
       if(o.turns&&o.turns.length)d.sessions.push({id:uid(),storyId:st.id,start:s.start||"",follow:st.follow,char:{name:s.name||"",desc:s.persona||"",trait:s.trait||""},turns:o.turns.map((t,i)=>{const x={role:t.role==="user"?"user":"ai",text:t.text||""};if(i===0&&x.role==="user"&&/^Begin the story/.test(x.text))x.hide=true;return x}),temp:o.memory||"",mems:[],note:"",stats:{},upto:o.upto||0,len:s.length||"300",sugg:[],ending:null,ended:[],updated:Date.now()})}}}catch(e){}
   return norm(d)}
 let DB=loadDB(),view={n:"home",tab:"discover"},busy=false,ctrl=null,tT=null;
-let idb=null,saveT=null;
+let idb=null,saveT=null,dbCommit=null,sourceStoreReadOnly=false,sourceStoreDurable=false;
+const SOURCE_STORE_MARKER="sf-source-index-store";
 const pendingChapterRewrites=new WeakSet();
 const savedSessions=()=>DB.sessions.filter(se=>!pendingChapterRewrites.has(se));
 const savedDB=()=>({...DB,sessions:savedSessions()});
@@ -430,10 +431,92 @@ function idbOpen(){return new Promise((res,rej)=>{try{const r=indexedDB.open("st
 function idbGet(k){return new Promise((res,rej)=>{const q=idb.transaction("kv").objectStore("kv").get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})}
 function idbDel(k){return new Promise((res,rej)=>{const tx=idb.transaction("kv","readwrite");tx.objectStore("kv").delete(k);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})}
 function idbSet(k,v){return new Promise((res,rej)=>{const tx=idb.transaction("kv","readwrite");tx.objectStore("kv").put(v,k);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error)})}
-function save(localTimestamp){DB.ts=localTimestamp??Date.now();if(DB.syncAuto&&typeof syncSoon==="function")syncSoon();let ok=localTimestamp!==undefined;if(!ok)try{localStorage.setItem(KEY,JSON.stringify(savedDB()));ok=true}catch(e){try{localStorage.removeItem(KEY)}catch(x){}}
-  if(idb){clearTimeout(saveT);saveT=setTimeout(()=>{idbSet(KEY,JSON.stringify(savedDB())).catch(()=>{if(!ok)toast("Could not save. Device storage may be full.")})},200)}
-  else if(!ok)toast("Could not save. Device storage may be full.");
-  return ok||!!idb}
+const nextDBTimestamp=()=>Math.max(Date.now(),(Number(DB.ts)||0)+1);
+function flushDB(mirrored){
+  clearTimeout(saveT);saveT=null;
+  if(!idb)return;
+  if(dbCommit){saveT=setTimeout(()=>flushDB(mirrored),200);return}
+  idbSet(KEY,JSON.stringify(savedDB())).catch(()=>{if(!mirrored)toast("Could not save. Device storage may be full.")});
+}
+function save(localTimestamp){
+  if(sourceStoreReadOnly){toast("IndexedDB is unavailable. Reload before making changes.");return false}
+  dbCommit?.cancel();
+  if(sourceStoreDurable)DB.sourceIndexStore=true;
+  DB.ts=localTimestamp??nextDBTimestamp();
+  if(DB.syncAuto&&typeof syncSoon==="function")syncSoon();
+  let mirrored=localTimestamp!==undefined;
+  if(!mirrored&&!DB.sourceIndexStore)try{localStorage.setItem(KEY,JSON.stringify(savedDB()));mirrored=true}catch(e){}
+  if(idb){clearTimeout(saveT);saveT=setTimeout(()=>flushDB(mirrored),200)}
+  else if(!mirrored)toast("Could not save. Device storage may be full.");
+  return mirrored||!!idb;
+}
+/* Commit application metadata and optional source text together in the existing KV schema.
+   The v105 localStorage snapshot is a read-only fallback once this checkpoint succeeds. */
+function commitSourceIndex(universe,{key,chapters,signal}={}){
+  const fail=reason=>({ok:false,applied:false,reason});
+  if(!idb||sourceStoreReadOnly)return Promise.resolve(fail("IndexedDB storage is unavailable. Reopen the app and retry."));
+  if(dbCommit)return Promise.resolve(fail("A storage update is in progress. Retry shortly."));
+  if(signal?.aborted)return Promise.resolve(fail("Source update cancelled."));
+  const base=Number(DB.ts)||0,ts=nextDBTimestamp();
+  const state=DB,universeBefore=ffUniverse(universe.id);
+  const patch={universes:{...DB.universes,[universe.id]:universe},ts,sourceIndexStore:true};
+  return new Promise(resolve=>{
+    let tx,snapshot;
+    try{snapshot=JSON.stringify({...savedDB(),...patch});tx=idb.transaction("kv","readwrite",{durability:"strict"})}
+    catch(error){
+      // Some engines accept only the two-argument transaction signature.
+      if(!(error instanceof TypeError)||!snapshot){resolve(fail("Could not open the IndexedDB write. Retry the source update."));return}
+      try{tx=idb.transaction("kv","readwrite")}catch(e){resolve(fail("Could not open the IndexedDB write. Retry the source update."));return}
+    }
+    let issue=null;
+    const cancel=(reason="App data changed during indexing. Retry the source update.")=>{
+      try{tx.abort();issue={message:reason}}catch(e){}
+    };
+    const abort=()=>cancel("Source update cancelled.");
+    const finish=()=>{
+      dbCommit=null;
+      signal?.removeEventListener("abort",abort);
+    };
+    dbCommit={cancel};
+    signal?.addEventListener("abort",abort,{once:true});
+    tx.oncomplete=()=>{
+      finish();sourceStoreDurable=true;
+      try{localStorage.setItem(SOURCE_STORE_MARKER,"1")}catch(e){}
+      if(DB!==state||DB.ts>base){
+        // A regular save may arrive after the disk commit but before this callback.
+        // Retain that save and merge only the changed universe if it is still current.
+        DB.sourceIndexStore=true;
+        if(DB===state&&ffUniverse(universe.id)===universeBefore){
+          DB.universes={...DB.universes,[universe.id]:universe};
+        }
+        save();
+      }else{
+        Object.assign(DB,patch);clearTimeout(saveT);saveT=null;
+        if(DB.syncAuto&&typeof syncSoon==="function")syncSoon();
+      }
+      resolve({ok:true,applied:true});
+    };
+    tx.onerror=event=>{issue ||= event.target.error};
+    tx.onabort=()=>{
+      finish();
+      const error=issue||tx.error;
+      resolve(fail(error?.name==="QuotaExceededError"
+        ?"IndexedDB is full. The previous index and story data are intact. Retry when device storage is available."
+        :error?.message||"IndexedDB did not finish the source update. Retry the attachment."));
+    };
+    let store,request;
+    try{store=tx.objectStore("kv");request=store.get(KEY)}
+    catch(error){issue ||= error;tx.abort();return}
+    request.onsuccess=()=>{
+      try{
+        const stored=request.result;
+        if(stored&&(Number(JSON.parse(stored)?.ts)||0)>base){cancel("Story Forge data changed in another tab. Reload and retry.");return}
+        if(key)store.put(chapters,key);
+        store.put(snapshot,KEY);
+      }catch(error){issue ||= error;try{tx.abort()}catch(e){}}
+    };
+  });
+}
 function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(tT);tT=setTimeout(()=>t.classList.remove("on"),3800)}
 const THEMES=[["midnight","Midnight (Classic)","#0f0d17","#9b7bff"],["paper","Paper (Classic)","#f6efe2","#9b4d22"],["ink","Ink (Classic)","#000000","#5ad1c5"],["moon","Moonlit (Classic)","#121822","#8fb8ff"],["ember","Ember (Classic)","#1a0f0d","#ff7a45"],["sakura","Sakura (Classic)","#fff5f8","#d14d84"],["crimson","Crimson Eclipse","#190d16","#f05b70"],["azure","Azure Legion","#08162f","#4b95ff"],["void","Void Nexus","#140c28","#b55bff"],["spirit","Moonlit Spirit","#17182e","#a5abff"],["verdant","Verdant Wilds","#091f18","#4acb87"],["starlight","Starlight Horizon","#07172d","#48d6f2"],["bloom","Sakura Bloom","#2a1427","#f38ab7"],["thunder","Thunder Crest","#1f160e","#f6b43d"],["arcane","Arcane Veil","#1b102d","#b67bff"],["frost","Frostbound","#0a1c31","#7fc5ff"]],LIGHT={paper:1,sakura:1};
 const UI_LAYOUTS=[["classic","Classic Story Forge"],["premium","Premium Cinematic"],["modern","Modern Anime"],["adventure","Adventure Hub"],["character","Character RPG"],["world","World Map"],["guild","Guild Console"],["chronicle","Chronicle"],["academy","Academy"],["fantasy","Fantasy RPG"],["anime","Modern Anime RPG"],["jrpg","Classic JRPG"],["action","Action RPG"],["visual","Visual Novel RPG"],["kingdom","Strategy / Kingdom RPG"],["illustrated","Illustrated Reader"]];
@@ -2002,7 +2085,7 @@ function syncMergeKeys(r){const x=r&&r.keys;if(!x||typeof x!=="object"||!(+x.at>
   const mg=(loc,rem,tf)=>{const m=new Map();(loc||[]).forEach(x=>m.set(x.id,x));(rem||[]).forEach(x=>{if(!x||!x.id)return;const l=m.get(x.id);if(!l||tf(x)>tf(l))m.set(x.id,x)});return[...m.values()].filter(x=>!DB.del[x.id])};
   DB.sessions=mg(DB.sessions,r.sessions,x=>x.updated||0);DB.stories=mg(DB.stories,r.stories,x=>x.updated||0);DB.chars=mg(DB.chars,r.chars,()=>0);
   DB.found=DB.found||{};Object.keys(r.found||{}).forEach(k=>{DB.found[k]=Array.from(new Set((DB.found[k]||[]).concat(r.found[k]||[])))});DB.libWiki=Object.assign({},r.libWiki||{},DB.libWiki||{})}
-async function syncNow(manual){if(SYNC.busy)return;if(!DB.syncPass||!ocBase()){if(manual)toast("Set the connector address and a sync passphrase first.");return}SYNC.busy=true;
+async function syncNow(manual){if(sourceStoreReadOnly){if(manual)toast("Reload to reconnect to saved data before syncing.");return}if(SYNC.busy)return;if(!DB.syncPass||!ocBase()){if(manual)toast("Set the connector address and a sync passphrase first.");return}SYNC.busy=true;
   try{const k=await syncKey(DB.syncPass),url=ocBase()+"/sync",hd={"x-sync-id":k.id};let r;try{r=await fetch(url,{headers:hd})}catch(x){throw new Error("Couldn’t reach your connector. Check its address.")}
     if(r.status===501)throw new Error("Your connector has no storage yet. Add a KV namespace named SF to the Worker (steps in Settings).");
     let changed=false;if(r.ok){const txt=await r.text();if(txt){let rem;try{rem=await syncOpen(k,txt)}catch(e){throw new Error("That passphrase doesn’t match the one your other device uses.")}const before=JSON.stringify([DB.sessions.length,DB.stories.length,DB.sessions.map(x=>x.updated)]);syncMerge(rem);changed=before!==JSON.stringify([DB.sessions.length,DB.stories.length,DB.sessions.map(x=>x.updated)])}}
@@ -2397,9 +2480,11 @@ function ffSaveUniverseArtwork(id,artwork){
   const current=ffUniverse(id);
   if(!current)return{ok:false,applied:false,reason:"Universe no longer exists."};
   const next={...current,artwork};
-  const ts=Date.now();
+  const ts=nextDBTimestamp();
+  const universes={...DB.universes,[id]:next};
+  if(DB.sourceIndexStore)return commitSourceIndex(next);
   try{
-    localStorage.setItem(KEY,JSON.stringify({...savedDB(),ts,universes:{...DB.universes,[id]:next}}));
+    localStorage.setItem(KEY,JSON.stringify({...savedDB(),ts,universes}));
   }catch(e){
     return{ok:false,applied:false,reason:"Could not save artwork. Browser storage may be full."};
   }
@@ -4127,7 +4212,7 @@ function vSettings(){ap(app,h("header",null,back(()=>go({n:"home",tab:"discover"
         save();const sceneNotice=restoreScenes(DB.sessions.filter(s=>incomingSessions.has(s.id)));
         render();toast("Added "+c2+" playthrough"+(c2===1?"":"s")+" and "+c1+" world"+(c1===1?"":"s")+"."+sceneNotice)}
       else{DB=norm(Object.assign({},d,{key:DB.key,ocKey:DB.ocKey,ocProxy:DB.ocProxy,prov:DB.prov,syncPass:DB.syncPass,syncKeys:DB.syncKeys,keysAt:DB.keysAt,refs:DB.refs||[],migrated:true}));save();if(typeof apRestore==="function")apRestore(appearance,false);const sceneNotice=restoreScenes(DB.sessions);applyFs();render();toast("Backup restored."+sceneNotice)}}catch(x){toast("That file is not a Story Forge backup.")}};rd.readAsText(fl)}});
-  const backup=async()=>{const d=savedDB();delete d.qcResearch;delete d.key;delete d.ocKey;delete d.syncPass;delete d.ocProxy;delete d.price;delete d.quirk;delete d.refs;
+  const backup=async()=>{const d=savedDB();delete d.sourceIndexStore;delete d.qcResearch;delete d.key;delete d.ocKey;delete d.syncPass;delete d.ocProxy;delete d.price;delete d.quirk;delete d.refs;
     const presets=window.SFScenesV54?.exportPresets(d.sessions);
     if(presets&&Object.keys(presets).length)d.scenePresets=presets;
     const apb=typeof apBackup==="function"?apBackup():null;if(apb)d.appearance=apb;
@@ -4443,10 +4528,29 @@ async function checkUpdate(manual){if(!/^https?:$/.test(location.protocol)){if(m
 function autoChk(){let last=0;try{last=+localStorage.getItem("sf-chk")||0}catch(e){}if(Date.now()-last<216e5)return;try{localStorage.setItem("sf-chk",String(Date.now()))}catch(e){}checkUpdate(false)}
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)autoChk()});setTimeout(autoChk,4000);
 if(ttsOK()){speechSynthesis.onvoiceschanged=()=>{if(view.n==="settings"&&!$("#sheetbg"))soft()};addEventListener("pagehide",()=>speechSynthesis.cancel())}
-addEventListener("pagehide",()=>{if(idb){clearTimeout(saveT);idbSet(KEY,JSON.stringify(savedDB())).catch(()=>{})}});
-(async()=>{try{idb=await idbOpen();const v=await idbGet(KEY);if(v){const d=JSON.parse(v);let l=null;try{l=JSON.parse(localStorage.getItem(KEY))}catch(e){}if(!l||(l.ts&&(d.ts||0)>l.ts))DB=norm(d)}}catch(e){idb=null}
-  applyFs();save();render();if(DB.syncAuto&&DB.syncPass)setTimeout(()=>syncNow(false),1500)})();
-document.addEventListener("visibilitychange",()=>{if(!document.hidden&&DB.syncAuto&&DB.syncPass&&!busy)syncNow(false)});
+addEventListener("pagehide",()=>{if(idb&&!dbCommit&&!sourceStoreReadOnly)flushDB(true)});
+(async()=>{
+  let expectsIndex=false,loadedIndex=false;
+  try{expectsIndex=localStorage.getItem(SOURCE_STORE_MARKER)==="1"}catch(e){}
+  try{
+    idb=await idbOpen();
+    const v=await idbGet(KEY);
+    if(v){
+      const d=JSON.parse(v);let local=null;
+      try{local=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+      loadedIndex=!!d.sourceIndexStore;
+      if(!local||((local.ts||loadedIndex)&&(d.ts||0)>(Number(local.ts)||0)))DB=norm(d);
+    }
+  }catch(e){idb=null}
+  sourceStoreDurable=loadedIndex;
+  sourceStoreReadOnly=expectsIndex&&!loadedIndex;
+  applyFs();
+  if(idb&&!sourceStoreReadOnly)save();
+  render();
+  if(sourceStoreReadOnly)toast("The saved source index is unavailable. Reload the app to reconnect to storage.");
+  else if(DB.syncAuto&&DB.syncPass)setTimeout(()=>syncNow(false),1500);
+})();
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&!sourceStoreReadOnly&&DB.syncAuto&&DB.syncPass&&!busy)syncNow(false)});
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script><script src="visual-customization-v48.js"></script><script src="cinematic-ui-v49.js"></script><script src="character-ui-v50.js"></script><script src="character-studio-v51.js"></script><script src="relationship-map-v52.js"></script><script src="cinematic-profiles-v53.js"></script><script src="cinematic-scenes-v54.js"></script><link rel="stylesheet" href="fanfic-ui.css">
 <script src="source-index.js"></script><script src="source-index-app.js"></script><script src="fanfic-ui.js"></script>

@@ -563,13 +563,15 @@ function fanfictionHome(root){
  function universeCover(id){const u=ffUniverse(id);if(u?.artwork?.cover)return h("span",{class:"ff-cover"},h("img",{src:u.artwork.cover,alt:"",loading:"lazy"}));return cover(DB.stories.find(st=>st.fanfic?.universe===id&&(st.cover||st.coverT))||DB.stories.find(st=>st.fanfic?.universe===id))}
  function artworkEditor(id,refresh){
  const draft={...ffUniverse(id).artwork},changes=new Set(),box=h("div",{class:"ff-ui"}),preview=h("div",{class:"ff-art-preview"}),status=h("p",{role:"status"});
- const saveButton=h("button",{class:"primary",text:"Save universe artwork",onclick:()=>{
+ const saveButton=h("button",{class:"primary",text:"Save universe artwork",onclick:async()=>{
    const artwork={...ffUniverse(id)?.artwork};
    for(const key of changes){
      if(draft[key])artwork[key]=draft[key];
      else delete artwork[key];
    }
-   const result=ffSaveUniverseArtwork(id,artwork);
+   saveButton.disabled=true;
+   const result=await ffSaveUniverseArtwork(id,artwork);
+   saveButton.disabled=false;
    if(result.applied){closeSheet(true);refresh()}
    else status.textContent=result.reason;
  }});

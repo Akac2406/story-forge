@@ -50,3 +50,11 @@ The two import screens default to Smart. Integrations that omit `mode` retain th
 Chapter text uses the local IndexedDB store. Library attachment matches exact hashes or the catalog's normalized body hash when the Library stripped a heading. Older Library copies with split or combined sections may require the original EPUB. Source storage and status are asynchronous. The index dashboard shows local storage, chapter-bounded passage search, analysis coverage, and original evidence on demand by chapter and offset. Backups carry the index and analysis, with raw excerpts excluded from Quick Create drafts.
 
 AI-derived facts remain provisional. They carry chapter and source provenance. The app does not turn them into a character's personal knowledge. Chapter text is bounded before narration, treated as reference data, and can be disabled per story in Universe Studio. Re-analysis retires only its own prior rows, retaining earlier versions for pinned playthroughs. Existing canon revision preview and adoption use the revised index without updating playthroughs automatically.
+
+## v106 storage reliability
+
+Chapter text and its updated universe catalog are committed in one IndexedDB transaction using the existing `story-forge` key/value store. An attachment or Deep checkpoint only reports success after that transaction completes. Quota errors, cancellations and competing edits abort the write and leave any prior chapter text and metadata intact. There is no IndexedDB schema upgrade or universe reimport.
+
+The successful transaction also moves the app's live save snapshot to IndexedDB on that device. The previous localStorage snapshot stays in place as a fallback and is no longer rewritten by ordinary saves after the move. Startup prefers the newer IndexedDB state. A small advisory marker prevents writes to the fallback if IndexedDB temporarily cannot reconnect. The storage marker is omitted from exported backups.
+
+On v106, open the existing universe's Source Indexing panel and attach the matching original file again. Successful v105 attachments use the same chapter keys and remain readable.

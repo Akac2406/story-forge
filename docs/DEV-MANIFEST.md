@@ -202,3 +202,9 @@ Implemented Basic and local Smart imports, chapter retention and hash-based atta
 ### Release 105 acceptance — 2026-11-25 MT
 
 Anna requested the completed indexing release. Version and service-worker cache are both 105. All 107 regression scripts passed across local runs, including four fixture-dependent import/crop checks run with generated fixtures and the three simulated trial configurations. A legacy repair assertion assumed the pre-v94 history behavior and was reproduced on v104; the updated test checks one delimited repaired history example. No memory engine change. The staged v104 → v105 upgrade preserved the existing fixture and reopened offline; the new service worker refreshes precached assets on install. A synthetic 502-chapter index also passed the spoiler-boundary check. No paid requests during development.
+
+### v106 candidate — source storage reliability
+
+v105's source text write completed before a mandatory whole-app localStorage metadata write. Quota exhaustion in the second store produced the reported error and required a separate rollback. Reproduced on the v105 build with a synthetic 502-chapter EPUB against a real near-full browser quota.
+
+v106 stages the chapter write and current app metadata together in IndexedDB. A failed write clears neither existing stories nor prior source text. Existing source keys and backup contents remain compatible. Local verification covers Chromium and WebKit with an iPhone viewport, IndexedDB quota failure after the first write was queued, cancellation, a newer tab's snapshot, same-file retry, saved artwork, recovery after IndexedDB reconnects, and an offline v105-to-v106 upgrade. No paid requests.
