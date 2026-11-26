@@ -19,7 +19,7 @@ Paid testing: the memory-overhaul OpenCode authorization (stop at 45% monthly, l
 
 | | |
 |---|---|
-| Production release | **105**: Intelligent Source Indexing. 104: Quick Create editor fix and default memory recall for new playthroughs. 103: AI Quick Create. 102: reliability fixes. 101: visual overhaul |
+| Production release | **106**: atomic source storage hotfix. 105: Intelligent Source Indexing. 104: Quick Create editor fix and default memory recall for new playthroughs. 103: AI Quick Create. 102: reliability fixes. 101: visual overhaul |
 | Test address | https://deploy-preview-7--celebrated-brigadeiros-580c41.netlify.app (draft PR #7 = `memory-overhaul`) |
 | Integration branch | `memory-overhaul`: Claude merges, runs the full suite, pushes |
 | ChatGPT branch | `ui-overhaul` (fast-forwarded to `memory-overhaul` after each integration) |
@@ -208,3 +208,7 @@ Anna requested the completed indexing release. Version and service-worker cache 
 v105's source text write completed before a mandatory whole-app localStorage metadata write. Quota exhaustion in the second store produced the reported error and required a separate rollback. Reproduced on the v105 build with a synthetic 502-chapter EPUB against a real near-full browser quota.
 
 v106 stages the chapter write and current app metadata together in IndexedDB. A failed write clears neither existing stories nor prior source text. Existing source keys and backup contents remain compatible. Local verification covers Chromium and WebKit with an iPhone viewport, IndexedDB quota failure after the first write was queued, cancellation, a newer tab's snapshot, same-file retry, saved artwork, recovery after IndexedDB reconnects, and an offline v105-to-v106 upgrade. No paid requests.
+
+### Release 106 acceptance — 2026-11-25 MT
+
+All 108 regression scripts passed across local runs, with the older EPUB and screenshot workflows covered using generated fixtures. Reproduced v105's exact error and verified the same 502-chapter fixture attaches successfully on the patched build in Chromium and WebKit using the iPhone viewport. Confirmed atomic rollback on a simulated IndexedDB quota error, cancellation and stale cross-tab write, and recovery after temporary IndexedDB unavailability. The staged v105 upgrade kept existing data and opened offline with the v106 cache. No paid model requests. Ready for the authorized production release.
