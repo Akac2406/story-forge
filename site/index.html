@@ -2558,14 +2558,14 @@ async function qcResearch(query,o){o=o||{};const q=String(query||"").trim().slic
   return qcResearchShape(res,Object.assign({},o,{characters:chars}),false,Date.now())}
 function qcClearResearch(){const n=Object.keys(DB.qcResearch||{}).length;DB.qcResearch={};save();return{ok:true,applied:n>0,reason:n?null:"empty",removed:n}}
 async function qcResearchLive(query,o){o=o||{};const q=String(query||"").trim().slice(0,200);if(!q)return{ok:false,reason:"Enter the title of the work"};
-  try{qcAbort(o.signal);const works=await searchWorks(q);qcAbort(o.signal);const w=works[0]||null,title=(w&&w.t)||q,us=qcSlug(title),facts=[],sources=[];
+  try{qcAbort(o.signal);const works=await searchWorks(q);qcAbort(o.signal);const w=SFQuick.pickWork(works,q),title=(w&&w.t)||q,us=qcSlug(title),facts=[],sources=[];
     if(w)facts.push({id:"f0",text:title+(w.ty?" is a "+w.ty:"")+(w.y?" ("+w.y+")":"")+(w.a?" by "+w.a:"")+(w.st?"; status: "+w.st:"")+".",source:{title:w.src||"Search"},confidence:"confirmed"});
-    let wiki=null;try{wiki=await wikiFind(title)}catch(e){}qcAbort(o.signal);
-    if(wiki&&wiki.base){let req=0;const seen=new Set();const add=async(t,charName)=>{if(!t||seen.has(t)||req>=8)return;seen.add(t);req++;qcAbort(o.signal);const pg=await wikiPage(wiki.base,t,900).catch(()=>null);if(!pg||!pg.x)return;
+    let wiki=null;for(const n of SFQuick.wikiNames(q,w)){try{wiki=await wikiFind(n)}catch(e){}qcAbort(o.signal);if(wiki&&wiki.base)break}
+    if(wiki&&wiki.base){let req=0;const seen=new Set();const add=async(t,charName)=>{if(!t||seen.has(t)||req>=8)return;seen.add(t);req++;qcAbort(o.signal);const pg=await wikiPage(wiki.base,t,1400).catch(()=>null);if(!pg||!pg.x)return;const text=SFQuick.cleanWikiText(pg.x,charName||pg.t);if(text.length<20)return;
         const url=wiki.base+"/wiki/"+encodeURIComponent(pg.t.replace(/ /g,"_"));sources.push({title:(wiki.name||"Wiki")+": "+pg.t,url});
-        facts.push({id:"f"+facts.length,text:pg.x.slice(0,400),source:{title:(wiki.name||"Wiki")+": "+pg.t,url},confidence:"confirmed",charId:charName?"char:"+us+":"+qcSlug(charName):undefined,charName:charName||undefined})};
-      const top=await wikiSearch(wiki.base,title,2).catch(()=>[]);for(const t of top)await add(t);
-      for(const n of (o.characters||[]).slice(0,5)){const hit=(await wikiSearch(wiki.base,n,1).catch(()=>[]))[0];await add(hit,hit?n:null)}}
+        facts.push({id:"f"+facts.length,text:text.slice(0,400),source:{title:(wiki.name||"Wiki")+": "+pg.t,url},confidence:"confirmed",charId:charName?"char:"+us+":"+qcSlug(charName):undefined,charName:charName||undefined})};
+      const top=(await wikiSearch(wiki.base,(w&&w.alt)||title,6).catch(()=>[])).filter(t=>!SFQuick.skipPage(t)).slice(0,2);for(const t of top)await add(t);
+      for(const n of (o.characters||[]).slice(0,5)){const hit=(await wikiSearch(wiki.base,n,3).catch(()=>[])).find(t=>!SFQuick.skipPage(t));await add(hit,hit?n:null)}}
     if(!facts.length)return{ok:false,reason:"Couldn't find this work. Import the source, or describe it yourself and the setup will mark what it couldn't confirm."};
     return{ok:true,reason:null,work:w?{title,kind:w.ty||"",year:w.y||null,author:w.a||""}:{title,kind:"",year:null,author:""},wiki:wiki&&wiki.base||null,facts,sources}}
   catch(e){return{ok:false,reason:e&&e.name==="AbortError"?"cancelled":"Research failed: "+(e&&e.message||e)}}}
@@ -2575,7 +2575,7 @@ function qcResearchUniverse(title,facts){const us=qcSlug(title),chars={};(facts|
 function qcCtx(u,facts){return{universe:u,facts,fan:SFFan,director:window.SFDirector,game:window.SFGame,cinema:window.SFCinema,appearance:window.SFAppearance,apCatalog:window.SFAppearance?apCatalog():null}}
 /* Allowed values the model may choose from, straight from the engines. */
 function qcPromptOpts(u){const C=window.SFCinema,cin={};if(C)for(const k of ["lighting","overlay","transition","dialogueBox","narration","textReveal"])if(Array.isArray(C.SPEC.settings[k]))cin[k]=C.SPEC.settings[k];
-  return{modes:SFFan.MODES,careers:window.SFGame?SFGame.careerList().map(c=>c.id):[],universe:u,layouts:C?C.LAYOUTS.map(l=>l.id):[],presets:C?C.PRESETS.map(p=>p.id):[],cinematic:cin,themes:window.SFVisualV48&&SFVisualV48.themes?SFVisualV48.themes.map(t=>typeof t==="string"?t:t&&t.id).filter(Boolean):[]}}
+  return{modes:SFFan.MODES,careers:window.SFGame?SFGame.careerList().map(c=>c.id):[],universe:u,layouts:C?C.LAYOUTS.map(l=>l.id):[],presets:C?C.PRESETS.map(p=>p.id):[],cinematic:cin,director:window.SFDirector?SFDirector.OPTS:null,themes:window.SFVisualV48&&SFVisualV48.themes?SFVisualV48.themes.map(t=>typeof t==="string"?t:t&&t.id).filter(Boolean):[]}}
 async function qcPreview(input,o){o=o||{};input=input||{};try{qcAbort(o.signal);
     const u=o.universeId?ffUniverse(o.universeId):qcResearchUniverse(input.sourceTitle||"Untitled",o.facts||[]);if(o.universeId&&!u)return{ok:false,reason:"universe missing"};
     const facts=SFQuick.spoilerFilter(o.facts||(o.universeId?SFQuick.factsFromUniverse(u):[]),input.maxChapter).facts,msgs=SFQuick.prompt(input,facts,qcPromptOpts(u)),est=SFQuick.estimate(msgs,SFQuick.MAX_OUT.preview);
@@ -2588,11 +2588,11 @@ async function qcPreview(input,o){o=o||{};input=input||{};try{qcAbort(o.signal);
 function qcStage(bp,r,kind){if(!r.ok)return{ok:false,reason:r.reason,issues:r.issues||[],staged:false};if(!r.diff.length)return{ok:true,reason:"no change",blueprint:bp,diff:[],issues:r.issues,staged:false};
   const id="p"+(++QC.seq);QC.prop={id,kind,base:bp,blueprint:r.blueprint};return{ok:true,reason:null,proposalId:id,blueprint:r.blueprint,diff:r.diff,issues:r.issues,staged:true}}
 async function qcEdit(bp,instruction,o){o=o||{};if(!QC.ctx)return{ok:false,reason:"preview first"};if(!String(instruction||"").trim())return{ok:false,reason:"Describe the change"};
-  qcSettle(bp);try{qcAbort(o.signal);const r=await ask(SFQuick.editPrompt(bp,instruction),{max:SFQuick.MAX_OUT.edit,temp:0.2,signal:o.signal,lite:true});qcAbort(o.signal);const p=SFQuick.parse(r.text);if(!p.ok)return{ok:false,reason:p.reason};
+  qcSettle(bp);try{qcAbort(o.signal);const r=await ask(SFQuick.editPrompt(bp,instruction,qcPromptOpts(QC.ctx.universe)),{max:SFQuick.MAX_OUT.edit,temp:0.2,signal:o.signal,lite:true});qcAbort(o.signal);const p=SFQuick.parse(r.text);if(!p.ok)return{ok:false,reason:p.reason};
     return qcStage(bp,SFQuick.applyPatch(bp,p.value,qcCtx(QC.ctx.universe,QC.ctx.facts)),"edit")}catch(e){return{ok:false,reason:qcCancelled(e)?"cancelled":String(e&&e.message||e)}}}
 /* Regenerate one top-level section (respects locks); staged like qcEdit. o: {signal, instruction} */
 async function qcRegenerate(bp,section,o){o=o||{};if(!QC.ctx)return{ok:false,reason:"preview first"};const c=SFQuick.canRegenerate(bp,section);if(!c.ok)return c;
-  qcSettle(bp);try{qcAbort(o.signal);const r=await ask(SFQuick.regeneratePrompt(bp,section,QC.ctx.input,QC.ctx.facts,{instruction:o.instruction}),{max:SFQuick.MAX_OUT.regenerate,temp:0.5,signal:o.signal,lite:true});qcAbort(o.signal);
+  qcSettle(bp);try{qcAbort(o.signal);const r=await ask(SFQuick.regeneratePrompt(bp,section,QC.ctx.input,QC.ctx.facts,Object.assign(qcPromptOpts(QC.ctx.universe),{instruction:o.instruction})),{max:SFQuick.MAX_OUT.regenerate,temp:0.5,signal:o.signal,lite:true});qcAbort(o.signal);
     const p=SFQuick.parse(r.text);if(!p.ok)return{ok:false,reason:p.reason};if(!p.value||!("value" in p.value))return{ok:false,reason:"the reply had no value"};
     return qcStage(bp,SFQuick.applyPatch(bp,{set:{[section]:p.value.value}},qcCtx(QC.ctx.universe,QC.ctx.facts)),"regenerate")}catch(e){return{ok:false,reason:qcCancelled(e)?"cancelled":String(e&&e.message||e)}}}
 function qcAccept(proposalId){const P=QC.prop;if(!P||P.id!==proposalId)return{ok:false,reason:"no such proposal"};QC.prop=null;qcPush(P.base,P.blueprint);return{ok:true,reason:null,blueprint:P.blueprint}}
@@ -2609,8 +2609,8 @@ function qcRedo(id){const H=QC.hist[id||QC.cur];const b=H&&H.redo.pop();if(!b)re
 /* Preflight estimates: build the exact request, send nothing. */
 function qcEstimatePreview(input,o){o=o||{};input=input||{};const u=o.universeId?ffUniverse(o.universeId):qcResearchUniverse(input.sourceTitle||"Untitled",o.facts||[]);if(o.universeId&&!u)return{ok:false,reason:"universe missing"};
   const facts=SFQuick.spoilerFilter(o.facts||(o.universeId?SFQuick.factsFromUniverse(u):[]),input.maxChapter).facts;return Object.assign({ok:true,reason:null,requests:1},SFQuick.estimate(SFQuick.prompt(input,facts,qcPromptOpts(u)),SFQuick.MAX_OUT.preview))}
-function qcEstimateEdit(bp,instruction){return Object.assign({ok:true,reason:null,requests:1},SFQuick.estimate(SFQuick.editPrompt(bp,instruction||""),SFQuick.MAX_OUT.edit))}
-function qcEstimateRegenerate(bp,section,o){o=o||{};if(!QC.ctx)return{ok:false,reason:"preview first"};const c=SFQuick.canRegenerate(bp,section);if(!c.ok)return c;return Object.assign({ok:true,reason:null,requests:1},SFQuick.estimate(SFQuick.regeneratePrompt(bp,section,QC.ctx.input,QC.ctx.facts,{instruction:o.instruction}),SFQuick.MAX_OUT.regenerate))}
+function qcEstimateEdit(bp,instruction){return Object.assign({ok:true,reason:null,requests:1},SFQuick.estimate(SFQuick.editPrompt(bp,instruction||"",QC.ctx?qcPromptOpts(QC.ctx.universe):{}),SFQuick.MAX_OUT.edit))}
+function qcEstimateRegenerate(bp,section,o){o=o||{};if(!QC.ctx)return{ok:false,reason:"preview first"};const c=SFQuick.canRegenerate(bp,section);if(!c.ok)return c;return Object.assign({ok:true,reason:null,requests:1},SFQuick.estimate(SFQuick.regeneratePrompt(bp,section,QC.ctx.input,QC.ctx.facts,Object.assign(qcPromptOpts(QC.ctx.universe),{instruction:o.instruction})),SFQuick.MAX_OUT.regenerate))}
 /* Changing a story already in play (docs/QUICK-CREATE-API.md "Change preview"). Works on one playthrough. A change is planned from a patch
    (AI or the player's own), shown as a preview, and applied only on qcChangeApply. Turns, past events and recorded outcomes are never
    touched; gameplay and protected memories can only be added to. qcChangeUndo restores the parts a change touched if nothing changed since. */
@@ -2673,9 +2673,9 @@ function qcChangeStage(se,plan,instruction){const id="sc"+(++QCS.seq);QCS.prop={
   return{ok:true,reason:plan.changes.length?null:"no change",proposalId:plan.changes.length?id:null,changes:plan.changes,refused:plan.refused,staged:plan.changes.length>0}}
 /* Preview a change: from the player's own patch (no request), or from a plain-words request (one model request). */
 function qcChangePreviewPatch(se,patch){if(!se)return{ok:false,reason:"no playthrough"};return qcChangeStage(se,qcPlanChange(se,patch),"")}
-function qcEstimateChange(se,instruction){return Object.assign({ok:true,reason:null,requests:1},SFQuick.estimate(SFQuick.changePrompt(qcStoryView(se),instruction||""),SFQuick.MAX_OUT.change))}
+function qcEstimateChange(se,instruction){return Object.assign({ok:true,reason:null,requests:1},SFQuick.estimate(SFQuick.changePrompt(qcStoryView(se),instruction||"",qcPromptOpts(se&&se.canon?ffU(se):null)),SFQuick.MAX_OUT.change))}
 async function qcChangePreview(se,instruction,o){o=o||{};if(!se)return{ok:false,reason:"no playthrough"};if(!String(instruction||"").trim())return{ok:false,reason:"Describe the change"};
-  try{qcAbort(o.signal);const r=await ask(SFQuick.changePrompt(qcStoryView(se),instruction),{max:SFQuick.MAX_OUT.change,temp:0.2,signal:o.signal,lite:true});qcAbort(o.signal);const p=SFQuick.parse(r.text);if(!p.ok)return{ok:false,reason:p.reason};
+  try{qcAbort(o.signal);const r=await ask(SFQuick.changePrompt(qcStoryView(se),instruction,qcPromptOpts(se.canon?ffU(se):null)),{max:SFQuick.MAX_OUT.change,temp:0.2,signal:o.signal,lite:true});qcAbort(o.signal);const p=SFQuick.parse(r.text);if(!p.ok)return{ok:false,reason:p.reason};
     return qcChangeStage(se,qcPlanChange(se,p.value),instruction)}catch(e){return{ok:false,reason:qcCancelled(e)?"cancelled":String(e&&e.message||e)}}}
 function qcChangeReject(id){if(!QCS.prop||(id&&QCS.prop.id!==id))return{ok:false,reason:"no such proposal"};QCS.prop=null;return{ok:true,reason:null}}
 /* Apply atomically. Refused if the playthrough changed since the preview. Records one undo step in se.qcChanges (last 10). */

@@ -48,6 +48,11 @@ try:
     lab("Story concept", "textarea").fill("save Lys"); lab("Player character", "textarea").fill("I take over Kael")
     B("Generate blueprint").click(); pg.wait_for_selector(RT + " >> text=3 · Review your blueprint")
     ok(J("QC.ctx.input.maxChapter") == 10, "the spoiler limit reaches generation")
+    # open sections survive a redraw (Apply) and closed ones stay closed
+    pg.evaluate("document.querySelectorAll('#qcroot details').forEach(d=>d.open=false);null")
+    pg.locator(R + "details[data-qc-section='Gameplay'] > summary").click()
+    pg.evaluate("[...document.querySelectorAll('#qcroot button')].find(b=>b.textContent==='Apply gameplay').click();null"); pg.wait_for_timeout(200)
+    ok(J("document.querySelector(\"#qcroot details[data-qc-section='Gameplay']\").open") and not J("document.querySelector(\"#qcroot details[data-qc-section='Canon']\").open"), "an open section stays open after Apply; closed sections stay closed")
     # structured gameplay editor: add a stat
     B("Add Stat").click()
     exact = lambda t: pg.locator(R + "label").filter(has_text=re.compile("^" + t + "$")).locator("input")
