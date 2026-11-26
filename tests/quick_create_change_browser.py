@@ -57,6 +57,11 @@ try:
     MODE["change"] = {"set": {"memory.notes.1": {"text": "Kael keeps his memories.", "who": ["Kael"]}, "gameplay.stats.1": {"id": "wisdom", "name": "Wisdom", "min": 0, "max": 100, "start": 5}, "gameplay.quests.1": {"id": "q2", "title": "Second", "steps": ["b"]},
         "romance.pacing": "fast", "locks": [{"kind": "event", "id": "ev:ember:3"}], "director.pacing": "fast", "styleProfile.humor": "dry", "appearance.cinematic.lighting": "night", "appearance.colors.accent": "#ff3366"}}
     pr = J(f"qcChangePreview({SE},'add things')"); ok(pr["staged"] and not pr["refused"], "a clean change has nothing refused " + str(pr["refused"]))
+    MODE["change"] = {"set": {"romance.pacing": "slow"}, "skipped": [{"request": "rename Kael", "reason": "the player is part of the story's start"}]}
+    sk = J(f"qcChangePreview({SE},'rename Kael and slow romance')"); ok(sk["skipped"][0]["request"] == "rename Kael" and any(x["path"] == "request" and "rename Kael" in x["reason"] for x in sk["refused"]), "parts the model skipped are shown with the refused list")
+    MODE["change"] = {"set": {"memory.notes.1": {"text": "Kael keeps his memories.", "who": ["Kael"]}, "gameplay.stats.1": {"id": "wisdom", "name": "Wisdom", "min": 0, "max": 100, "start": 5}, "gameplay.quests.1": {"id": "q2", "title": "Second", "steps": ["b"]},
+        "romance.pacing": "fast", "locks": [{"kind": "event", "id": "ev:ember:3"}], "director.pacing": "fast", "styleProfile.humor": "dry", "appearance.cinematic.lighting": "night", "appearance.colors.accent": "#ff3366"}}
+    pr = J(f"qcChangePreview({SE},'add things')")
     # stale preview
     J(f"{SE}.memRecall=!{SE}.memRecall;null"); st = J(f"id=>qcChangeApply({SE},id)", pr["proposalId"]); J(f"{SE}.memRecall=!{SE}.memRecall;if(!{SE}.memRecall)delete {SE}.memRecall;null")
     ok(not st["applied"] and "changed since" in st["reason"], "a preview made stale by another change is refused")

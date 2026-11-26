@@ -2589,7 +2589,7 @@ function qcStage(bp,r,kind){if(!r.ok)return{ok:false,reason:r.reason,issues:r.is
   const id="p"+(++QC.seq);QC.prop={id,kind,base:bp,blueprint:r.blueprint};return{ok:true,reason:null,proposalId:id,blueprint:r.blueprint,diff:r.diff,issues:r.issues,staged:true}}
 async function qcEdit(bp,instruction,o){o=o||{};if(!QC.ctx)return{ok:false,reason:"preview first"};if(!String(instruction||"").trim())return{ok:false,reason:"Describe the change"};
   qcSettle(bp);try{qcAbort(o.signal);const r=await ask(SFQuick.editPrompt(bp,instruction,qcPromptOpts(QC.ctx.universe)),{max:SFQuick.MAX_OUT.edit,temp:0.2,signal:o.signal,lite:true});qcAbort(o.signal);const p=SFQuick.parse(r.text);if(!p.ok)return{ok:false,reason:p.reason};
-    return qcStage(bp,SFQuick.applyPatch(bp,p.value,qcCtx(QC.ctx.universe,QC.ctx.facts)),"edit")}catch(e){return{ok:false,reason:qcCancelled(e)?"cancelled":String(e&&e.message||e)}}}
+    return Object.assign(qcStage(bp,SFQuick.applyPatch(bp,p.value,qcCtx(QC.ctx.universe,QC.ctx.facts)),"edit"),{skipped:SFQuick.skippedOf(p.value)})}catch(e){return{ok:false,reason:qcCancelled(e)?"cancelled":String(e&&e.message||e)}}}
 /* Regenerate one top-level section (respects locks); staged like qcEdit. o: {signal, instruction} */
 async function qcRegenerate(bp,section,o){o=o||{};if(!QC.ctx)return{ok:false,reason:"preview first"};const c=SFQuick.canRegenerate(bp,section);if(!c.ok)return c;
   qcSettle(bp);try{qcAbort(o.signal);const r=await ask(SFQuick.regeneratePrompt(bp,section,QC.ctx.input,QC.ctx.facts,Object.assign(qcPromptOpts(QC.ctx.universe),{instruction:o.instruction})),{max:SFQuick.MAX_OUT.regenerate,temp:0.5,signal:o.signal,lite:true});qcAbort(o.signal);
@@ -2676,7 +2676,7 @@ function qcChangePreviewPatch(se,patch){if(!se)return{ok:false,reason:"no playth
 function qcEstimateChange(se,instruction){return Object.assign({ok:true,reason:null,requests:1},SFQuick.estimate(SFQuick.changePrompt(qcStoryView(se),instruction||"",qcPromptOpts(se&&se.canon?ffU(se):null)),SFQuick.MAX_OUT.change))}
 async function qcChangePreview(se,instruction,o){o=o||{};if(!se)return{ok:false,reason:"no playthrough"};if(!String(instruction||"").trim())return{ok:false,reason:"Describe the change"};
   try{qcAbort(o.signal);const r=await ask(SFQuick.changePrompt(qcStoryView(se),instruction,qcPromptOpts(se.canon?ffU(se):null)),{max:SFQuick.MAX_OUT.change,temp:0.2,signal:o.signal,lite:true});qcAbort(o.signal);const p=SFQuick.parse(r.text);if(!p.ok)return{ok:false,reason:p.reason};
-    return qcChangeStage(se,qcPlanChange(se,p.value),instruction)}catch(e){return{ok:false,reason:qcCancelled(e)?"cancelled":String(e&&e.message||e)}}}
+    const plan=qcPlanChange(se,p.value),sk=SFQuick.skippedOf(p.value);sk.forEach(x=>plan.refused.push({path:"request",reason:x.request+": "+x.reason}));return Object.assign(qcChangeStage(se,plan,instruction),{skipped:sk})}catch(e){return{ok:false,reason:qcCancelled(e)?"cancelled":String(e&&e.message||e)}}}
 function qcChangeReject(id){if(!QCS.prop||(id&&QCS.prop.id!==id))return{ok:false,reason:"no such proposal"};QCS.prop=null;return{ok:true,reason:null}}
 /* Apply atomically. Refused if the playthrough changed since the preview. Records one undo step in se.qcChanges (last 10). */
 function qcChangeApply(se,id){const P=QCS.prop;if(!P||P.id!==id||!se||P.seId!==se.id)return{ok:false,applied:false,reason:"no such proposal"};

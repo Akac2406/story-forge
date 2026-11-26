@@ -17,8 +17,9 @@ Sources: **Dashboard** = Anna's OpenCode usage page (authoritative). **Estimate*
 | 2026-11-25 04:10 | Claude | Hybrid + recall on v94: Cedar Ridge (30 turns) | 1.09% | 0.43% | 0.22% | Estimate |
 | 2026-11-25 08:40 | Claude | Hybrid + recall on v95 (player action for LEARNED): Glass Orchard (40 turns) | 1.78% | 0.71% | 0.36% | Estimate |
 | 2026-11-25 10:20 | Claude | Hybrid + recall on v96 (name resolution): Glass Orchard (40 turns; interrupted at turn 6 by a Chrome disconnect, resumed) | ~1.8% | ~0.7% | ~0.36% | Estimate |
+| 2026-11-25 17:30 | Claude | Quick Create first real run (approved by Anna): 6 non-streaming requests (2 setups, 2 edits, 1 section rewrite, 1 story-change preview) on live v102 with the dev code loaded in one tab; list cost about $0.001 per request | ~0.1% | ~0.05% | ~0.05% | Estimate |
 
-Running total toward the 45% stop: **about 6.2%** monthly (4% dashboard + 2.23% estimate since). Next dashboard reading will replace the estimate.
+Running total toward the 45% stop: **about 6.3%** monthly (4% dashboard + 2.28% estimate since). Next dashboard reading will replace the estimate.
 
 ## Results: Glass Orchard, hybrid + recall (2026-11-25)
 

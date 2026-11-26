@@ -39,6 +39,13 @@ Works on one playthrough `se`. Nothing changes until `qcChangeApply`.
 - `qcChangeApply(se, proposalId)` applies everything or nothing. Refused with "the story changed since the preview; preview again" if the playthrough changed after the preview. Never touches `se.turns`. `qcChangeReject(proposalId)`.
 - `qcChangeHistory(se)` (last 10, newest first) and `qcChangeUndo(se)`: restores what the last change touched (playthrough parts and story appearance) if nothing changed since; otherwise "the story changed since that change; undo the settings one by one".
 
+## First real-model run (2026-11-25) and what changed
+Six real requests on live v102 with this code loaded in one tab (Frieren: Beyond Journey's End, an original character). The setup, a section rewrite and a story-change preview were good on the first try. Fixes from the run:
+- Research picks the main work over spin-offs (`SFQuick.pickWork`: exact title/alternate title first, spin-offs/parts/seasons demoted, the original medium preferred), tries several names to find the wiki (`wikiNames`), skips gallery/season/release/front pages (`skipPage`) and turns fandom infobox text into one short line (`cleanWikiText`). Coverage counts only facts with real content (`coverage.useful`).
+- Every prompt (setup, edit, regenerate, change) carries the field shapes with the engines' real option lists (`SFQuick.schemaLines`), including each director setting. Before this the edit prompt had no shapes and the model sent stats and quests without ids.
+- Director settings are checked one by one (a value equal to the default is kept); style and director values accept common spellings (`enumOf`: "third limited" → thirdLimited); stats, quests, milestones and rules without an id get one from their name.
+- `qcEdit` and `qcChangePreview` return `skipped: [{request, reason}]` for parts the model declined (e.g. renaming the player after the story started); the change preview also lists them in `refused` with `path: "request"`. UI: show `skipped` with the edit proposal.
+
 ## Guarantees (tested)
 
 - Retrieved and imported text, and the player's request, are quoted as data; the model may only cite facts by id. Unknown citations, canon ids and careers are removed **and reported** in `issues`; unknown fields are reported in `unsupported` (never silently dropped).
