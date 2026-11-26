@@ -326,7 +326,7 @@ const KEY="story-forge-v2",app=document.getElementById("app"),$=s=>document.quer
 function ap(p,...k){for(const c of k.flat(4)){if(c==null||c===false)continue;p.appendChild(c.nodeType?c:document.createTextNode(String(c)))}}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const num=(v,d)=>{const n=parseFloat(v);return isFinite(n)?n:d};
-const VER=114,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
+const VER=115,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
 function fixCh(se){const c=(se.chaps||[]).filter(x=>x&&x.i>=0&&x.i<Math.max(1,se.turns.length)).sort((a,b)=>a.i-b.i),out=[];c.forEach(x=>{if(!out.length||x.i>out[out.length-1].i)out.push(x)});if(!out.length||out[0].i!==0)out.unshift({i:0,t:""});se.chaps=out;return out}
 function autoCh(se){const N=se.chapN==null?1500:se.chapN,out=[{i:0,t:""}];if(N>0){let acc=0;se.turns.forEach((t,i)=>{if(t.role==="user"&&i>0&&(N===1?acc>0:acc>=N)){out.push({i,t:""});acc=0}if(t.role==="ai")acc+=words(t.text)})}return out}
 function chapsOf(se){if(!se.chaps)se.chaps=autoCh(se);return fixCh(se)}
@@ -2516,10 +2516,22 @@ function canonReview(se,k){if(!se||!se.canon||!ffRawU(se))return Promise.resolve
       const L=crParse(r.text);if(!L){rv.why="unreadable";return rv}rv.ok=true;rv.issues=L}
     catch(e){rv.why=e&&e.code==="no_key"?"no key":String(e&&e.message||e).slice(0,120)}
     return rv})().then(rv=>{se.canonReviews=(se.canonReviews||[]).filter(x=>x.k!==k).concat([rv]).slice(-20);if(rv.ok)se.canonReviewed=Math.max(se.canonReviewed??-1,k);save();
-      if(rv.ok&&rv.issues.length)toast("Canon review of "+rv.title+": "+rv.issues.length+" thing"+(rv.issues.length>1?"s":"")+" don't match the book. Menu → Canon & Fanfiction → Canon review.");return rv}).finally(()=>CRQ.delete(key));
+      if(rv.ok&&rv.issues.some(x=>x.fix)){se.crPending=rv.id;save();crOffer(se)}else if(rv.ok&&rv.issues.length)toast("Canon review of "+rv.title+": "+rv.issues.length+" thing"+(rv.issues.length>1?"s":"")+" don't match the book. Menu → Canon & Fanfiction → Canon review.");return rv}).finally(()=>CRQ.delete(key));
   CRQ.set(key,pr);return pr}
+/* crOffer(se): on the story screen, ask whether to put a review's fixes into effect now (v114, Anna). Shown when the player is in this
+   story and nothing else is open; otherwise it waits (se.crPending) and is offered after the next reply. "Put into effect" adds the ticked
+   fixes as must-follow notes; "Not now" leaves them in Menu → Canon & Fanfiction → Canon review. */
+function crOffer(se){const rv=(se.canonReviews||[]).find(x=>x.id===se.crPending);if(!rv||rv.applied||rv.dismissed){delete se.crPending;return false}
+  if(view.n!=="chat"||view.id!==se.id||busy||$("#sheetbg"))return false;
+  const pick=rv.issues.map(x=>!!x.fix),box=h("div",{class:"cr-offer"});
+  const done=(applied)=>{if(applied){let n=0;rv.issues.forEach((x,i)=>{if(pick[i]&&crAddNote(se,x.fix).applied)n++});rv.applied=true;toast(n?"Put into effect: "+n+" note"+(n>1?"s":"")+" added.":"Already in your notes.")}else rv.dismissed=true;delete se.crPending;save();closeSheet()};
+  ap(box,h("p",{class:"sub",text:rv.issues.length+" thing"+(rv.issues.length>1?"s":"")+" in "+rv.title+" don't match the book. Put the fixes into effect for the next replies? They become must-follow notes you can remove later."}),
+    rv.issues.map((x,i)=>h("label",{style:"display:flex;gap:10px;align-items:flex-start;margin:10px 0"},x.fix?h("input",{type:"checkbox",checked:true,onchange:e=>{pick[i]=e.target.checked}}):h("span",{style:"width:16px"}),
+      h("span",null,h("span",{text:"["+x.kind+"] "+x.text}),x.book?h("span",{class:"sub",style:"display:block",text:"Book: "+x.book}):null,x.fix?h("b",{style:"display:block;font-weight:600",text:"Fix: "+x.fix}):null))),
+    h("div",{class:"row"},h("button",{class:"primary",text:"Yes, put into effect",onclick:()=>done(true)}),h("button",{text:"Not now",onclick:()=>done(false)})));
+  sheet("Canon review",box);return true}
 /* After a reply: review the chapter that just ended (once). */
-function canonReviewAuto(se){if(!se||!se.canon||se.canonReviewOff||!ffRawU(se))return null;const C=chapsOf(se),k=C.length-2;if(k<0||(se.canonReviewed??-1)>=k||(se.canonReviews||[]).some(x=>x.k===k))return null;return canonReview(se,k)}
+function canonReviewAuto(se){if(!se||!se.canon||se.canonReviewOff||!ffRawU(se))return null;if(se.crPending&&crOffer(se))return null;const C=chapsOf(se),k=C.length-2;if(k<0||(se.canonReviewed??-1)>=k||(se.canonReviews||[]).some(x=>x.k===k))return null;return canonReview(se,k)}
 function crAddNote(se,fix){fix=String(fix||"").trim();if(!fix)return{ok:false,applied:false,reason:"empty"};se.notes=Array.isArray(se.notes)?se.notes:[];if(se.notes.some(n=>n.text===fix))return{ok:false,applied:false,reason:"already a note"};
   se.notes.push({id:uid(),text:fix,pri:"must",on:true,created:Date.now(),scope:{type:"always",value:""},from:"canon-review"});save();return{ok:true,applied:true,reason:null}}
 function canonReviewSheet(se){const box=h("div"),draw=()=>{box.textContent="";const R=(se.canonReviews||[]).slice().reverse();
@@ -3009,19 +3021,29 @@ function ctlSheet(se){se.ctl=se.ctl||{};const box=h("div");
   sheet("Story controls",box)}
 function branchAt(se,i,o){o=o||{};const n=JSON.parse(JSON.stringify(se)),root=se.root||se.id;n.id=uid();n.turns=n.turns.slice(0,i+1);const cut=n.turns.length;
   if(n.mem&&window.SFMemory)for(let j=se.turns.length-1;j>=cut;j--){const tt=se.turns[j];if(tt&&tt.mx)try{SFMemory.undo(n.mem,tt.mx)}catch(e){}}
-  n.parent=se.id;n.root=root;n.bname="Branch "+DB.sessions.filter(x=>x.root===root).length+1;n.bname="Branch "+(DB.sessions.filter(x=>x.root===root).length+1);
-  if(n.chaps){const before=n.chaps.length;n.chaps=n.chaps.filter(c=>c.i<cut);if(n.chaps.length<before){n.facts=[];delete n.saga;delete n.fprev}}
+  n.parent=se.id;n.root=root;n.bname="Branch "+(DB.sessions.filter(x=>x.root===root).length+1);
+  trimState(n,se,cut);
+  (n.saves||[]);n.sugg=[];n.ending=null;n.updated=Date.now();delete n.pos;delete n.och;n.use={};
+  if(o.prep)o.prep(n);DB.sessions.push(n);if(!o.staged)save();go({n:"chat",id:n.id});toast(o.msg||"New branch started. The original playthrough is unchanged.");return n}
+/* trimState(n, src, cut): make playthrough n match its first `cut` turns. src is the untrimmed playthrough (may be n's earlier copy).
+   Shared by branches and Rewind (v114: Rewind used to keep story facts, chapter summaries, stats, life log and reviews from the removed
+   turns, so the narrator rebuilt the old storyline — Anna's report). Memory v2 is handled by the caller (SFMemory.undo / memDrop). */
+function trimState(n,src,cut){
+  if(n.chaps){const before=n.chaps.length;n.chaps=n.chaps.filter(c=>c.i<cut);if(n.chaps.length<before){n.facts=[];delete n.saga;delete n.fprev;
+    /* cast: drop people first met in removed chapters; feelings and bonds of the others were updated later, so reset them to the setup */
+    if(n.cast&&typeof n.cast==="object"){const k=n.chaps.length,st=getStory(n.storyId),c0={};((st&&st.cast0)||[]).forEach(c=>{c0[c.n]=c.hook||""});
+      for(const [name,c] of Object.entries(n.cast)){if(!c||(c.ch||0)>=k){delete n.cast[name];continue}delete c.b;c.a=c0[name]||""}}}}
   for(const link of Array.isArray(n.relationshipLinks)?n.relationshipLinks:[]){
     if(Array.isArray(link?.history))link.history=link.history.filter(entry=>entry&&relationshipMilestoneAt(entry)<=cut);
   }
   if(Array.isArray(n.sceneReviews))n.sceneReviews=n.sceneReviews.filter(entry=>entry.turn<cut);
   if(Array.isArray(n.worldSchedule))n.worldSchedule=branchWorldSchedule(n.worldSchedule,cut);
   trimProgression(n,cut);SFCanon.trimForBranch(n,cut);
-  if((se.upto||0)>cut){n.upto=0;n.temp="";n.mems=[]}
+  if((src.upto||0)>cut){n.upto=0;n.temp="";n.mems=[]}
   const last=n.turns[cut-1];if(last&&last.st2)n.stats=Object.assign({},last.st2);
-  if(se.life){const nx=se.turns.slice(cut).find(t=>t.pl);if(nx){n.life=Object.assign({},nx.pl);n.log=(se.log||[]).slice(0,nx.ln||0)}}
-  (n.saves||[]);n.sugg=[];n.ending=null;n.updated=Date.now();delete n.pos;delete n.och;n.use={};
-  if(o.prep)o.prep(n);DB.sessions.push(n);if(!o.staged)save();go({n:"chat",id:n.id});toast(o.msg||"New branch started. The original playthrough is unchanged.");return n}
+  if(src.life){const nx=src.turns.slice(cut).find(t=>t.pl);if(nx){n.life=Object.assign({},nx.pl);n.log=(src.log||[]).slice(0,nx.ln||0)}}
+  if(n.chaps&&n.chaps.length){const lc=n.chaps[n.chaps.length-1],end=(src.chaps||[]).find(c=>c.i>lc.i);if(end&&end.i>cut||!end&&src.turns.length>cut){delete lc.sum;if(n.fprev)n.facts=n.fprev.k===n.chaps.length-1&&Array.isArray(n.fprev.f)?n.fprev.f.slice():n.facts;delete n.fprev}}
+  if(Array.isArray(n.canonReviews)){const nc=(n.chaps||[{}]).length;n.canonReviews=n.canonReviews.filter(r=>r.k<nc-1)}delete n.canonReviewed;delete n.posHint;delete n.posRemind;delete n.crPending}
 function saveSheet(se,st){const box=h("div"),C=st.kind==="character"?null:chapsOf(se),root=se.root||se.id;
   const pts=se.turns.map((t,i)=>({t,i})).filter(x=>x.t.save);
   const fam=DB.sessions.filter(x=>x.id!==se.id&&((x.root||x.id)===root));
@@ -4230,7 +4252,7 @@ function turnMenu(se,i){if(busy)return;const t=se.turns[i],standing=t.role==="us
   const C=chOK?chapsOf(se):[],ci=i>0&&t.role==="ai"&&se.turns[i-1].role==="user"?i-1:i,isStart=C.some(c=>c.i===ci);
   sheet("Message",h("div",null,ta,standing.length?h("button",{text:"Pin as note",onclick:()=>editCanonNote(se,se,null,standing.join("\n"))}):null,h("div",{class:"row"},h("button",{class:"primary",text:"Save edit",onclick:()=>{const v=ta.value.trim();if(v){t.text=v;save()}closeSheet()}}),
     confirmBtn("Delete message",()=>{memDrop(se,[i]);se.turns.splice(i,1);shiftProgressionAfterDeletion(se,i);if(Array.isArray(se.divergences))se.divergences=se.divergences.filter(e=>e.turn!==i).map(e=>e.turn>i?{...e,turn:e.turn-1}:e);if(se.mem&&window.SFMemory)SFMemory.shiftTurns(se.mem,i,-1);if(i<se.upto)se.upto--;(se.chaps||[]).forEach(c=>{if(c.i>i)c.i--});if(chOK)fixCh(se);save();closeSheet()},""),
-    confirmBtn("Rewind to here",()=>{memDrop(se,se.turns.map((_,j)=>j).filter(j=>j>i));se.turns.splice(i+1);trimProgression(se,se.turns.length);SFCanon.trimForBranch(se,se.turns.length);se.upto=Math.min(se.upto,se.turns.length);se.ending=null;se.sugg=[];if(chOK)fixCh(se);save();closeSheet()},"")),
+    confirmBtn("Rewind to here",()=>{memDrop(se,se.turns.map((_,j)=>j).filter(j=>j>i));const src=JSON.parse(JSON.stringify(se));se.turns.splice(i+1);trimState(se,src,se.turns.length);se.upto=Math.min(se.upto,se.turns.length);se.ending=null;se.sugg=[];if(chOK)fixCh(se);save();closeSheet()},"")),
     h("p",{class:"sub",text:"Edits and deletions change what the narrator remembers. Rewind removes everything after this message."}),
     chOK?h("div",{class:"row"},!isStart?h("button",{text:"Start a new chapter here",onclick:()=>{se.chaps.push({i:ci,t:""});fixCh(se);save();closeSheet()}}):ci>0?h("button",{text:"Join with the previous chapter",onclick:()=>{se.chaps=se.chaps.filter(c=>c.i!==ci);fixCh(se);save();closeSheet()}}):null):null,
     t.role==="ai"&&chOK?h("div",{class:"row"},h("button",{text:t.img?"Paint this scene again":"Picture this scene",onclick:()=>{closeSheet(true);scenePic(se,i)}}),t.img?confirmBtn("Remove picture",async()=>{try{if(t.img.indexOf(":")<0)await idbDel("gen:"+t.img)}catch(e){}delete t.img;save();closeSheet()},""):null):null,
