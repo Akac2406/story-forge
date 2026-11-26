@@ -111,7 +111,7 @@ const nameOf=(u,id)=>((u&&u.chars||{})[id]||{}).name||String(id).split(':').pop(
  * Characters in record.knownBy (or, for non-secrets without knownBy, record.who) know it regardless of reader spoilers; others know only common facts
  * (no who, not secret) already revealed by the position; the takeover character adds explicit foreknowledge. Never 'everyone knows'. */
 function knows(u,canon,charId){const pos=canon&&canon.position&&canon.position.ch||0,rev=canon&&canon.rev||Infinity,fk=new Set(canon&&canon.identity&&canon.identity.canon===charId?arr(canon.identity.foreknowledge):[]);
-  return arr(u&&u.records).filter(r=>(r.rev==null||r.rev<=rev)&&r.canon!=='fanon'&&(fk.has(r.id)||(r.knownBy?arr(r.knownBy):(r.kind==='secret'?[]:arr(r.who))).includes(charId)||(!arr(r.who).length&&r.kind!=='secret'&&(!r.spoilerAt||r.spoilerAt.ch<=pos))))}
+  return arr(u&&u.records).filter(r=>r.src!=='deep'&&(r.rev==null||r.rev<=rev)&&r.canon!=='fanon'&&(fk.has(r.id)||(r.knownBy?arr(r.knownBy):(r.kind==='secret'?[]:arr(r.who))).includes(charId)||(!arr(r.who).length&&r.kind!=='secret'&&(!r.spoilerAt||r.spoilerAt.ch<=pos))))}
 /* identity(u, canon, charId) -> {canon, player?, inherited?, foreknowledge[], age} — separate records, canon is never modified. */
 function identity(u,canon,charId){const c=(u&&u.chars||{})[charId]||null,id=canon&&canon.identity||{},tk=id.canon===charId,age=canon&&canon.position&&canon.position.ages?canon.position.ages[charId]:undefined;
   return{canon:c,player:tk?Object.assign({},id.player||{}):null,inherited:tk?id.inherited||null:null,foreknowledge:tk?arr(id.foreknowledge).slice():[],age:age??null,controlled:tk}}

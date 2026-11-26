@@ -13,8 +13,8 @@ const META=['id','locked'];
 const LIMITS={facts:40,factChars:400,promptChars:24000,characters:24,notes:20,edits:4000};
 
 /* facts: [{id, text, source:{title, url}, confidence:'confirmed'|'uncertain'}] — from research or an imported universe. */
-function factsFromUniverse(u,max){const out=[];for(const c of Object.values(u&&u.chars||{}).slice(0,15))out.push({id:'u'+out.length,text:(c.name||c.id)+(c.desc?': '+str(c.desc,200):''),source:{title:(u.name||u.id)+' (imported source)'},confidence:'confirmed',charId:c.id});
-  for(const e of arr(u&&u.events).slice(0,15))out.push({id:'u'+out.length,text:str(e.title||e.text||e.id,300)+(e.ch!=null?' (chapter '+e.ch+')':''),source:{title:(u.name||u.id)+' (imported source)'},confidence:'confirmed',eventId:e.id});
+function factsFromUniverse(u,max){const out=[];for(const c of Object.values(u&&u.chars||{}).slice(0,15))out.push({id:'u'+out.length,text:(c.name||c.id)+(c.desc?': '+str(c.desc,200):''),source:{title:(u.name||u.id)+' (imported source)'},confidence:c.canon==='uncertain'?'uncertain':'confirmed',ch:c.firstCh,charId:c.id});
+  for(const e of arr(u&&u.events).filter(e=>!e.private).slice(0,15))out.push({id:'u'+out.length,text:str(e.title||e.text||e.id,300)+(e.ch!=null?' (chapter '+e.ch+')':''),source:{title:(u.name||u.id)+' (imported source)'},confidence:e.src==='deep'?'uncertain':'confirmed',ch:e.ch,eventId:e.id});
   return out.slice(0,max||LIMITS.facts)}
 function cleanFacts(facts){return arr(facts).slice(0,LIMITS.facts).map((f,i)=>({id:str(f.id||'f'+i,16),text:str(f.text,LIMITS.factChars).replace(/[\u0000-\u001f]/g,' '),source:{title:str(f.source&&f.source.title,120),url:/^https:\/\//.test(f.source&&f.source.url||'')?str(f.source.url,300):''},confidence:f.confidence==='confirmed'?'confirmed':'uncertain',charId:f.charId||undefined,eventId:f.eventId||undefined}))}
 
@@ -31,7 +31,8 @@ function schemaLines(o){o=o||{};return[
     'styleProfile: {pov: first|second|thirdLimited|omniscient|multi, tense: past|present, pacing: slow|measured|fast, dialogue: sparse|balanced|heavy, description: spare|moderate|lush, balance: narration|balanced|dialogue, innerMonologue: none|light|frequent, humor: none|dry|light|frequent, suspense: low|medium|high, rhythm: short|varied|long|flowing, tone, structure} describing how the source is written. Describe choices only; never quote or copy the source.']}
 /* prompt(input, facts, o) -> messages. input: {sourceTitle, concept, character, preferences?}. o: {modes (allowed ids), careers (ids), universe (chars/events ids)} */
 function prompt(input,facts,o){o=o||{};input=input||{};const F=cleanFacts(facts);
-  const charIds=Object.keys(o.universe&&o.universe.chars||{}).slice(0,60),evIds=arr(o.universe&&o.universe.events).map(e=>e.id).slice(0,60);
+  const max=input.maxChapter??Infinity;
+  const charIds=[...new Set(F.map(f=>f.charId).filter(Boolean).concat(Object.values(o.universe&&o.universe.chars||{}).filter(c=>(c.firstCh||0)<=max).map(c=>c.id)))].slice(0,60),evIds=arr(o.universe&&o.universe.events).filter(e=>!e.private&&(e.ch||0)<=max).map(e=>e.id).slice(0,60);
   const sys=['You set up an interactive fanfiction story for a player. Answer with ONE JSON object and nothing else.',
     'Fields: '+FIELDS.join(', ')+'.',
     ...schemaLines(o),
@@ -192,7 +193,7 @@ const usefulFact=f=>String(f&&f.text||'').replace(/\([^)]*\)/g,'').trim().length
 /* Spoiler limit: drop facts that name a chapter/episode/volume past maxCh (the player hasn't reached it). Returns {facts, removed}. */
 const SPOILER_RE=/\b(?:chapter|chapters|ch\.?|episode|ep\.?|volume|vol\.?|arc)\s*#?(\d{1,4})/gi;
 function spoilerFilter(facts,maxCh){if(maxCh==null||!Number.isFinite(+maxCh))return{facts:arr(facts),removed:0};const out=[];let removed=0;
-  for(const f of arr(facts)){const ns=[...String(f&&f.text||'').matchAll(SPOILER_RE)].map(m=>+m[1]);if(ns.some(n=>n>+maxCh))removed++;else out.push(f)}return{facts:out,removed}}
+  for(const f of arr(facts)){const ns=[...String(f&&f.text||'').matchAll(SPOILER_RE)].map(m=>+m[1]);if((f&&f.ch!=null&&+f.ch>+maxCh)||ns.some(n=>n>+maxCh))removed++;else out.push(f)}return{facts:out,removed}}
 /* Coverage = how much research found (pages, requested characters). It is separate from each fact's confidence. */
 function coverage(res,characters){const F=arr(res&&res.facts),req=arr(characters).map(c=>String(c).trim()).filter(Boolean),norm=x=>String(x||'').toLowerCase();
   const found=req.filter(c=>F.some(f=>norm(f.charName)===norm(c)&&usefulFact(f))),pages=arr(res&&res.sources).length,conf=F.filter(f=>f.confidence==='confirmed').length,useful=F.filter(usefulFact).length;

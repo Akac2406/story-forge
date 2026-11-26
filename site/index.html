@@ -1578,7 +1578,7 @@ function canonRecord(se,st,ai,raw){if(!ai||st.kind==="character")return;const tu
   const i=metaAt(raw),line=i<0?"":((raw.slice(i).match(/^[\s*_]*CANON[*_]*\s*:\s*(.*)$/mi)||[])[1]||"");
   const list=SFCanon.parseDivergence(line).concat(SFCanon.localChecks(se,ai.text));if(!list.length)return;if(!ai.tid)ai.tid=uid();
   SFCanon.record(se,st,turn,ai.tid,list)}
-function buildMsgs(se,st,hist,action,days=0){if(se.sim)st=Object.assign({},st,{title:se.sim.canon||se.world||st.title,canon:se.sim.canon||"",setting:se.world||"",style:"",lore:""});const c=se.char,L=se.len||"300",isC=st.kind==="character",life=se.life,who=c.name||"the player";
+function buildMsgs(se,st,hist,action,days=0,sourceBlock=""){if(se.sim)st=Object.assign({},st,{title:se.sim.canon||se.world||st.title,canon:se.sim.canon||"",setting:se.world||"",style:"",lore:""});const c=se.char,L=se.len||"300",isC=st.kind==="character",life=se.life,who=c.name||"the player";
   /* v87: the prompt is built from named sections. Mandatory player instructions and locked canon sit near the top and are
      echoed in the final message; if the prompt grows too large, optional sections are dropped in a fixed order, never the mandatory ones. */
   const SV=DB.saver||0,CM=SFCanon.mode(se,st),present=((se.mem&&se.mem.scene&&se.mem.scene.who)||[]).slice(0,10);
@@ -1637,6 +1637,7 @@ function buildMsgs(se,st,hist,action,days=0){if(se.sim)st=Object.assign({},st,{t
     if(rs.length)add("feelings","\n\nHow the characters in this scene currently feel about each other (from what has happened; feelings can be one-sided):\n"+rs.map(r=>"- "+r.a+" toward "+r.b+": "+SFChar.label(r)+" (trust "+(r.trust||0)+", affection "+(r.affection||0)+")").join("\n"),0,3)}catch(e){}
   if(se.director&&se.director.enabled&&window.SFDirector&&!isC)try{const db=dirBlock(se);if(db)add("story director","\n\n"+db,0,2)}catch(e){console.warn("director failed",e)}
   if(se.game&&se.game.enabled&&window.SFGame&&!isC)try{const gb=SFGame.block(se.game);if(gb)add("gameplay","\n\n"+gb,0,2)}catch(e){console.warn("gameplay failed",e)}
+  if(sourceBlock&&!isC)add("source passages","\n\n"+sourceBlock,0,4);
   if(se.canon&&window.SFFan&&!isC)try{const fb=ffCanonFor(se);if(fb)add("fanfiction canon","\n\n"+fb,0,2)}catch(e){console.warn("fanfiction canon failed",e)}
   {const sp=se.styleProfile||(st&&st.fanfic&&st.fanfic.styleProfile);if(sp&&!isC){const L=[];if(sp.tense)L.push(sp.tense+" tense");if(sp.pacing)L.push(sp.pacing+" pacing");if(sp.dialogue)L.push(sp.dialogue+" dialogue");if(sp.description)L.push(sp.description+" description");if(sp.tone)L.push("tone: "+String(sp.tone).slice(0,120));if(sp.balance)L.push(sp.balance==="balanced"?"balanced narration and dialogue":sp.balance+"-led");if(sp.innerMonologue)L.push(sp.innerMonologue+" inner monologue");if(sp.humor)L.push((sp.humor==="none"?"no":sp.humor)+" humor");if(sp.suspense)L.push(sp.suspense+" suspense");if(sp.rhythm)L.push(sp.rhythm+" sentence rhythm");if(sp.structure)L.push("structure: "+String(sp.structure).slice(0,160));
     if(L.length)add("source style","\n\nSOURCE STYLE (match these choices in your own words; never copy text from the source): "+L.join("; ")+".",0,3)}}
@@ -1749,6 +1750,7 @@ async function send(text,hide,show,days=0,replay=null){const se=DB.sessions.find
   if(needSum(se)){toast("Tidying the story’s memory first…");await step("memory tidy-up",()=>summarize(se))}
   const myRefs=[...new Set(refsFor(st.id).concat(refsFor(se.id),replay?refsFor(replay.sourceId):[]))];let rp="";if(myRefs.length)rp=(await step("reference notes",()=>refPick(se,st,text,myRefs),Math.min(prepLim,60000)))||"";
   let wn="";const wb=wikiOf(se,st);if(wb&&DB.wikiOn!==false&&!(se.sim&&se.sim.ph==="setup")&&!myRefs.some(r=>r.wiki===wb))wn=(await step("wiki notes",()=>wikiPick(se,st,text,wb),Math.min(prepLim,45000)))||"";
+  const sourceBlock=ffRawU(se)?.indexMode?await step("source passages",()=>ffSourcePrompt(se,st,se.turns,text),Math.min(2500,prepLim)):"";
   if(late.length)toast("Sending without "+late.join(" and ")+": it was taking too long. It will finish in the background.");
   if(PRE.cancel){PRE.cancel=false;toast("Cancelled.");return}
   const REG=REGV;const hist=se.turns.slice(),u={role:"user",text},ai={role:"ai",text:"",ps:Object.assign({},se.stats)};if(hide)u.hide=true;if(show)u.show=show;if(days&&REG)u.worldDays=days;
@@ -1757,7 +1759,7 @@ async function send(text,hide,show,days=0,replay=null){const se=DB.sessions.find
   let nc=false;if(st.kind!=="character"){const C=chapsOf(se),N=se.chapN==null?1500:se.chapN;if(!se.turns.length)nc=true;else if(N>0){let w=0;for(let j=C[C.length-1].i;j<se.turns.length;j++)if(se.turns[j].role==="ai")w+=words(se.turns[j].text);nc=N===1?w>0:w>=N}}
   if(replay)nc=replay.chapterStart;
   if(st.kind!=="character"&&view.och){const L=chapsOf(se).length-1;delete view.och[L];delete view.och[L+1];se.och=Object.assign({},view.och)}delete se.pos;
-  se.nc=nc;se.rp=rp;se.wn=wn;const msgs=buildMsgs(se,st,hist,text,days);delete se.nc;delete se.rp;delete se.wn;delete se.imp;{const PR=PREPORT.get(se);if(PR&&PR.mandatoryOver){toast("Your protected instructions are too long to send ("+PR.mandatoryChars.toLocaleString()+" of "+PR.mandatoryCap.toLocaleString()+" characters). Shorten notes, narrow their scope, or unlock an entry. See Prompt inspector for details.");return}}const ui=se.turns.length;se.turns.push(u,ai);REGV=null;if(nc&&ui>0&&!se.chaps.some(ch=>ch.i===ui))se.chaps.push({i:ui,t:""});se.sugg=[];se.delta={};busy=true;ctrl=new AbortController();if(!hide&&!show)view.draft="";render();
+  se.nc=nc;se.rp=rp;se.wn=wn;const msgs=buildMsgs(se,st,hist,text,days,sourceBlock);delete se.nc;delete se.rp;delete se.wn;delete se.imp;{const PR=PREPORT.get(se);if(PR&&PR.mandatoryOver){toast("Your protected instructions are too long to send ("+PR.mandatoryChars.toLocaleString()+" of "+PR.mandatoryCap.toLocaleString()+" characters). Shorten notes, narrow their scope, or unlock an entry. See Prompt inspector for details.");return}}const ui=se.turns.length;se.turns.push(u,ai);REGV=null;if(nc&&ui>0&&!se.chaps.some(ch=>ch.i===ui))se.chaps.push({i:ui,t:""});se.sugg=[];se.delta={};busy=true;ctrl=new AbortController();if(!hide&&!show)view.draft="";render();
   let raw="",committed=false;
   /* Stall watchdog: a reply stream that sends nothing for DB.stallWait seconds (default 300) is stopped the same way as the Stop button. */
   const myCtrl=ctrl;let lastTick=Date.now(),stalled=false;const stallT=setInterval(()=>{if(Date.now()-lastTick>num(DB.stallWait,300)*1000){clearInterval(stallT);stalled=true;myCtrl.abort()}},Math.min(5000,num(DB.stallWait,300)*250));
@@ -2386,7 +2388,8 @@ function memResolve(se,cid,choice,o){const d=(se.memDiag||[]).find(x=>"c"+x.t===
   d.rp.resolved={choice:String(choice||"keep"),at:Date.now(),edited:edit?o.edit.id:null};save();return{ok:true,reason:null,edit}}
 /* Fanfiction contract v2 adapter (docs/FANFIC-CONTRACT.md). Engine is pure (fanfic-engine.js, SFFan); this layer reads files, stores DB.universes and saves.
    Every mutation returns {ok, applied, reason}; rejected changes never touch saved data. */
-const ffU=se=>se&&se.canon&&(DB.universes||{})[se.canon.universe]||null;
+const ffRawU=se=>se?.canon?ffUniverse(se.canon.universe):null;
+const ffU=se=>ffIndexedUniverse(ffRawU(se),se?.canon?.rev);
 function ffListUniverses(){return Object.values(DB.universes||{}).map(u=>({id:u.id,name:u.name,rev:u.rev,updated:u.updated,sources:(u.sources||[]).length,chapters:(u.sources||[]).reduce((a,x)=>a+(x.chapters||[]).length,0),chars:Object.keys(u.chars||{}).length,events:(u.events||[]).length}))}
 function ffUniverse(id){return(DB.universes||{})[id]||null}
 function ffSaveUniverse(u){if(!u||!u.id)return{ok:false,applied:false,reason:"no id"};DB.universes=DB.universes||{};DB.universes[u.id]=u;save();return{ok:true,applied:true,reason:null}}
@@ -2405,18 +2408,38 @@ function ffSaveUniverseArtwork(id,artwork){
   return{ok:true,applied:true,reason:null};
 }
 /* ffImportPreview(file, {title, kind, universeId, onProgress(i,n), signal}) -> {ok, reason?, preview:{added, duplicate, conflicts, rev, names[], report}, commit()} — nothing is saved until commit(). */
-async function ffImportPreview(file,o){o=o||{};const stop=()=>o.signal&&o.signal.aborted;try{if(stop())return{ok:false,reason:"cancelled"};let input,title=o.title;
-    if(/\.epub$/i.test(file.name||"")){const r=await epubText(await file.arrayBuffer(),o.onProgress,true);if(stop())return{ok:false,reason:"cancelled"};input=r.parts.map((t,i)=>({n:i+1,title:r.heads[i]||("Part "+(i+1)),text:t}));title=title||r.title}
-    else input=await file.text();if(stop())return{ok:false,reason:"cancelled"};
-    const ix=SFFan.indexSource(input,{title:title||String(file.name||"Source").replace(/\.[a-z0-9]+$/i,""),kind:o.kind||"novel"}),uid0=o.universeId||SFFan.slug(ix.source.title),existing=ffUniverse(uid0),u=existing||Object.assign(SFFan.emptyUniverse(ix.source.title),{id:uid0}),m=SFFan.mergeImport(u,ix,{note:o.note});
-    return{ok:true,preview:{universe:m.universe.id,added:m.added,duplicate:m.duplicate,conflicts:m.conflicts,rev:m.rev,names:ix.names.slice(0,60),report:ix.report},commit:()=>{
-      if(stop())return{ok:false,applied:false,reason:"cancelled"};
-      const latest=ffUniverse(uid0);
+async function ffImportPreview(file,o={}){
+  const fail=reason=>({ok:false,applied:false,reason});
+  try{
+    const parsed=await ffReadSource(file,o);
+    const mode=o.mode||"basic";
+    if(!["basic","smart","deep"].includes(mode))return fail("Unknown indexing mode.");
+    const ix=SFFan.indexSource(parsed.input,{title:o.title||parsed.title,kind:o.kind||"novel"});
+    const chapters=ffIndexedChapters(ix);
+    if(!chapters.length)return fail("No readable chapters were found.");
+    if(mode!=="basic")ix.names=SFSource.candidates(chapters);
+    const id=o.universeId||SFFan.slug(ix.source.title),existing=ffUniverse(id);
+    const u=existing||{...SFFan.emptyUniverse(ix.source.title),id};
+    const merge=SFFan.mergeImport(u,ix,{note:o.note});
+    const source=merge.universe.sources.find(s=>s.id===ix.source.id),added=new Set(merge.added);
+    const bodies=new Map(chapters.map(c=>[c.n,c.bodyHash]));
+    for(const chapter of source.chapters)if(added.has(chapter.n)){chapter.rev=merge.rev;chapter.bodyHash=bodies.get(chapter.n)}
+    const preview={universe:id,sourceId:source.id,mode,added:merge.added,duplicate:merge.duplicate,conflicts:merge.conflicts,
+      rev:merge.rev,names:ix.names.slice(0,60),report:{...ix.report,names:ix.names.length}};
+    return {ok:true,preview,commit:()=>{
+      if(o.signal?.aborted)return fail("cancelled");
+      const latest=ffUniverse(id);
       if(latest!==existing&&(!latest||!existing||
-        Object.keys({...latest,...existing}).some(key=>key!=="artwork"&&latest[key]!==existing[key])))return{ok:false,applied:false,reason:"Universe changed. Preview the import again."};
-      return ffSaveUniverse(latest?.artwork?{...m.universe,artwork:latest.artwork}:m.universe);
-    }}}
-  catch(e){return{ok:false,reason:String(e&&e.message||e)}}}
+        Object.keys({...latest,...existing}).some(k=>k!=="artwork"&&latest[k]!==existing[k])))
+        return fail("Universe changed. Preview the import again.");
+      const next={...merge.universe};
+      if(latest?.artwork)next.artwork=latest.artwork;
+      if(mode==="basic")return ffSaveUniverse(next);
+      next.indexMode=next.indexMode==="deep"?"deep":"smart";
+      return ffWriteSource(next,source.id,chapters,latest,o.signal);
+    }};
+  }catch(e){return fail(e.message)}
+}
 function ffCharId(u,name){if(!u||!name)return null;const n=String(name).toLowerCase(),A=u.aliases||{};for(const id in A)if((A[id]||[]).some(a=>String(a).toLowerCase()===n||String(a).toLowerCase().split(" ")[0]===n.split(" ")[0]))return id;for(const id in u.chars||{})if(String(u.chars[id].name).toLowerCase()===n)return id;return null}
 function ffWorldState(se){const u=ffU(se),st={alive:{},at:{},knows:{},rel:{},has:{}};if(!u)return st;(se.dead||[]).forEach(n=>{const id=ffCharId(u,n);if(id)st.alive[id]=false});
   Object.keys(u.chars||{}).forEach(id=>{if(!(id in st.alive)&&(se.turns||[]).length)st.alive[id]=true});const sc=se.mem&&se.mem.scene;if(sc&&sc.where)(sc.who||[]).forEach(n=>{const id=ffCharId(u,n);if(id)st.at[id]=sc.where});
@@ -2436,9 +2459,9 @@ const ffSetRomance=(se,p)=>ffMut(se,c=>SFFan.setRomance(c,p)),ffRomanceAllowed=(
   ffAgeAt=(se,id)=>{const u=ffU(se);return u?SFFan.ageAt(u,se.canon,id):null},ffRank=(entries,config,seed)=>SFFan.rank(entries,config,seed),
   ffRecordCompetition=(se,id,result,o)=>ffMut(se,c=>SFFan.recordCompetition(c,id,result,o));
 /* Phase 8: persistent universes and crossovers (docs/FANFIC-CONTRACT.md). Upgrading a playthrough to a newer source revision is always explicit and undoable (ffUndo). */
-const ffUpgradePreview=se=>{const u=ffU(se);return u?SFFan.upgradePreview(u,se.canon,ffWorldState(se)):null},
+const ffUpgradePreview=se=>{const u=ffIndexedUniverse(ffRawU(se));return u?SFFan.upgradePreview(u,se.canon,ffWorldState(se)):null},
   ffUpgrade=se=>{const u=ffU(se);return u?ffMut(se,c=>SFFan.upgrade(c,u)):{ok:false,applied:false,reason:"universe missing"}},
-  ffPromote=(se,rec,o)=>{const u=ffU(se);if(!u)return{ok:false,applied:false,reason:"universe missing"};const r=SFFan.promote(u,rec,Object.assign({session:se.id},o||{}));if(r.applied){DB.universes[u.id]=r.universe;save()}return{ok:r.ok,applied:r.applied,reason:r.reason}},
+  ffPromote=(se,rec,o)=>{const u=ffRawU(se);if(!u)return{ok:false,applied:false,reason:"universe missing"};const r=SFFan.promote(u,rec,Object.assign({session:se.id},o||{}));if(r.applied){DB.universes[u.id]=r.universe;save()}return{ok:r.ok,applied:r.applied,reason:r.reason}},
   ffDemote=(uid,id)=>{const u=ffUniverse(uid);if(!u)return{ok:false,applied:false,reason:"universe missing"};const r=SFFan.demote(u,id);if(r.applied){DB.universes[uid]=r.universe;save()}return{ok:r.ok,applied:r.applied,reason:r.reason}},
   ffCrossover=ids=>{const L=(ids||[]).map(ffUniverse);return L.length>1&&L.every(Boolean)?SFFan.crossover(L):null},
   ffPowerRule=(se,from,to)=>SFFan.powerRule(se&&se.canon,from,to),
@@ -2520,7 +2543,7 @@ function cvSetExpressionArt(se,name,expression,ref){
 }
 /* Appearance (SFAppearance) on the existing v48 storage; presets in "sf.appearance.presets". Scopes: "global", "mobile", "desktop", "story" (this playthrough's story) or "story:<id>". */
 /* Fanfiction story creation (Studio): ffNewCanonPreview validates the choices; ffCreateStory adds a story whose every new playthrough starts with that canon. */
-const ffNewCanonPreview=(uid,o)=>{const u=ffUniverse(uid);if(!u)return{ok:false,reason:"universe missing"};if(o&&o.crossover&&(o.crossover.with||[]).some(id=>!ffUniverse(id)))return{ok:false,reason:"crossover universe missing"};return SFFan.newCanon(u,o)},
+const ffNewCanonPreview=(uid,o)=>{const u=ffIndexedUniverse(ffUniverse(uid));if(!u)return{ok:false,reason:"universe missing"};if(o&&o.crossover&&(o.crossover.with||[]).some(id=>!ffUniverse(id)))return{ok:false,reason:"crossover universe missing"};return SFFan.newCanon(u,o)},
   ffModes=()=>SFFan.MODES.slice();
 function ffCreateStory(univId,o){o=o||{};const r=ffNewCanonPreview(univId,o);if(!r.ok)return{ok:false,applied:false,reason:r.reason};const u=ffUniverse(univId),title=String(o.title||"").trim().slice(0,120)||(u.name+": "+r.summary.player);
   const st={id:uid(),kind:"story",title,setting:String(o.setting||"").slice(0,4000)||("Fanfiction set in "+u.name+"."),starts:[],stats:[],endings:[],entries:[],fanfic:{universe:univId,canon:r.canon},created:Date.now()};
@@ -2580,8 +2603,8 @@ function qcCtx(u,facts){return{universe:u,facts,fan:SFFan,director:window.SFDire
 function qcPromptOpts(u){const C=window.SFCinema,cin={};if(C)for(const k of ["lighting","overlay","transition","dialogueBox","narration","textReveal"])if(Array.isArray(C.SPEC.settings[k]))cin[k]=C.SPEC.settings[k];
   return{modes:SFFan.MODES,careers:window.SFGame?SFGame.careerList().map(c=>c.id):[],universe:u,layouts:C?C.LAYOUTS.map(l=>l.id):[],presets:C?C.PRESETS.map(p=>p.id):[],cinematic:cin,director:window.SFDirector?SFDirector.OPTS:null,themes:window.SFVisualV48&&SFVisualV48.themes?SFVisualV48.themes.map(t=>typeof t==="string"?t:t&&t.id).filter(Boolean):[]}}
 async function qcPreview(input,o){o=o||{};input=input||{};try{qcAbort(o.signal);
-    const u=o.universeId?ffUniverse(o.universeId):qcResearchUniverse(input.sourceTitle||"Untitled",o.facts||[]);if(o.universeId&&!u)return{ok:false,reason:"universe missing"};
-    const facts=SFQuick.spoilerFilter(o.facts||(o.universeId?SFQuick.factsFromUniverse(u):[]),input.maxChapter).facts,msgs=SFQuick.prompt(input,facts,qcPromptOpts(u)),est=SFQuick.estimate(msgs,SFQuick.MAX_OUT.preview);
+    const u=o.universeId?ffIndexedUniverse(ffUniverse(o.universeId),undefined,input.maxChapter??Infinity):qcResearchUniverse(input.sourceTitle||"Untitled",o.facts||[]);if(o.universeId&&!u)return{ok:false,reason:"universe missing"};
+    const facts=SFQuick.spoilerFilter(o.facts||(o.universeId?await ffQuickSourceFacts(u,input):[]),input.maxChapter).facts,msgs=SFQuick.prompt(input,facts,qcPromptOpts(u)),est=SFQuick.estimate(msgs,SFQuick.MAX_OUT.preview);
     const r=await ask(msgs,{max:SFQuick.MAX_OUT.preview,temp:0.4,signal:o.signal,lite:true});qcAbort(o.signal);const p=SFQuick.parse(r.text);if(!p.ok)return{ok:false,reason:p.reason,estimate:est,usage:r.usage||null};
     const raw=Object.assign({},p.value,{id:"qc"+Date.now().toString(36)+"-"+(++QC.seq)});delete raw.locked;
     const v=SFQuick.validate(raw,qcCtx(u,facts));QC.ctx={universe:u,facts,imported:!!o.universeId,input:Object.assign({},input)};QC.cur=raw.id;QC.prop=null;qcH(raw.id).now=v.blueprint;
@@ -2610,8 +2633,8 @@ function qcUndo(id){if(QC.prop){const P=QC.prop;QC.prop=null;return{ok:true,reas
   const H=QC.hist[id||QC.cur];const b=H&&H.undo.pop();if(!b)return{ok:false,reason:"nothing to undo"};H.redo.push(H.now);H.now=b;return{ok:true,reason:null,blueprint:b}}
 function qcRedo(id){const H=QC.hist[id||QC.cur];const b=H&&H.redo.pop();if(!b)return{ok:false,reason:"nothing to redo"};H.undo.push(H.now);H.now=b;return{ok:true,reason:null,blueprint:b}}
 /* Preflight estimates: build the exact request, send nothing. */
-function qcEstimatePreview(input,o){o=o||{};input=input||{};const u=o.universeId?ffUniverse(o.universeId):qcResearchUniverse(input.sourceTitle||"Untitled",o.facts||[]);if(o.universeId&&!u)return{ok:false,reason:"universe missing"};
-  const facts=SFQuick.spoilerFilter(o.facts||(o.universeId?SFQuick.factsFromUniverse(u):[]),input.maxChapter).facts;return Object.assign({ok:true,reason:null,requests:1},SFQuick.estimate(SFQuick.prompt(input,facts,qcPromptOpts(u)),SFQuick.MAX_OUT.preview))}
+async function qcEstimatePreview(input,o){o=o||{};input=input||{};const u=o.universeId?ffIndexedUniverse(ffUniverse(o.universeId),undefined,input.maxChapter??Infinity):qcResearchUniverse(input.sourceTitle||"Untitled",o.facts||[]);if(o.universeId&&!u)return{ok:false,reason:"universe missing"};
+  const facts=SFQuick.spoilerFilter(o.facts||(o.universeId?await ffQuickSourceFacts(u,input):[]),input.maxChapter).facts;return Object.assign({ok:true,reason:null,requests:1},SFQuick.estimate(SFQuick.prompt(input,facts,qcPromptOpts(u)),SFQuick.MAX_OUT.preview))}
 function qcEstimateEdit(bp,instruction){return Object.assign({ok:true,reason:null,requests:1},SFQuick.estimate(SFQuick.editPrompt(bp,instruction||"",QC.ctx?qcPromptOpts(QC.ctx.universe):{}),SFQuick.MAX_OUT.edit))}
 function qcEstimateRegenerate(bp,section,o){o=o||{};if(!QC.ctx)return{ok:false,reason:"preview first"};const c=SFQuick.canRegenerate(bp,section);if(!c.ok)return c;return Object.assign({ok:true,reason:null,requests:1},SFQuick.estimate(SFQuick.regeneratePrompt(bp,section,QC.ctx.input,QC.ctx.facts,Object.assign(qcPromptOpts(QC.ctx.universe),{instruction:o.instruction})),SFQuick.MAX_OUT.regenerate))}
 /* Changing a story already in play (docs/QUICK-CREATE-API.md "Change preview"). Works on one playthrough. A change is planned from a patch
@@ -2699,12 +2722,12 @@ function qcChangeUndo(se){const H=se&&se.qcChanges||[],last=H[H.length-1];if(!la
 /* Quick Create drafts: DB.qcDrafts {id: {id, name, updated, v, input, universeId, facts, maxChapter, blueprint}}. Stored in the DB, so they
    travel with backups. Up to 20 drafts. Loading re-validates the blueprint against its source and starts a fresh history for it. */
 const QC_DRAFT_MAX=20;
-function qcSaveDraft(state){const c=SFQuick.cleanDraft(state);if(!c.ok)return{ok:false,applied:false,reason:c.reason,id:null};
+function qcSaveDraft(state){const c=SFQuick.cleanDraft({...state,facts:state?.universeId?[]:state?.facts});if(!c.ok)return{ok:false,applied:false,reason:c.reason,id:null};
   const D=DB.qcDrafts||{},id=state&&state.id&&D[state.id]?state.id:null;if(!id&&Object.keys(D).length>=QC_DRAFT_MAX)return{ok:false,applied:false,reason:"draft limit reached ("+QC_DRAFT_MAX+"); delete one first",id:null};
   const nid=id||"qd"+uid();DB.qcDrafts=Object.assign({},D,{[nid]:Object.assign({id:nid,updated:Date.now()},c.draft)});save();return{ok:true,applied:true,reason:null,id:nid}}
 function qcDrafts(){return Object.values(DB.qcDrafts||{}).sort((a,b)=>b.updated-a.updated).map(d=>({id:d.id,name:d.name,updated:d.updated,sourceTitle:d.input&&d.input.sourceTitle||"",universeId:d.universeId||null,hasBlueprint:!!d.blueprint,facts:(d.facts||[]).length,maxChapter:d.maxChapter??null}))}
 function qcLoadDraft(id){const raw=(DB.qcDrafts||{})[id];if(!raw)return{ok:false,reason:"not found"};const c=SFQuick.cleanDraft(raw);if(!c.ok)return{ok:false,reason:c.reason};const d=c.draft;
-  const u=d.universeId?ffUniverse(d.universeId):qcResearchUniverse(d.input.sourceTitle||"Untitled",d.facts);if(!u)return{ok:false,reason:"the imported source for this draft is missing",draft:Object.assign({id},d)};
+  const u=d.universeId?ffIndexedUniverse(ffUniverse(d.universeId)):qcResearchUniverse(d.input.sourceTitle||"Untitled",d.facts);if(!u)return{ok:false,reason:"the imported source for this draft is missing",draft:Object.assign({id},d)};
   const input=Object.assign({},d.input,d.maxChapter!=null?{maxChapter:d.maxChapter}:{}),facts=SFQuick.spoilerFilter(d.universeId?SFQuick.factsFromUniverse(u):d.facts,d.maxChapter).facts;
   QC.ctx={universe:u,facts,imported:!!d.universeId,input};QC.prop=null;let bp=null,issues=[];
   if(d.blueprint){const raw2=Object.assign({},d.blueprint);if(!raw2.id)raw2.id="qc"+Date.now().toString(36)+"-"+(++QC.seq);const v=SFQuick.validate(raw2,qcCtx(u,facts));bp=v.blueprint;issues=v.issues;QC.cur=bp.id;QC.hist[bp.id]={undo:[],redo:[],now:bp}}
@@ -2765,7 +2788,10 @@ function chAddDevelopment(se,name,text){text=String(text||"").trim();if(!name||!
 function chRemoveDevelopment(se,name,i){const L=(se.chDev||{})[name]||[];if(!(i>=0&&i<L.length))return{ok:false,applied:false,reason:"not found"};se.chDev=Object.assign({},se.chDev);se.chDev[name]=L.filter((_,k)=>k!==i);save();return{ok:true,applied:true,reason:null}}
 const MEM_RESOLVE_CHOICES=["keep-narrator","keep-step","edited","dismissed"];
 function ffCanonFor(se){const u=ffU(se);if(!u)return"";const sc=(se.mem&&se.mem.scene)||{},present=(sc.who||[]).map(n=>ffCharId(u,n)).filter(Boolean);
-  return SFFan.canonFor(u,se.canon,{text:se.turns.slice(-3).map(x=>x.text||"").join(" "),present,state:ffWorldState(se),max:[6000,4500,3000][DB.saver||0]})}
+  const ch=se.canon.position?.ch||0;
+  const view={...u,events:u.events.filter(e=>e.src!=="deep"||(!e.private&&e.ch<=ch)),
+    records:u.records.filter(r=>r.src!=="deep"||!r.private)};
+  return SFFan.canonFor(view,se.canon,{text:se.turns.slice(-3).map(x=>x.text||"").join(" "),present,state:ffWorldState(se),max:[6000,4500,3000][DB.saver||0]})}
 function ffCheck(se,text){const u=ffU(se);return u?SFFan.check(u,se.canon,text,{state:ffWorldState(se),pov:se.canon.pov&&se.canon.pov.mode}):[]}
 /* UI contract (v91): memory status and retry for one reply. See docs/MEMORY-CONTRACT.md. */
 function memStatus(se){const d=(se&&se.memDiag)||[],rp=d.filter(x=>x.rp),last=rp.slice(-1)[0];
@@ -4423,5 +4449,5 @@ addEventListener("pagehide",()=>{if(idb){clearTimeout(saveT);idbSet(KEY,JSON.str
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&DB.syncAuto&&DB.syncPass&&!busy)syncNow(false)});
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script><script src="visual-customization-v48.js"></script><script src="cinematic-ui-v49.js"></script><script src="character-ui-v50.js"></script><script src="character-studio-v51.js"></script><script src="relationship-map-v52.js"></script><script src="cinematic-profiles-v53.js"></script><script src="cinematic-scenes-v54.js"></script><link rel="stylesheet" href="fanfic-ui.css">
-<script src="fanfic-ui.js"></script>
+<script src="source-index.js"></script><script src="source-index-app.js"></script><script src="fanfic-ui.js"></script>
 </body></html>

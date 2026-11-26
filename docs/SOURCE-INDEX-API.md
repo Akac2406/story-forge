@@ -42,3 +42,11 @@ The fanfiction import is a basic index: chapter list `{n, title, hash, words}` p
 
 ## Tests (planned)
 Unit: chunking, scoring, alias folding, candidate flags, passage ranking/diversity/spoiler cut, deep-merge validation and de-duplication. Browser (mock model): import modes, attach by hash (match / mismatch), storage report, Quick Create facts from passages, play-time passages, deep index with pause/resume/failure/re-run, revision adoption, backups.
+
+## v105 implementation
+
+The two import screens default to Smart. Integrations that omit `mode` retain the synchronous Basic commit for compatibility. Await commit for Smart and Deep imports. Selecting Deep saves local text first and opens the separate analysis estimate. The browser offers pause, resume and an explicit re-analysis option. Each run is limited to 50 chapters and 60 planned batches, with a projected 45% monthly OpenCode stop and a pause when usage is unavailable.
+
+Chapter text uses the local IndexedDB store. Library attachment matches exact hashes or the catalog's normalized body hash when the Library stripped a heading. Older Library copies with split or combined sections may require the original EPUB. Source storage and status are asynchronous. The index dashboard shows local storage, chapter-bounded passage search, analysis coverage, and original evidence on demand by chapter and offset. Backups carry the index and analysis, with raw excerpts excluded from Quick Create drafts.
+
+AI-derived facts remain provisional. They carry chapter and source provenance. The app does not turn them into a character's personal knowledge. Chapter text is bounded before narration, treated as reference data, and can be disabled per story in Universe Studio. Re-analysis retires only its own prior rows, retaining earlier versions for pinned playthroughs. Existing canon revision preview and adoption use the revised index without updating playthroughs automatically.
