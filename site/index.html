@@ -326,7 +326,7 @@ const KEY="story-forge-v2",app=document.getElementById("app"),$=s=>document.quer
 function ap(p,...k){for(const c of k.flat(4)){if(c==null||c===false)continue;p.appendChild(c.nodeType?c:document.createTextNode(String(c)))}}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const num=(v,d)=>{const n=parseFloat(v);return isFinite(n)?n:d};
-const VER=116,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
+const VER=117,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
 function fixCh(se){const c=(se.chaps||[]).filter(x=>x&&x.i>=0&&x.i<Math.max(1,se.turns.length)).sort((a,b)=>a.i-b.i),out=[];c.forEach(x=>{if(!out.length||x.i>out[out.length-1].i)out.push(x)});if(!out.length||out[0].i!==0)out.unshift({i:0,t:""});se.chaps=out;return out}
 function autoCh(se){const N=se.chapN==null?1500:se.chapN,out=[{i:0,t:""}];if(N>0){let acc=0;se.turns.forEach((t,i)=>{if(t.role==="user"&&i>0&&(N===1?acc>0:acc>=N)){out.push({i,t:""});acc=0}if(t.role==="ai")acc+=words(t.text)})}return out}
 function chapsOf(se){if(!se.chaps)se.chaps=autoCh(se);return fixCh(se)}
@@ -1791,7 +1791,7 @@ function buildMsgs(se,st,hist,action,days=0,sourceBlock=""){if(se.sim)st=Object.
     const old=num(se.stats[x.n],num(x.v,0)),nv=Math.max(num(x.min,0),Math.min(num(x.max,100),Math.round(+r[1])));if(nv!==old)se.delta[x.n]=nv-old;se.stats[x.n]=nv});
   const en=g("ENDING").replace(/^["'\s]+|["'.\s]+$/g,"");if(en&&!/^none/i.test(en)){const e=ed(se,st).find(x=>x.n.toLowerCase()===en.toLowerCase());if(e&&!se.ended.includes(e.n))se.ending=e.n}
   if(se.life){const a=g("AGE").match(/\d+/);if(a)se.life.age=Math.max(se.life.age,Math.min(150,+a[0]));const tm=g("TIME");if(tm&&!none.test(tm))se.life.time=tm.slice(0,48);
-    const ev=g("EVENT").replace(/^["'\s]+|["'\s]+$/g,"");if(ev&&!none.test(ev)){se.log=se.log||[];se.log.push({a:se.life.age,t:ev.slice(0,160)});if(se.log.length>200)se.log.shift()}}
+    const ev=g("EVENT").replace(/^["'\s]+|["'\s]+$/g,"");if(ev&&!none.test(ev)){se.log=se.log||[];se.log.push({a:se.life.age,t:ev.slice(0,160),ch:Math.max(0,chapsOf(se).length-1)});if(se.log.length>200)se.log.shift()}}
   const chN=st.kind==="character"?0:chapsOf(se).length,dash=v=>!v||/^(-+|none|unknown|unchanged|n\/a)$/i.test(v),me=(se.char.name||"").toLowerCase(),added=[];se.cast=se.cast||{};
   const put=(n,f)=>{n=String(n||"").replace(/^[-*\s"“]+|[*"”\s]+$/g,"").slice(0,48);if(!n||dash(n)||n.toLowerCase()===me||n.toLowerCase()==="you")return;
     let c=se.cast[n];if(!c){c=se.cast[n]={r:"",l:"",t:[],a:"",ch:chN};added.push(n)}
@@ -3032,7 +3032,7 @@ function branchAt(se,i,o){o=o||{};const n=JSON.parse(JSON.stringify(se)),root=se
    story-state fields that changed since the previous reply (the first reply after v116 holds all of them, ai.svBase). svAt rebuilds the
    state at any turn, so Rewind / deleting the last messages put every field back exactly. Older replies without snapshots fall back to
    the per-field rules in trimState. */
-const SV_KEYS=["status","quests","goal","cast","dead","game","relationships","rel2","agDay","agLog","ctr","rs","delta","vis"];
+const SV_KEYS=["status","quests","goal","cast","dead","game","relationships","rel2","agDay","agLog","ctr","rs","delta","vis","life","log"];
 const svStr=(k,v)=>JSON.stringify(v,k==="cast"?(key,x)=>key==="u"?undefined:x:undefined);
 function svCur(se){const o={};SV_KEYS.forEach(k=>{if(se[k]!==undefined)o[k]=svStr(k,se[k])});return o}
 function svRecord(se,ai){try{const cur=svCur(se),prev=svAt(se.turns,se.turns.indexOf(ai));const out={};let base=!prev.complete;
@@ -3047,7 +3047,7 @@ function svAt(turns,cut){let st={},complete=false;for(let j=0;j<Math.min(cut,tur
 function svReset(n){const st=getStory(n.storyId);n.status={};n.quests=(n.quests||[]).filter(q=>q&&q.ch==null&&!q.done);delete n.goal;n.dead=[];n.relationships={};delete n.rel2;delete n.agDay;n.agLog=[];n.ctr={};n.rs=[];n.delta={};n.vis=[];
   if(st&&st.cast0&&st.cast0.length){n.cast={};st.cast0.forEach(c=>{n.cast[c.n]={r:c.role||"",l:[c.age?"age "+c.age:"",c.looks].filter(Boolean).join(", "),t:[],a:c.hook||"",ch:0,u:Date.now(),pic:c.th||undefined}})}else n.cast={};
   if(st&&st.blueprint&&st.blueprint.game&&window.SFCreator)try{n.game=SFCreator.gameSetup(st.blueprint.game)}catch(e){}else delete n.game;
-  n.stats={};if(n.life0){n.life=JSON.parse(JSON.stringify(n.life0));n.log=[]}delete n.recap;n.goal="";n.facts=[];delete n.saga;delete n.fprev}
+  n.stats={};if(n.life0)n.life=JSON.parse(JSON.stringify(n.life0));if(n.life)n.log=[];delete n.recap;n.goal="";n.facts=[];delete n.saga;delete n.fprev}
 function trimState(n,src,cut){
   /* Removing chapters only undoes those chapters (Anna: "when i delete a single chapter it only deleted the stats and quests from that
      single chapter and not everything"). Story facts go back to before the first removed chapter's summary (src.fprev) when that is the
@@ -3072,7 +3072,7 @@ function trimState(n,src,cut){
   {const lastAi=n.turns.slice(0,cut).reverse().find(t=>t.role==="ai"),kept=(n.chaps||[]).length,removed=(src.chaps||[]).filter(c=>c.i<Math.max(1,src.turns.length)).length>kept,sv=svAt(n.turns,cut);
     if(!lastAi)svReset(n);
     else if(sv.complete){SV_KEYS.forEach(k=>{if(sv.state[k]!==undefined)n[k]=sv.state[k];else delete n[k]})}
-    else if(Array.isArray(n.quests)&&removed)n.quests=n.quests.filter(q=>q&&q.ch!=null?q.ch<kept:true);
+    else if(removed){if(Array.isArray(n.quests))n.quests=n.quests.filter(q=>q&&q.ch!=null?q.ch<kept:true);if(Array.isArray(n.log))n.log=n.log.filter(x=>x&&x.ch!=null?x.ch<kept:true)}
     if(n.recap&&n.recap.n>cut)delete n.recap;if(Array.isArray(n.ended)&&!lastAi)n.ended=[]}
   if(src.life){const nx=src.turns.slice(cut).find(t=>t.pl);if(nx){n.life=Object.assign({},nx.pl);n.log=(src.log||[]).slice(0,nx.ln||0)}}
   if(n.chaps&&n.chaps.length){const lc=n.chaps[n.chaps.length-1],end=(src.chaps||[]).find(c=>c.i>lc.i);if(end&&end.i>cut||!end&&src.turns.length>cut){delete lc.sum;if(n.fprev)n.facts=n.fprev.k===n.chaps.length-1&&Array.isArray(n.fprev.f)?n.fprev.f.slice():n.facts;delete n.fprev}}
@@ -4006,7 +4006,12 @@ function depthSheet(se){const box=h("div");const draw=()=>{box.textContent="";co
       h("p",{class:"sub",text:"Thinking lets the model plan before it writes. Replies come slower, the thinking is billed as output, and not every model supports it."}),
       DB.price?null:h("p",{class:"sub",text:"To see cost estimates here, open Settings and browse the model list once."}))};
   draw();sheet("Length & depth",box)}
-function lifeSheet(se){const l=se.log||[];sheet("Life timeline",h("div",null,l.length?l.map(x=>h("div",{class:"tl"},h("b",{text:"Age "+x.a}),h("span",{text:x.t}))):h("p",{class:"sub",text:"Milestones appear here as your life unfolds."})))}
+/* v117: milestones can be removed and the current age corrected (Anna: old-run milestones stayed after a rewind made before v116). */
+function lifeSheet(se){const box=h("div"),draw=()=>{box.textContent="";const l=se.log||[];
+    if(se.life)ap(box,h("div",{class:"row tight"},fld("Current age",inp(String(se.life.age??""),v=>{const n=Math.round(+v);if(Number.isFinite(n)&&n>=0&&n<=200){se.life.age=n;save()}},"e.g. 0","number"))));
+    ap(box,l.length?l.map((x,i)=>h("div",{class:"tl"},h("b",{text:"Age "+x.a}),h("span",{text:x.t}),confirmBtn("✕",()=>{se.log=l.filter((_,j)=>j!==i);save();draw()}))):h("p",{class:"sub",text:"Milestones appear here as your life unfolds."}),
+      l.length>1?confirmBtn("Remove all milestones",()=>{se.log=[];save();draw()}):null)};
+  draw();sheet("Life timeline",box)}
 /* Story memory (beta): per-story opt-in. Off by default. Recommended path is a copy of the playthrough. */
 function memBetaSheet(se,st){const box=h("div"),m=se.mem,nEv=m?(m.events||[]).filter(e=>e.src==="meta").length:0,nFa=m?(m.facts||[]).length:0;
   const rp=(se.memDiag||[]).filter(d=>d.rp),rpOk=rp.filter(d=>d.rp.ok).length;
