@@ -169,15 +169,15 @@ async function ffSourcePrompt(se,st,hist,action) {
 async function ffQuickSourceFacts(u,input) {
   const existing=SFQuick.factsFromUniverse(u);
   const query=[input.character,input.concept,input.preferences].filter(Boolean).join(" ");
-  const hits=await ffSearchSource(u.id,query,{limit:12,perChapter:2,maxChapter:input.maxChapter});
+  const hits=await ffSearchSource(u.id,query,{limit:18,perChapter:2,maxChapter:input.maxChapter});
   const names=" "+SFSource.terms(query).join(" ")+" ";
   const characters=Object.values(u.chars||{}).filter(c=>c.name&&[c.name,...(u.aliases?.[c.id]||[])].some(name=>
     names.includes(" "+SFSource.terms(name).join(" ")+" ") && SFSource.terms(name).length));
   const terms=SFSource.terms(query);
   const deep=(u.deep?.entries||[]).filter(row=>!row.untilRev&&!row.private&&row.chapter<=(input.maxChapter??Infinity)
     &&(row.kind==="style"||terms.some(word=>SFSource.terms(row.title+" "+row.text).includes(word))))
-    .slice(0,8).map((row,i)=>({id:"deep"+i,ch:row.chapter,text:row.title+" · "+row.text,confidence:"uncertain",
-      source:{title:"Chapter "+row.chapter+" · AI analysis"}}));
+    .slice(0,12).map((row,i)=>({id:"deep"+i,ch:row.chapter,text:row.title+" · "+row.text,confidence:"uncertain",
+      source:{title:"Chapter "+row.chapter+" · AI analysis: "+String(row.title||row.kind||"").slice(0,48)}}));
   if(!hits.length&&!deep.length&&!characters.length)return existing;
   const facts=characters.slice(0,10).map((c,i)=>({id:"person"+i,charId:c.id,text:c.name+(c.stats?" · "+c.stats.mentions+" detected mentions":""),ch:c.firstCh||0,confidence:"uncertain",source:{title:u.name}}));
   return facts.concat(hits.map((hit,i)=>({id:"c"+hit.chapter+"."+(i+1),ch:hit.chapter,text:hit.excerpt,confidence:"confirmed",source:{title:"Chapter "+hit.chapter+" · "+hit.sourceTitle}})),

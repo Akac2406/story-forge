@@ -54,6 +54,7 @@ try:
     ok(pg.locator("#qcroot label:has-text('Story concept') textarea").input_value() == INPUT["concept"], "generating again keeps the idea, character and preferences")
     pg.locator("#qcroot button", has_text="Generate blueprint").click(); pg.wait_for_selector("#qcroot >> text=3 · Review your blueprint")
     ok("freezes his blood" in SEEN[-1], "the new setup request gives the model the frost-curse passage")
+    ok(re.search(r"= Kiran Vale \(\d+ mentions\)", SEEN[-1]) is not None, "the model is offered characters by name with mention counts")
     pg.evaluate("document.querySelectorAll('#qcroot details').forEach(d=>d.open=true);null")
     srcs = pg.locator("#qcroot .ff-panel:has(> strong:text-is('Sources'))").inner_text()
     ok("Chapter" in srcs and not re.search(r"\bc\d+\.\d+\b", srcs), "evidence shows chapters, not ids: " + srcs.replace("\n", " | ")[:160])
