@@ -18,6 +18,7 @@ def model(route):
         return route.fulfill(status=200, content_type="text/event-stream", body="data: " + json.dumps({"choices": [{"delta": {"content": "Bells ring.\n\n[[META]]\nENDING: none"}}]}) + "\n\ndata: [DONE]\n\n")
     if "You set up an interactive fanfiction" in sysm: txt = json.dumps(BP)
     elif "REST of an interactive fanfiction story" in sysm: txt = json.dumps(MODE["change"])
+    elif "You edit a fanfiction setup" in sysm: txt = json.dumps(MODE.get("edit") or {"set": {}})
     else: txt = "- ok"
     route.fulfill(status=200, content_type="application/json", body=json.dumps({"choices": [{"message": {"content": txt}, "finish_reason": "stop"}], "usage": {"prompt_tokens": 900, "completion_tokens": 300}}))
 SEED = {"key": "sk-or-test", "migrated": True, "modes": [{"n": "Swift", "id": "a/b", "d": ""}], "mode": 0, "chars": [], "found": {}, "stories": [], "sessions": []}
@@ -60,6 +61,21 @@ try:
     ok([s["id"] for s in J("QC.hist[QC.cur].now.gameplay.stats")] == ["courage", "wisdom"], "structured gameplay editor adds a stat through the engine")
     pg.evaluate("document.querySelectorAll('#qcroot details').forEach(d=>d.open=true);null"); pg.locator(R + "label").filter(has_text=re.compile("^Humor")).locator("select").select_option("dry"); B("Apply styleProfile").click()
     ok(J("QC.hist[QC.cur].now.styleProfile.humor") == "dry", "structured style editor applies a choice")
+    # unapplied typing survives an unrelated redraw; create and draft save wait until it is applied or discarded
+    pg.evaluate("document.querySelectorAll('#qcroot details').forEach(d=>d.open=true);null")
+    op = pg.locator(R + "details[data-qc-section='Story'] textarea").nth(2); op.fill("Snow on the bell tower.")
+    B("Lock romance").click(); pg.evaluate("document.querySelectorAll('#qcroot details').forEach(d=>d.open=true);null")
+    ok(pg.locator(R + "details[data-qc-section='Story'] textarea").nth(2).input_value() == "Snow on the bell tower.", "unapplied typing survives an unrelated redraw")
+    B("Create reviewed story").click(); ok("Apply or discard" in J("document.querySelector('#qcroot [role=status]').textContent") and J("DB.stories.length") == 0, "create waits until unapplied edits are applied or discarded")
+    B("Discard unapplied edits").click(); pg.evaluate("document.querySelectorAll('#qcroot details').forEach(d=>d.open=true);null")
+    ok(pg.locator(R + "details[data-qc-section='Story'] textarea").nth(2).input_value() == "Bells ring.", "discard restores the blueprint's value")
+    B("Unlock romance").click()
+    # skipped parts of an AI edit are shown with the proposal
+    window_edit = {"set": {"opening": "Rain."}, "skipped": [{"request": "rename Kael", "reason": "the player is fixed"}]}
+    MODE["edit"] = window_edit
+    pg.locator(R + "textarea[placeholder='Describe what to change']").fill("rainy opening and rename Kael"); B("Preview changes").click(); pg.wait_for_selector(RT + " >> text=Proposed changes")
+    ok("Skipped request: rename Kael — the player is fixed" in pg.locator(RT).inner_text(), "skipped parts of an AI edit are shown with the proposal")
+    B("Reject changes").click()
     # draft save, reload, load
     lab("Draft name").fill("Ember draft"); B("Save draft").click()
     ok(J("qcDrafts().length") == 1 and J("qcDrafts()[0].maxChapter") == 10 and J("qcDrafts()[0].hasBlueprint"), "save draft from the screen")
