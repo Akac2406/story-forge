@@ -16,11 +16,38 @@ function sfStudioReadable(value,depth=0){
 function modeSelect(){
  return sel("smart",[["basic","Basic · catalog only"],["smart","Smart · searchable on this device"],["deep","Deep · save locally, then review AI estimate"]],()=>{});
 }
+function renderDeepTaskStatus(){
+ const el=document.getElementById("sf-deep-task"),{job,controller,progress,message}=ffDeepTask;
+ if(!el)return;
+ // Keep the current workflow in view while the user is editing a story.
+ if(!controller&&!job){el.hidden=true;return}
+ el.hidden=false;
+ const label=controller?(controller.signal.aborted?"Pausing indexing…":progress?
+   "Indexing · "+progress.done+" / "+progress.total:"Indexing…"):"Analysis paused";
+ const info=el.querySelector("[role=status]");
+ if(info.textContent!==label)info.textContent=label;
+ info.title=message;
+ const [pause,resume]=el.querySelectorAll("button");
+ pause.hidden=!controller;
+ pause.disabled=!!controller?.signal.aborted;
+ resume.hidden=!!controller;
+}
+const deepTaskStatus=h("aside",{id:"sf-deep-task",hidden:true},h("span",{role:"status"}),
+ h("button",{type:"button",text:"Pause",onclick:ffPauseDeepTask,"aria-label":"Pause Deep Indexing"}),
+ h("button",{type:"button",text:"Review range",onclick:()=>{
+   const job=ffDeepTask.job;
+   if(job)sourceIndex(job.universe,job.options.sourceId);
+ }}));
+document.body.append(deepTaskStatus);
+ffDeepTaskEvents.addEventListener("change",renderDeepTaskStatus);
+document.addEventListener("sf-storage-ready",()=>ffLoadDeepTask(),{once:true});
+
 function sourceIndex(id,preferred){
  const u=ffUniverse(id);
  if(!u)return;
+ const savedJob=ffDeepTask.job?.universe===id?ffDeepTask.job:null;
  const body=h("div",{class:"ff-ui"}),status=h("p",{role:"status","aria-live":"polite"}),summary=h("section",{class:"ff-panel"}),results=h("div",{class:"ff-ui"});
- const source=sel(preferred||u.sources[0]?.id||"",u.sources.map(item=>[item.id,item.title]),()=>{setDefaultRange();refresh();showEvidence()});
+ const source=sel(preferred||savedJob?.options.sourceId||u.sources[0]?.id||"",u.sources.map(item=>[item.id,item.title]),()=>{setDefaultRange();refresh();showEvidence()});
  const query=h("input",{type:"search",placeholder:"Names, places or events"}),limit=h("input",{type:"number",min:0,placeholder:"Any chapter"});
  const from=h("input",{type:"number",min:1,value:1}),to=h("input",{type:"number",min:1,value:1}),rerun=h("input",{type:"checkbox"});
  const file=h("input",{type:"file",accept:".epub,.txt,.md"});
@@ -39,7 +66,15 @@ function sourceIndex(id,preferred){
    if(first>1&&Number(from.value)<first)range.textContent+=" The title page is skipped.";
  }
  function setDefaultRange(){
-   from.value=to.value=ffDeepFirstChapter(selectedSource());
+   const saved=ffDeepTask.job;
+   if(saved?.universe===id&&saved.options.sourceId===source.value){
+     from.value=saved.options.from;
+     to.value=saved.options.to;
+     rerun.checked=saved.options.rerun;
+   }else{
+     from.value=to.value=ffDeepFirstChapter(selectedSource());
+     rerun.checked=false;
+   }
    resetEstimate();
    showRange();
  }
@@ -94,18 +129,39 @@ function sourceIndex(id,preferred){
    results.replaceChildren(...hits.map(hit=>h("article",{class:"ff-panel"},h("strong",{text:"Chapter "+hit.chapter+" · "+hit.title}),
      h("p",{text:hit.excerpt}))),...(!hits.length?[h("p",{class:"sub",text:"No matching passages."})]:[]));
  });
- const start=()=>work(async signal=>{
+ const start=()=>{
+   if(active||ffDeepTask.controller)return;
    const opts=deepOptions();
    if(!estimate||estimate.key!==JSON.stringify(opts)||!estimate.requests){status.textContent="Estimate the selected range first.";return}
-   if(!confirm("Send the selected chapter range to your OpenCode provider for source analysis?"))return;
+   const replacing=ffDeepTask.job&&!ffSameDeepRange(ffDeepTask.job,id,opts);
+   if(!confirm((replacing?"Replace the saved range? Completed chapters stay indexed. ":"")+"Send the selected chapter range to your OpenCode provider for source analysis?"))return;
    resetEstimate();
-   const indexed=selectedSource();
-   const r=await ffDeepIndex(id,{...opts,confirmed:true,signal,onProgress:p=>{status.textContent=ffDeepEntryLabel(indexed,p.chapter)+" · "+p.done+" / "+p.total+" complete"}});
-   const saved=r.done.length?"Analysis saved for "+r.done.length+" chapter"+(r.done.length===1?"":"s")+". ":"";
-   const skipped=r.skipped?r.skipped+" entries skipped. ":"";
-   status.textContent=(saved+skipped+(r.reason||(r.paused?"Paused.":""))).trim()||"No new chapters were analyzed.";
- });
+   ffStartDeepTask(id,opts);
+ };
  const extract=btn("Start or resume AI analysis",start);
+ const pause=btn("Pause analysis",ffPauseDeepTask);
+ const forget=btn("Clear saved range",()=>work(()=>ffForgetDeepTask()));
+ const estimateButton=btn("Estimate analysis",()=>work(async()=>{
+   const opts=deepOptions(),saved=ffDeepTask.job;
+   const runId=ffSameDeepRange(saved,id,opts)?saved.id:undefined;
+   const r=await ffDeepEstimate(id,{...opts,runId});
+   if(JSON.stringify(opts)!==JSON.stringify(deepOptions()))return;
+   estimate=r.ok?{...r,key:JSON.stringify(opts)}:null;
+   review.textContent=r.ok?r.requests?r.requests+" planned requests · about "+r.inputTokens.toLocaleString()+" input tokens · up to "+r.maxOutputTokens.toLocaleString()+" output tokens.":"No pending chapters in this range.":r.reason;
+ }));
+ function showTask(){
+   const {controller,progress,job,message}=ffDeepTask;
+   extract.disabled=estimateButton.disabled=!!controller;
+   pause.disabled=!controller||controller.signal.aborted;
+   forget.hidden=!!controller||job?.universe!==id;
+   if(controller){
+     status.textContent=progress&&job?.universe===id&&!controller.signal.aborted?
+       ffDeepEntryLabel(u.sources.find(row=>row.id===job.options.sourceId),progress.chapter)+" · "+progress.done+" / "+progress.total+" complete":message;
+   }else if(message){
+     status.textContent=message;
+     refresh();showEvidence();
+   }
+ }
  body.append(summary,fld("Indexed source",source),status,
   h("details",{class:"ff-panel"},h("summary",{text:"Attach or remove local text"}),fld("Original source file",file),btn("Attach matching file",()=>attach(file.files[0])),
    fld("Reading Library",book),btn("Attach Library book",()=>attach(book.value?{bookId:book.value}:null)),
@@ -113,19 +169,20 @@ function sourceIndex(id,preferred){
      const r=await ffDropSourceText(id,source.value);status.textContent=r.ok?"Local text removed.":r.reason;results.replaceChildren();resetEstimate()}))),
   h("section",{class:"ff-panel"},h("h3",{text:"Passage search"}),fld("Search source passages",query),fld("Read through chapter",limit),btn("Find passages",search),results),
   h("details",{class:"ff-panel"},h("summary",{text:"Analysis evidence"}),evidence),
-  h("details",{class:"ff-panel",open:!!preferred},h("summary",{text:"Deep indexing · optional AI analysis"}),
-   h("p",{class:"sub",text:"Deep indexing sends selected chapter text to OpenCode. Local search works without model requests."}),
+  h("details",{class:"ff-panel",open:!!preferred||!!savedJob},h("summary",{text:"Deep indexing · optional AI analysis"}),
+   h("p",{class:"sub",text:"Analysis sends the selected text to OpenCode. You can close this panel and keep using Story Forge. If you leave the app, reopen this panel to resume."}),
    h("p",{class:"sub",text:"Range numbers use the source index order. The book’s own chapter titles appear below."}),
    fld("First index entry",from),fld("Last index entry",to),range,h("label",{},rerun," Re-analyze completed chapters"),
-   btn("Estimate analysis",()=>work(async()=>{
-    const opts=deepOptions(),r=await ffDeepEstimate(id,opts);
-    if(JSON.stringify(opts)!==JSON.stringify(deepOptions()))return;
-    estimate=r.ok?{...r,key:JSON.stringify(opts)}:null;
-    review.textContent=r.ok?r.requests+" planned requests · about "+r.inputTokens.toLocaleString()+" input tokens · up to "+r.maxOutputTokens.toLocaleString()+" output tokens.":r.reason;
-   })),review,extract,btn("Pause analysis",()=>active?.abort())));
+   estimateButton,review,extract,pause,forget));
  sheet("Source Indexing",body);
- refresh();showEvidence();limit.addEventListener("change",showEvidence);
- const watcher=new MutationObserver(()=>{if(!body.isConnected){active?.abort();watcher.disconnect()}});
+ refresh();showEvidence();showTask();limit.addEventListener("change",showEvidence);
+ ffDeepTaskEvents.addEventListener("change",showTask);
+ const watcher=new MutationObserver(()=>{
+   if(body.isConnected)return;
+   active?.abort();
+   ffDeepTaskEvents.removeEventListener("change",showTask);
+   watcher.disconnect();
+ });
  watcher.observe(document.body,{childList:true,subtree:true});
 }
 function library(se){

@@ -204,7 +204,7 @@ function ffIndexedUniverse(u,rev=u?.rev ?? Infinity,maxChapter=Infinity,deepRev=
   }
   return {...u,chars,aliases,summaries,events:(u.events||[]).filter(visible),records:(u.records||[]).filter(visible)};
 }
-function ffDeepMerge(u,source,chapters,entries,{skipped,issues}) {
+function ffDeepMerge(u,source,chapters,entries,{skipped,issues,runId}) {
   const next=structuredClone(u), rev=(next.rev||0)+1;
   next.deep ||= {v:1,sources:{},entries:[]};
   const finished=new Set(chapters),replace=new Set(skipped?[]:chapters);
@@ -239,6 +239,10 @@ function ffDeepMerge(u,source,chapters,entries,{skipped,issues}) {
   const previous=next.deep.sources[source]||{};
   next.deep.sources[source]={done:[...new Set([...(previous.done||[]),...chapters])].sort((a,b)=>a-b),
     failed:[...(previous.failed||[]).filter(f=>!finished.has(f.n)&&!issues.some(issue=>issue.n===f.n)),...issues],skipped,at:Date.now()};
+  if(runId){
+    const completed=previous.run?.id===runId?previous.run.done:[];
+    next.deep.sources[source].run={id:runId,done:[...new Set([...completed,...chapters])]};
+  }
   next.indexMode="deep";
   next.rev=rev;
   next.updated=Date.now();
@@ -263,7 +267,10 @@ async function ffDeepPlan(id,options={}) {
   const from=Number(options.from||1),to=Number(options.to||from);
   if (!u||!sourceId||!Number.isSafeInteger(from)||!Number.isSafeInteger(to)||from<1||to<from||to-from>=50)
     throw Error("Choose a valid source and a range of up to 50 chapters.");
-  const done=new Set(options.rerun?[]:u.deep?.sources?.[sourceId]?.done||[]);
+  const status=u.deep?.sources?.[sourceId];
+  const done=new Set(options.rerun
+    ? (options.runId&&status?.run?.id===options.runId?status.run.done:[])
+    : status?.done||[]);
   const source=u.sources.find(row=>row.id===sourceId);
   const firstChapter=ffDeepFirstChapter(source);
   const chapters=(await ffSourceChapters(u,sourceId)).filter(c=>c.n>=Math.max(from,firstChapter)&&c.n<=to&&!done.has(c.n));
@@ -296,9 +303,11 @@ async function ffDeepEstimate(id,options={}) {
 }
 async function ffDeepIndex(id,options={}) {
   if (!options.confirmed) return {ok:false,reason:"Review the estimate and confirm model usage."};
-  if (ffSourceJobs.has(id)||ffSourceWrites.has(id)) return {ok:false,reason:"Source indexing is already running."};
+  if (ffSourceJobs.size||ffSourceWrites.has(id)) return {ok:false,reason:"Source indexing is already running."};
   if (!isOC()||orMode(DB.modes[DB.mode]||DB.modes[0])) return {ok:false,reason:"Select an OpenCode model to analyze the source."};
   ffSourceJobs.add(id);
+  const connector={base:ocBase(),key:DB.ocKey};
+  const session="index-"+uid();
   let skipped=0;
   const done=[],failed=[],added={events:0,chars:0,records:0};
   try {
@@ -312,12 +321,19 @@ async function ffDeepIndex(id,options={}) {
       try {
         for (const batch of job.batches) {
           if (options.signal?.aborted) break;
-          if(!isOC()||orMode(DB.modes[DB.mode]||DB.modes[0]))throw Error("The selected OpenCode model changed.");
-          const projected=ocPct().m+ocCost({prompt_tokens:SFQuick.estimate(ffDeepMessages(batch),1800).inputTokens,completion_tokens:3800})*(num(DB.ocScale,1)||1)/ocLim().m*100;
+          while(ffForegroundModels.size&&!options.signal?.aborted){
+            await ffWaitForModel(Promise.allSettled([...ffForegroundModels]),options.signal);
+          }
+          if(options.signal?.aborted)break;
+          if(!isOC()||orMode(DB.modes[DB.mode]||DB.modes[0])||ocBase()!==connector.base||DB.ocKey!==connector.key)
+            throw Error("OpenCode settings changed. Review the estimate before resuming.");
+          if(ffUniverse(id)!==current)throw Error("Universe changed during analysis.");
+          const messages=ffDeepMessages(batch);
+          const projected=ocPct().m+ocCost({prompt_tokens:SFQuick.estimate(messages,1800).inputTokens,completion_tokens:3800})*(num(DB.ocScale,1)||1)/ocLim().m*100;
           if (projected>=45) return {ok:false,done,failed,added,reason:"Paused before the 45% monthly usage limit."};
           const timeout=AbortSignal.timeout(120000);
           const signal=options.signal?AbortSignal.any([timeout,options.signal]):timeout;
-          const reply=await ask(ffDeepMessages(batch),{max:1800,temp:.1,lite:true,signal});
+          const reply=await ffAskForIndex(messages,{max:1800,temp:.1,lite:true,signal,ocSession:session});
           if(!reply.usage?.prompt_tokens)throw Error("The provider did not report usage. Paused before another request.");
           const parsed=SFQuick.parse(reply.text);
           if (!parsed.ok) throw Error("Model reply was not valid JSON.");
@@ -333,8 +349,8 @@ async function ffDeepIndex(id,options={}) {
           return {n,why:ffDeepEntryLabel(source,n)+": "+(item?.why||"no verifiable entries returned")+"."};
         });
         if(!chapters.length)throw Error(issues[0].why+(rejected.length?" "+rejected.length+" entries skipped.":""));
-        const result=ffDeepMerge(current,plan.sourceId,chapters,entries,{skipped:rejected.length,issues});
-        const saved=await ffSaveIndexedUniverse(result.next,{signal:options.signal});
+        const result=ffDeepMerge(current,plan.sourceId,chapters,entries,{skipped:rejected.length,issues,runId:options.runId});
+        const saved=await ffSaveDeepCheckpoint(result.next,current,options.signal);
         if(!saved.applied)return {ok:false,done,failed,added,reason:saved.reason};
         current=result.next;
         Object.keys(added).forEach(key=>added[key]+=result.added[key]);
@@ -349,14 +365,130 @@ async function ffDeepIndex(id,options={}) {
         next.deep||={v:1,sources:{},entries:[]};
         const status=next.deep.sources[plan.sourceId]||{done:[],failed:[]};
         next.deep.sources[plan.sourceId]={...status,failed:[...(status.failed||[]).filter(f=>f.n!==job.n),issue]};
-        const saved=await ffSaveIndexedUniverse(next,{signal:options.signal});
+        const saved=await ffSaveDeepCheckpoint(next,current,options.signal);
         if(saved.applied)current=next;
         break;
       } finally {
-        options.onProgress?.({done:done.length,failed:failed.length,total:plan.jobs.length,chapter:job.n});
+        options.onProgress?.({done:done.length,failed:failed.length,total:plan.jobs.reduce((sum,item)=>sum+item.chapters.length,0),chapter:job.n});
       }
     }
     return {ok:!failed.length,done,failed,added,skipped,paused:!!options.signal?.aborted,reason:failed[0]?.why||null};
   } catch(e) {return {ok:false,reason:e.message,done,failed,added}}
   finally {ffSourceJobs.delete(id)}
+}
+
+async function ffSaveDeepCheckpoint(next,current,signal) {
+  let saved;
+  for(let attempt=0;attempt<4;attempt++){
+    if(ffUniverse(next.id)!==current)return {applied:false,reason:"Universe changed. Review the range before resuming."};
+    saved=await ffSaveIndexedUniverse(next,{signal});
+    if(!saved.retryLocal||signal?.aborted)return saved;
+    if(attempt<3)await new Promise(resolve=>setTimeout(resolve,25));
+  }
+  return saved;
+}
+
+const FF_DEEP_TASK_KEY="source:pending-analysis";
+const ffDeepTask={job:null,controller:null,progress:null,message:""};
+const ffDeepTaskEvents=new EventTarget();
+const ffDeepTaskChanged=()=>ffDeepTaskEvents.dispatchEvent(new Event("change"));
+
+async function ffLoadDeepTask(duringStart=false) {
+  if(!idb||sourceStoreReadOnly||(!duringStart&&ffDeepTask.controller))return;
+  try{
+    const job=await idbGet(FF_DEEP_TASK_KEY);
+    if((!duringStart&&ffDeepTask.controller)||ffDeepTask.job||!job||
+       !ffUniverse(job.universe)?.sources.some(source=>source.id===job.options?.sourceId))return;
+    ffDeepTask.job=job;
+    ffDeepTask.message="Analysis interrupted. Estimate this range to resume.";
+    ffDeepTaskChanged();
+  }catch(e){}
+}
+
+function ffSameDeepRange(job,universe,options) {
+  return job?.universe===universe&&["sourceId","from","to","rerun"].every(key=>job.options[key]===options[key]);
+}
+
+function ffDeepResultMessage(result) {
+  const count=result.done?.length||0,skipped=result.skipped;
+  return [
+    count?"Analysis saved for "+count+" chapter"+(count===1?"":"s")+".":"",
+    skipped?skipped+" "+(skipped===1?"entry":"entries")+" skipped.":"",
+    result.reason||(result.paused?"Paused.":"")
+  ].filter(Boolean).join(" ")||"No new chapters were analyzed.";
+}
+
+async function ffStartDeepTask(universe,options) {
+  if(ffDeepTask.controller||ffSourceJobs.size)return;
+  const controller=new AbortController();
+  const previous=ffDeepTask.job;
+  const job=ffSameDeepRange(previous,universe,options)?previous:{id:uid(),universe,options};
+  ffDeepTask.controller=controller;
+  ffDeepTask.message="Preparing Deep Indexing…";
+  ffDeepTask.progress=null;
+  ffDeepTaskChanged();
+  const run=async lock=>{
+    if(!lock)throw Error("Deep Indexing is running in another tab.");
+    if(controller.signal.aborted)throw controller.signal.reason;
+    if(!idb||sourceStoreReadOnly)throw Error("Source storage is unavailable. Reload before resuming.");
+    const disk=await idbGet(KEY);
+    const savedUniverse=disk?JSON.parse(disk).universes?.[universe]:null;
+    if(savedUniverse?.rev>ffUniverse(universe)?.rev)throw Error("Another tab updated this universe. Reload before resuming.");
+    const storedJob=await idbGet(FF_DEEP_TASK_KEY);
+    if(previous&&storedJob?.id!==previous.id)throw Error("The saved run changed in another tab. Reload before resuming.");
+    if(!previous&&storedJob&&!ffSameDeepRange(storedJob,universe,options)){
+      await ffLoadDeepTask(true);
+      throw Error("Another tab saved a different range. Reopen Source Indexing to review it.");
+    }
+    if(storedJob&&!previous)job.id=storedJob.id;
+    await idbSet(FF_DEEP_TASK_KEY,job);
+    ffDeepTask.job=job;
+    const result=await ffDeepIndex(universe,{
+      ...options,confirmed:true,signal:controller.signal,runId:job.id,onProgress:progress=>{
+        ffDeepTask.progress=progress;
+        ffDeepTaskChanged();
+      }
+    });
+    ffDeepTask.message=ffDeepResultMessage(result);
+    if(result.ok&&!result.paused){
+      await idbDel(FF_DEEP_TASK_KEY);
+      ffDeepTask.job=null;
+    }
+  };
+  try{
+    if(navigator.locks)await navigator.locks.request(FF_DEEP_TASK_KEY,{ifAvailable:true},run);
+    else await run(true);
+  }catch(error){
+    ffDeepTask.message=controller.signal.aborted?"Analysis paused.":error.message;
+  }finally{
+    ffDeepTask.controller=null;
+    ffDeepTask.progress=null;
+    ffDeepTaskChanged();
+    toast(ffDeepTask.message);
+  }
+}
+
+function ffPauseDeepTask() {
+  if(!ffDeepTask.controller||ffDeepTask.controller.signal.aborted)return;
+  ffDeepTask.controller.abort();
+  ffDeepTask.message="Pausing analysis…";
+  ffDeepTaskChanged();
+}
+
+async function ffForgetDeepTask() {
+  const job=ffDeepTask.job;
+  if(!job||ffDeepTask.controller)return;
+  const discard=async lock=>{
+    if(!lock)throw Error("Deep Indexing is running in another tab.");
+    const stored=await idbGet(FF_DEEP_TASK_KEY);
+    if(stored&&stored.id!==job.id)throw Error("The saved run changed in another tab. Reload to see it.");
+    await idbDel(FF_DEEP_TASK_KEY);
+    ffDeepTask.job=null;
+    ffDeepTask.message="Saved range cleared. Completed chapters are still indexed.";
+  };
+  try{
+    if(navigator.locks)await navigator.locks.request(FF_DEEP_TASK_KEY,{ifAvailable:true},discard);
+    else await discard(true);
+  }catch(error){ffDeepTask.message=error.message}
+  ffDeepTaskChanged();
 }

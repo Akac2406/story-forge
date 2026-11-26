@@ -262,3 +262,12 @@ html[data-sf-cv-layout] #log{box-shadow:var(--sf-cv-light,0 0 0 transparent),var
  .ff-ui label:has(input[type=checkbox]),.ff-ui label:has(input[type=radio]){min-height:44px;display:flex;align-items:center;gap:8px}
  .ff-ui fieldset{padding:6px;margin-inline:0}
 }
+
+#sf-deep-task {
+  position:fixed; z-index:25; top:calc(env(safe-area-inset-top, 0px) + 4rem); right:12px;
+  display:flex; align-items:center; gap:8px; padding:4px 6px 4px 12px;
+  background:var(--card); color:var(--text); border:1px solid var(--border); border-radius:16px;
+  box-shadow:0 2px 12px #0004; font-size:.82rem;
+}
+#sf-deep-task[hidden], #sf-deep-task:has(~ #sheetbg) {display:none}
+#sf-deep-task button {min-height:44px; padding:6px 10px; border-radius:12px}
