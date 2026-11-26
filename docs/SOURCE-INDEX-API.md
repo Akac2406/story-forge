@@ -26,7 +26,7 @@ The fanfiction import is a basic index: chapter list `{n, title, hash, words}` p
 - Characters: `smart` re-scores candidates with the text — mention count, chapters seen (first/last, spread), aliases (single names folded into full names, honorific/possessive variants), likely non-names flagged (places, titles, sentence-start words) and kept but marked `kind: "candidate"`; no hard cap of 200 (ranked; the top 400 kept). Existing characters are never removed or renamed; new data goes in `chars[id].stats = {mentions, first, last, chapters}`.
 - `ffSearchSource(universeId, query, {maxChapter, limit, perChapter})` → `[{chapter, title, excerpt, score}]`: ranked passages (phrase matches > rare terms > names), at most `perChapter` per chapter for diversity, never past `maxChapter`.
 - Quick Create: for an imported universe with stored text, `qcPreview` facts = the player's named characters (with mention stats) + ranked passages for the concept/character/preferences terms (ids like `c12.1` = chapter 12, passage 1). Facts stay data, cited by id; evidence shows `Chapter 12` instead of `u0`.
-- During play (ChatGPT's point): when the scene mentions a name, place or term the index knows, the narrator prompt gets a short **SOURCE PASSAGES** section (≤ 2,500 / 1,600 / 1,000 characters by the money-saving setting), only from chapters at or before the playthrough's position (spoiler-safe), no extra requests. Off for character chats; a per-story switch.
+- During play (ChatGPT's point): when the scene mentions a name, place or term the index knows, the narrator prompt gets a short **SOURCE PASSAGES** section (≤ 2,500 / 1,600 / 1,000 characters by the money-saving setting), only from chapters up to how far the player has read (v112 reading limit; defaults to the position), no extra requests. Off for character chats; a per-story switch.
 
 ## Phase 2 adapters (AI deep indexing)
 - `ffDeepEstimate(universeId, {from, to})` → `{requests, inputTokens, maxOutputTokens, batches}` from the real text (batches of whole chapters up to ~24k characters).
@@ -58,3 +58,10 @@ Chapter text and its updated universe catalog are committed in one IndexedDB tra
 The successful transaction also moves the app's live save snapshot to IndexedDB on that device. The previous localStorage snapshot stays in place as a fallback and is no longer rewritten by ordinary saves after the move. Startup prefers the newer IndexedDB state. A small advisory marker prevents writes to the fallback if IndexedDB temporarily cannot reconnect. The storage marker is omitted from exported backups.
 
 On v106, open the existing universe's Source Indexing panel and attach the matching original file again. Successful v105 attachments use the same chapter keys and remain readable.
+
+## Reading limit (v112)
+- `ffReadTo(se)` -> chapter: `se.canon.readTo`, else the story's `fanfic.readTo` (Quick Create spoiler limit), never below `se.canon.position.ch`. `ffSetReadTo(se, n|null)` -> {ok, applied, reason}.
+- Reference knowledge (book-analysis facts and character profiles, SOURCE PASSAGES) uses the reading limit; which events have happened uses the position.
+- Book-analysis rows follow the newest universe revision (`ffIndexedUniverse(u, rev, maxChapter, deepRev)`); authored canon stays pinned.
+- `ffPositionHint(se)` -> {ch, order, title, score} | null; `ffPositionNudge(se)` -> notice text | null (called after each reply; never moves the position).
+

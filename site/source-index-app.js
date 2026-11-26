@@ -152,11 +152,12 @@ async function ffSearchSource(id,query,options={}) {
   return SFSource.search(await ffSourceChapters(ffUniverse(id),options.sourceId,options.rev),query,options);
 }
 async function ffSourcePrompt(se,st,hist,action) {
-  const chapter=Number(se.canon?.position?.ch);
+  /* v112: passages follow how far the player has read (ffReadTo), not only the story position. */
+  const chapter=ffReadTo(se);
   if (st.kind==="character" || st.sourcePassages===false || !chapter || !ffU(se)) return "";
   const scene=se.mem?.scene||{};
   const query=[scene.where,...(scene.who||[]),action,...hist.slice(-2).map(turn=>String(turn.text||"").slice(0,400))].filter(Boolean).join(" ");
-  const hits=await ffSearchSource(se.canon.universe, query,{maxChapter:chapter,rev:se.canon.rev,limit:6,perChapter:1});
+  const hits=await ffSearchSource(se.canon.universe, query,{maxChapter:chapter,limit:6,perChapter:1});
   const cap=[2500,1600,1000][DB.saver||0]||1000;
   let out="";
   for (const hit of hits) {
@@ -184,9 +185,11 @@ async function ffQuickSourceFacts(u,input) {
     deep,existing.filter(f=>!f.charId)).slice(0,40);
 }
 
-function ffIndexedUniverse(u,rev=u?.rev ?? Infinity,maxChapter=Infinity) {
+/* deepRev (v112): book-analysis rows ("deep") can follow a newer revision than the pinned one, so indexing done after a
+   playthrough started still reaches it. Authored canon stays pinned at rev. */
+function ffIndexedUniverse(u,rev=u?.rev ?? Infinity,maxChapter=Infinity,deepRev=rev) {
   if (!u?.deep) return u;
-  const visible = row => (!row.rev || row.rev<=rev) && (!row.untilRev || row.untilRev>rev);
+  const visible = row => {const r=row.src==="deep"?deepRev:rev;return (!row.rev || row.rev<=r) && (!row.untilRev || row.untilRev>r)};
   const chars={...u.chars}, aliases={...u.aliases}, summaries={...u.summaries};
   for (const row of (u.deep.entries||[]).filter(visible)) {
     if (row.kind==="summary") summaries[row.chapter]=row.text;

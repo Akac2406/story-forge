@@ -98,11 +98,12 @@ function ruleFor(canon,target){canon=canon||{};const t=target||{};
   const r=canon.rules&&canon.rules[t.category];if(r)return{rule:r,source:'category'};
   return{rule:defaults(canon.mode&&canon.mode.types)[t.category]||'adaptive',source:'default'}}
 /* search(universe, canon, query, o) -> universe records + characters visible at the playthrough position (spoiler-filtered).
+ * Book-analysis rows (src 'deep') are revision-filtered by the app before this (v112). o.refCh: reading limit used instead of the position.
  * o.forChar: also include that character's explicit foreknowledge. Revision isolation: records with rev > canon.rev are hidden. */
-function search(u,canon,query,o){o=o||{};const pos=canon&&canon.position&&canon.position.ch||0,rev=canon&&canon.rev||Infinity,q=low(query).split(/\s+/).filter(Boolean);
+function search(u,canon,query,o){o=o||{};const pos=o.refCh!=null?o.refCh:canon&&canon.position&&canon.position.ch||0,rev=canon&&canon.rev||Infinity,q=low(query).split(/\s+/).filter(Boolean);
   const fk=new Set(o.forChar&&canon&&canon.identity&&canon.identity.canon===o.forChar?arr(canon.identity.foreknowledge):[]);
   const hit=r=>!q.length||q.some(w=>low(r.text+' '+arr(r.who).join(' ')).includes(w));
-  const recs=arr(u&&u.records).filter(r=>(r.rev==null||r.rev<=rev)&&(!r.spoilerAt||r.spoilerAt.ch<=pos||fk.has(r.id))&&hit(r)).map(r=>Object.assign({},r,{label:r.canon==='source'?null:r.canon}));
+  const recs=arr(u&&u.records).filter(r=>(r.src==='deep'||r.rev==null||r.rev<=rev)&&(!r.spoilerAt||r.spoilerAt.ch<=pos||fk.has(r.id))&&hit(r)).map(r=>Object.assign({},r,{label:r.canon==='source'?null:r.canon}));
   return recs}
 
 /* ---------- Part 3: characters, knowledge, relationships, fates ---------- */
@@ -110,7 +111,7 @@ const nameOf=(u,id)=>((u&&u.chars||{})[id]||{}).name||String(id).split(':').pop(
 /* knows(u, canon, charId) -> universe records this character knows at the current position.
  * Characters in record.knownBy (or, for non-secrets without knownBy, record.who) know it regardless of reader spoilers; others know only common facts
  * (no who, not secret) already revealed by the position; the takeover character adds explicit foreknowledge. Never 'everyone knows'. */
-function knows(u,canon,charId){const pos=canon&&canon.position&&canon.position.ch||0,rev=canon&&canon.rev||Infinity,fk=new Set(canon&&canon.identity&&canon.identity.canon===charId?arr(canon.identity.foreknowledge):[]);
+function knows(u,canon,charId,refCh){const pos=refCh!=null?refCh:canon&&canon.position&&canon.position.ch||0,rev=canon&&canon.rev||Infinity,fk=new Set(canon&&canon.identity&&canon.identity.canon===charId?arr(canon.identity.foreknowledge):[]);
   return arr(u&&u.records).filter(r=>r.src!=='deep'&&(r.rev==null||r.rev<=rev)&&r.canon!=='fanon'&&(fk.has(r.id)||(r.knownBy?arr(r.knownBy):(r.kind==='secret'?[]:arr(r.who))).includes(charId)||(!arr(r.who).length&&r.kind!=='secret'&&(!r.spoilerAt||r.spoilerAt.ch<=pos))))}
 /* identity(u, canon, charId) -> {canon, player?, inherited?, foreknowledge[], age} — separate records, canon is never modified. */
 function identity(u,canon,charId){const c=(u&&u.chars||{})[charId]||null,id=canon&&canon.identity||{},tk=id.canon===charId,age=canon&&canon.position&&canon.position.ages?canon.position.ages[charId]:undefined;
@@ -142,20 +143,28 @@ function undo(canon){const C=clone(canon||{}),h=arr(C.history);if(!h.length)retu
 /* ---------- Part 5: prompt canon block and reply check ---------- */
 const toks=x=>low(x).replace(/[^a-z0-9'\s]/g,' ').split(/\s+/).filter(w=>w.length>3);
 function overlap(a,b){const A=new Set(toks(a)),B=new Set(toks(b));if(!A.size)return 0;let n=0;A.forEach(w=>{if(B.has(w))n++});return n/A.size}
+/* rankFacts(records, text, n) -> the n records most relevant to text (v112). Rare shared words count more (IDF), words in a record's title
+   count double, powers and terms get a small boost, and at most two records share a title. With no text: the first n. */
+function rankFacts(recs,text,n){recs=arr(recs);if(!String(text||'').trim())return recs.slice(0,n);const T=new Set(toks(text)),docs=recs.map(r=>({r,w:new Set(toks((r.title||'')+' '+r.text)),t:new Set(toks(r.title||''))})),df={};
+  docs.forEach(d=>d.w.forEach(w=>{df[w]=(df[w]||0)+1}));const N=docs.length+1;
+  docs.forEach(d=>{let s=0;d.w.forEach(w=>{if(T.has(w))s+=Math.log(N/df[w])*(d.t.has(w)?2:1)});d.s=s/Math.sqrt(Math.max(4,d.w.size))*(['power','term','rule'].includes(d.r.kind)?1.25:1)});
+  const per={},out=[];docs.filter(d=>d.s>0).sort((a,b)=>b.s-a.s).forEach(d=>{const k=low(d.r.title||d.r.text).slice(0,60);if(out.length>=n||(per[k]=(per[k]||0)+1)>2)return;out.push(d.r)});return out}
 /* canonFor(u, canon, ctx) -> text for the prompt. ctx = {text (recent story), present:[charId], state, max}. Spoiler-safe, budgeted. */
 function canonFor(u,canon,ctx){ctx=ctx||{};if(!u||!canon)return'';const max=ctx.max||5000,P=canon.position||{},ev=evaluate(u,canon,ctx.state),L=[];
   L.push('FANFICTION CANON ('+u.name+')');
   realWorldLines(u,canon,ctx.present).forEach(x=>L.push(x));romanceLines(u,canon,ctx.present).forEach(x=>L.push(x));
   L.push('Story position: source chapter '+(P.ch??'?')+(P.date?', '+P.date:'')+(P.ages?', ages: '+Object.entries(P.ages).map(([k,v])=>nameOf(u,k)+' '+v).join(', '):'')+'.');
+  if(ctx.refCh!=null&&ctx.refCh>(P.ch||0))L.push('The player has read the source up to chapter '+ctx.refCh+'. Use how characters, powers, rules, places and groups work up to there. Events after the story position have not happened yet in this story.');
   const tk=canon.identity&&canon.identity.canon;if(tk)L.push('The player controls '+nameOf(u,tk)+'. Never decide their actions, words or feelings. Their canon personality is a starting point; the player\'s choices take precedence.'+(arr(canon.identity.foreknowledge).length?' They know some future events (foreknowledge); other characters do not.':''));
   const R=canon.rules||{},lk=RULE_KEYS.filter(k=>R[k]==='locked'),fr=RULE_KEYS.filter(k=>R[k]==='free');
   if(lk.length)L.push('Keep exactly as in canon: '+lk.join(', ')+'.');if(fr.length)L.push('Free to change through the story: '+fr.join(', ')+'.');
   arr(canon.exceptions).filter(x=>x.approved).forEach(x=>L.push('Approved change: '+x.text));
   const up=ev.upcoming.slice(0,3).map(id=>arr(u.events).find(e=>e.id===id));if(up.length)L.push('Upcoming canon events that can still happen (let them arise naturally; do not rush or force them):\n'+up.map(e=>'- '+e.title+(ev.status[e.id].status==='approaching'?' (approaching)':'')).join('\n'));
   const gone=arr(u.events).filter(e=>['impossible','prevented'].includes((ev.status[e.id]||{}).status));if(gone.length)L.push('These canon events will NOT happen in this story; do not bring them back:\n'+gone.map(e=>'- '+e.title).join('\n'));
-  arr(ctx.present).forEach(cid=>{const c=(u.chars||{})[cid];if(!c||cid===tk)return;const k=knows(u,canon,cid).map(r=>r.text),rel=relationships(canon,{from:cid}).filter(r=>arr(ctx.present).includes(r.b));
-    L.push(c.name+': '+[c.core&&c.core.personality,c.speech&&c.speech.tone&&('speaks '+c.speech.tone),c.speech&&c.speech.mannerisms].filter(Boolean).join('; ')+'.'+(k.length?' Knows: '+k.join('; ')+'.':'')+(rel.length?' Feels toward '+rel.map(r=>nameOf(u,r.b)+': '+arr(r.kinds).join('/')+(r.trust!=null?' (trust '+r.trust+')':'')).join(', ')+'.':'')+' Does not know anything not listed here.')});
-  const hits=search(u,canon,ctx.text||'',{}).slice(0,8);if(hits.length)L.push('Relevant canon facts (revealed so far):\n'+hits.map(r=>'- '+r.text+(r.label?' ['+r.label+']':'')).join('\n'));
+  arr(ctx.present).forEach(cid=>{const c=(u.chars||{})[cid];if(!c||cid===tk)return;const k=knows(u,canon,cid,ctx.refCh).map(r=>r.text),rel=relationships(canon,{from:cid}).filter(r=>arr(ctx.present).includes(r.b));
+    const who=[c.core&&c.core.personality,c.speech&&c.speech.tone&&('speaks '+c.speech.tone),c.speech&&c.speech.mannerisms].filter(Boolean);if(!who.length){const d=String(c.sourceProfile&&c.sourceProfile.text||c.desc||'').trim();if(d)who.push(d.length>260?d.slice(0,259)+'…':d)}
+    L.push(c.name+': '+who.join('; ').replace(/[.\s]+$/,'')+'.'+(k.length?' Knows: '+k.join('; ')+'.':'')+(rel.length?' Feels toward '+rel.map(r=>nameOf(u,r.b)+': '+arr(r.kinds).join('/')+(r.trust!=null?' (trust '+r.trust+')':'')).join(', ')+'.':'')+' Does not know anything not listed here.')});
+  const hits=rankFacts(search(u,canon,ctx.text||'',{refCh:ctx.refCh}),ctx.text||'',ctx.facts||8);if(hits.length)L.push('Relevant canon facts (revealed so far):\n'+hits.map(r=>'- '+(r.title&&!low(r.text).includes(low(r.title))?r.title+': ':'')+(r.text.length>240?r.text.slice(0,239)+'…':r.text)+(r.label?' ['+r.label+']':'')).join('\n'));
   L.push('Write original scenes. Never copy passages from the source.');
   let out=L.join('\n');if(out.length>max)out=out.slice(0,max-1)+'…';return out}
 /* check(u, canon, reply, ctx) -> [{kind, text}] rule and continuity issues. No AI request. */

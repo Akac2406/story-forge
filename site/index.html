@@ -326,7 +326,7 @@ const KEY="story-forge-v2",app=document.getElementById("app"),$=s=>document.quer
 function ap(p,...k){for(const c of k.flat(4)){if(c==null||c===false)continue;p.appendChild(c.nodeType?c:document.createTextNode(String(c)))}}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const num=(v,d)=>{const n=parseFloat(v);return isFinite(n)?n:d};
-const VER=111,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
+const VER=112,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
 function fixCh(se){const c=(se.chaps||[]).filter(x=>x&&x.i>=0&&x.i<Math.max(1,se.turns.length)).sort((a,b)=>a.i-b.i),out=[];c.forEach(x=>{if(!out.length||x.i>out[out.length-1].i)out.push(x)});if(!out.length||out[0].i!==0)out.unshift({i:0,t:""});se.chaps=out;return out}
 function autoCh(se){const N=se.chapN==null?1500:se.chapN,out=[{i:0,t:""}];if(N>0){let acc=0;se.turns.forEach((t,i)=>{if(t.role==="user"&&i>0&&(N===1?acc>0:acc>=N)){out.push({i,t:""});acc=0}if(t.role==="ai")acc+=words(t.text)})}return out}
 function chapsOf(se){if(!se.chaps)se.chaps=autoCh(se);return fixCh(se)}
@@ -1855,7 +1855,7 @@ async function send(text,hide,show,days=0,replay=null){const se=DB.sessions.find
   catch(e){const ab=e&&e.name==="AbortError";if(ab&&stalled)toast("The reply stopped arriving, so it was cancelled. Nothing was lost; try sending again.");
     if(REG&&RBK?.sid===se.id){se.turns.splice(ui,2);regenRollback(se);if(!ab)toast(errMsg(e)+" Your earlier version is kept.")}
     else if(ab&&vis(raw)&&!replay)ai.text=vis(raw);else if(REG){const o=REG[REG.length-1];ai.text=o.t;if(o.mt)ai.mt=o.mt;else delete ai.mt;if(o.mx){ai.mx=o.mx;if(se.mem&&window.SFMemory)try{SFMemory.apply(se.mem,o.mx)}catch(x){}}if(o.s)se.stats=Object.assign({},o.s);ai.st2=o.s;if(REG.length>1){ai.vs=REG;ai.vi=REG.length-1}if(!ab)toast(errMsg(e)+" Your earlier version is kept.")}else{const k=se.turns.indexOf(ai);if(k>0)se.turns.splice(k-1,2);if(!hide&&!show&&view.id===se.id)view.draft=text;if(!ab)toast(errMsg(e))}}
-  finally{clearInterval(stallT);busy=false;ctrl=null;se.updated=Date.now();save();if(view.n==="chat"&&view.id===se.id)rerender()}
+  finally{clearInterval(stallT);busy=false;ctrl=null;se.updated=Date.now();try{if(se.canon&&!PRE.cancel)ffPositionNudge(se)}catch(e){console.warn("position hint failed",e)}save();if(view.n==="chat"&&view.id===se.id)rerender()}
   if(!replay&&(!REG||committed)){summarize(se);recAfter(se,st)}
   return committed;
 }
@@ -2473,7 +2473,27 @@ function memResolve(se,cid,choice,o){const d=(se.memDiag||[]).find(x=>"c"+x.t===
 /* Fanfiction contract v2 adapter (docs/FANFIC-CONTRACT.md). Engine is pure (fanfic-engine.js, SFFan); this layer reads files, stores DB.universes and saves.
    Every mutation returns {ok, applied, reason}; rejected changes never touch saved data. */
 const ffRawU=se=>se?.canon?ffUniverse(se.canon.universe):null;
-const ffU=se=>ffIndexedUniverse(ffRawU(se),se?.canon?.rev);
+const ffU=se=>{const u=ffRawU(se);return ffIndexedUniverse(u,se?.canon?.rev,Infinity,u?.rev)};
+/* ffReadTo(se) -> source chapter the player has read up to (v112). Reference knowledge (how characters, powers, rules, places and groups
+   work; book passages) follows this; plot events still follow se.canon.position. Never below the story position. */
+function ffReadTo(se){const c=se&&se.canon||{},p=Number(c.position&&c.position.ch)||0,st=se&&getStory(se.storyId),v=c.readTo!=null?c.readTo:st&&st.fanfic&&st.fanfic.readTo;
+  return v!=null&&Number.isFinite(+v)?Math.max(p,Math.floor(+v)):p}
+/* ffPositionHint(se) -> {ch, order, title, score} | null (v112). The story position never moves by itself; this finds an indexed book event
+   after the position (and within the reading limit) that the latest replies clearly describe, so the app can suggest moving the position. */
+function ffPositionHint(se){if(!se||!se.canon||!window.SFSource)return null;const raw=ffRawU(se);if(!raw)return null;const ref=ffReadTo(se),ch=Number(se.canon.position&&se.canon.position.ch)||0;
+  const recent=new Set(SFSource.terms(se.turns.slice(-4).filter(t=>t.role==="ai").map(t=>t.text||"").join(" ")).filter(w=>w.length>3));if(!recent.size)return null;
+  const u=ffIndexedUniverse(raw,se.canon.rev,ref,raw.rev);let best=null;
+  for(const e of u.events||[]){if(e.private||e.untilRev||!(e.ch>ch)||e.ch>ref)continue;const w=SFSource.terms((e.title||"")+" "+(e.summary||"")).filter(x=>x.length>3);if(w.length<4)continue;
+    const sc=w.filter(x=>recent.has(x)).length/w.length;if(sc>=0.6&&(!best||sc>best.score||(sc===best.score&&e.ch<best.ch)))best={ch:e.ch,order:e.order,title:e.title,score:Math.round(sc*100)/100}}
+  return best}
+/* After a reply: suggest moving the position when a later book event seems to have happened, or (every 15 replies) remind the player
+   that the position has not moved while they have read further. Only a notice; nothing changes until the player saves the position. */
+function ffPositionNudge(se){if(!se||!se.canon||!ffRawU(se))return null;const h=ffPositionHint(se),ch=Number(se.canon.position&&se.canon.position.ch)||0;
+  if(h&&se.posHint!==h.ch){se.posHint=h.ch;const m="Your story may have reached source chapter "+h.ch+" (“"+h.title+"”). You can move the story position in Fanfiction Studio.";toast(m);return m}
+  const n=se.turns.filter(t=>t.role==="ai").length;if(ffReadTo(se)>ch&&n>0&&n%15===0&&se.posRemind!==n){se.posRemind=n;const m="Story position is still source chapter "+ch+". If the story has moved on, update it in Fanfiction Studio.";toast(m);return m}
+  return null}
+function ffSetReadTo(se,n){if(!se||!se.canon)return{ok:false,applied:false,reason:"not a fanfiction story"};if(n!==null&&!(Number.isInteger(+n)&&+n>=0))return{ok:false,applied:false,reason:"bad value"};
+  const v=n===null?null:+n;if((se.canon.readTo??null)===v)return{ok:false,applied:false,reason:"unchanged"};se.canon=Object.assign({},se.canon,{readTo:v});if(v==null)delete se.canon.readTo;save();return{ok:true,applied:true,reason:null}}
 function ffListUniverses(){return Object.values(DB.universes||{}).map(u=>({id:u.id,name:u.name,rev:u.rev,updated:u.updated,sources:(u.sources||[]).length,chapters:(u.sources||[]).reduce((a,x)=>a+(x.chapters||[]).length,0),chars:Object.keys(u.chars||{}).length,events:(u.events||[]).length}))}
 function ffUniverse(id){return(DB.universes||{})[id]||null}
 function ffSaveUniverse(u){if(!u||!u.id)return{ok:false,applied:false,reason:"no id"};DB.universes=DB.universes||{};DB.universes[u.id]=u;save();return{ok:true,applied:true,reason:null}}
@@ -2839,6 +2859,7 @@ function qcCommit(bp,o){o=o||{};if(!QC.ctx)return{ok:false,applied:false,reason:
     let director=null;if(B.director&&window.SFDirector){const d=SFDirector.set(SFDirector.defaults(),B.director);if(d.applied===false&&d.reason)throw new Error("director: "+d.reason);director={enabled:true,settings:d.settings}}
     if(game||director)st.blueprint={game,director};const M=B.memory||{},cb=SFQuick.buildCinema(B.appearance,window.SFCinema);if(cb.issues.length)throw new Error(cb.issues[0]);
     st.fanfic.setup={memoryRecall:!!M.recall,memoryRecallSet:true,memoryMode:M.mode||"app",memoryNotes:M.notes||[],layout:B.appearance&&B.appearance.layout||null,cv:cb.cv||null};if(B.styleProfile&&Object.keys(B.styleProfile).length)st.fanfic.styleProfile=B.styleProfile;
+    {const mc=QC.ctx.input&&QC.ctx.input.maxChapter;if(mc!=null&&Number.isFinite(+mc))st.fanfic.readTo=Math.max(0,Math.floor(+mc))}
     st.fanfic.quick={key:key||null,characters:B.characters,notes:B.notes,sources:(QC.ctx.facts||[]).filter(f=>B.sources.includes(f.id)).map(f=>f.source),uncertain:B.uncertain};
     fail("setup");
     const P=SFQuick.appearancePatch(B.appearance);if(Object.keys(P).length&&window.SFAppearance){const a=SFAppearance.set(apCfg(),P,"story:"+r.storyId,apCatalog());if(!a.applied)throw new Error("appearance: "+a.reason);apTouched=true;if(!apWrite(a.cfg))throw new Error("storage full")}
@@ -2878,11 +2899,13 @@ function chRemoveNpc(se,name){if(!se.npcs||!se.npcs[name])return{ok:false,applie
 function chAddDevelopment(se,name,text){text=String(text||"").trim();if(!name||!text)return{ok:false,applied:false,reason:"needs a name and text"};se.chDev=Object.assign({},se.chDev);se.chDev[name]=(se.chDev[name]||[]).concat([text]).slice(-50);save();return{ok:true,applied:true,reason:null}}
 function chRemoveDevelopment(se,name,i){const L=(se.chDev||{})[name]||[];if(!(i>=0&&i<L.length))return{ok:false,applied:false,reason:"not found"};se.chDev=Object.assign({},se.chDev);se.chDev[name]=L.filter((_,k)=>k!==i);save();return{ok:true,applied:true,reason:null}}
 const MEM_RESOLVE_CHOICES=["keep-narrator","keep-step","edited","dismissed"];
-function ffCanonFor(se){const u=ffU(se);if(!u)return"";const sc=(se.mem&&se.mem.scene)||{},present=(sc.who||[]).map(n=>ffCharId(u,n)).filter(Boolean);
-  const ch=se.canon.position?.ch||0;
-  const view={...u,events:u.events.filter(e=>e.src!=="deep"||(!e.private&&e.ch<=ch)),
-    records:u.records.filter(r=>r.src!=="deep"||!r.private)};
-  return SFFan.canonFor(view,se.canon,{text:se.turns.slice(-3).map(x=>x.text||"").join(" "),present,state:ffWorldState(se),max:[6000,4500,3000][DB.saver||0]})}
+function ffCanonFor(se){const raw=ffRawU(se);if(!raw)return"";const ref=ffReadTo(se),u=ffIndexedUniverse(raw,se.canon.rev,ref,raw.rev);const sc=(se.mem&&se.mem.scene)||{},present=(sc.who||[]).map(n=>ffCharId(u,n)).filter(Boolean);
+  /* v112: book-analysis events and facts are visible up to how far the player has read; which events already happened still follows the position. */
+  const view={...u,events:u.events.filter(e=>e.src!=="deep"||(!e.private&&e.ch<=ref)),
+    records:u.records.filter(r=>r.src!=="deep"||(!r.private&&(r.ch||0)<=ref))};
+  const pl=se.canon.mode&&se.canon.mode.player,st=getStory(se.storyId);
+  const text=[pl&&pl.desc,sc.where,(sc.who||[]).join(" "),...se.turns.slice(-3).map(x=>x.text||"")].filter(Boolean).join(" ");
+  return SFFan.canonFor(view,se.canon,{text,present,refCh:ref,facts:12,state:ffWorldState(se),max:[6000,4500,3000][DB.saver||0]})}
 function ffCheck(se,text){const u=ffU(se);return u?SFFan.check(u,se.canon,text,{state:ffWorldState(se),pov:se.canon.pov&&se.canon.pov.mode}):[]}
 /* UI contract (v91): memory status and retry for one reply. See docs/MEMORY-CONTRACT.md. */
 function memStatus(se){const d=(se&&se.memDiag)||[],rp=d.filter(x=>x.rp),last=rp.slice(-1)[0];
