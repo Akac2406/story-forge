@@ -19,7 +19,7 @@ Paid testing: the memory-overhaul OpenCode authorization (stop at 45% monthly, l
 
 | | |
 |---|---|
-| Live (production) | **102** (released 2026-11-25): post-release reliability fixes. 101: complete visual overhaul (official release) |
+| Live (production) | **103** (released 2026-11-25, approved by Anna): AI Quick Create, Guided Creation and the AI Story Architect. 102: reliability fixes. 101: complete visual overhaul (official release) |
 | Test address | https://deploy-preview-7--celebrated-brigadeiros-580c41.netlify.app (draft PR #7 = `memory-overhaul`) |
 | Integration branch | `memory-overhaul`: Claude merges, runs the full suite, pushes |
 | ChatGPT branch | `ui-overhaul` (fast-forwarded to `memory-overhaul` after each integration) |
@@ -174,6 +174,12 @@ Fixed and covered by tests (`presend_watchdog_browser.py`, `reliability_102_brow
 - Memory-step time limit adapts to provider speed (1.5x the last reply, 90–240 s) and the player is told when notes are skipped.
 - ChatGPT's list: (1) switching universes cancels an in-flight import (`epoch`/abort in the wizard); (2) typewriter + Stop keeps and shows the whole reply; (3) studio panels honour transparency; (4) lighting and fog/vignette stack via `--sf-cv-light`/`--sf-cv-veil`, rain layers over scene artwork via `--sf-cv-rain`; (5) menus no longer replay the scene transition (last scene remembered per playthrough, not on `#log`); (6) draft universe switch resets only universe-specific choices (reviewed); (8) `cvArt` resolves `story:<id>`, and background/portrait references that resolve to nothing are refused with a reason. (7) editing-scope previews are covered by ChatGPT's presentation test.
 Full suite pass; upgrade 101 -> 102 check 26/26.
+
+### Release 103 — AI Quick Create (Claude + ChatGPT, 2026-11-25; release approved by Anna)
+- Engine `site/quick-create-engine.js` (SFQuick) and adapters `qc*` (docs/QUICK-CREATE-API.md): research with citations, coverage and spoiler limit; validated blueprints through the fanfiction, gameplay, director, cinematic and appearance engines; estimates, staged edits, locks, section regeneration, per-blueprint undo/redo; drafts in backups; research cache; atomic commit with rollback and no duplicates; change preview for stories in play.
+- ChatGPT's UI: AI Quick Create, step-by-step Guided Creation, structured editors with friendly labels, AI Story Architect, mobile layout.
+- First real-model run (6 requests, Frieren + OC) led to the research and prompt fixes in the doc's "First real-model run" section.
+- Tests: quick_create_unit (60), quick_create_browser, _edit, _setup, _drafts, _rollback, _change, _ui, _ui2 (25), _mobile (59 at 390x844). Full suite pass; upgrade 102 -> 103 check.
 
 ## Intelligent Fanfiction Creation Overhaul — user approved 2026-11-25
 User explicitly approved starting now. Manifest confirms v102 is already live; target next release, number assigned by integration owner. Keep production unchanged until acceptance and release approval.
