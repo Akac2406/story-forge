@@ -4,6 +4,7 @@ import socket
 import subprocess
 import sys
 import time
+from base64 import b64decode
 from io import BytesIO
 from pathlib import Path
 
@@ -28,6 +29,8 @@ for stripe in range(16):
     shade = (30 + stripe * 11, 220 - stripe * 9, 80 + stripe * 5)
     draw.rectangle((stripe * 22, 100, stripe * 22 + 21, 390), fill=shade)
 screenshot.save(fixture, format="PNG")
+reference = BytesIO()
+screenshot.resize((1600, 3200)).save(reference, format="PNG")
 
 
 def mock(route):
@@ -43,6 +46,8 @@ def mock(route):
         prompt = request["messages"][0]["content"][0]["text"]
         if prompt.startswith("Describe this reference image"):
             assert "named Ash" in prompt
+            data_url = request["messages"][0]["content"][1]["image_url"]["url"]
+            assert Image.open(BytesIO(b64decode(data_url.split(",", 1)[1]))).size == (1024, 2048)
             route.fulfill(json={"choices": [{"message": {"content": "Silver hair and round spectacles."}}]})
             return
         data = dict(FIXTURE, prologue="") if len(calls) == 1 else FIXTURE
@@ -99,11 +104,14 @@ try:
         page.get_by_role("button", name="Simple mode", exact=True).click()
         page.get_by_role("button", name="Character images", exact=True).click()
         page.locator('#sheetbg input[type="file"]').set_input_files(
-            {"name": "keeper.png", "mimeType": "image/png", "buffer": fixture.getvalue()})
+            {"name": "keeper.png", "mimeType": "image/png", "buffer": reference.getvalue()})
+        page.wait_for_function("document.querySelector('img[alt=\"Chosen picture\"]')?.naturalHeight===2048")
         page.get_by_label("Character name").fill("The Keeper")
         page.get_by_label("Appearance (optional)").fill("A dark green cloak with a brass clasp.")
         page.get_by_role("button", name="Save my description").click()
         page.get_by_label("Description the narrator sees").wait_for()
+        page.get_by_text("View larger image", exact=True).click()
+        page.wait_for_function("document.querySelector('.vdetail img')?.naturalHeight===2048")
         assert len(calls) == 2
         page.get_by_role("button", name="Done", exact=True).click()
         page.get_by_role("button", name="Play", exact=True).click()
@@ -116,7 +124,7 @@ try:
 
         page.get_by_role("button", name="Character images", exact=True).click()
         page.locator('#sheetbg input[type="file"]').set_input_files(
-            {"name": "avatar.png", "mimeType": "image/png", "buffer": fixture.getvalue()})
+            {"name": "avatar.png", "mimeType": "image/png", "buffer": reference.getvalue()})
         page.get_by_label("Character name").fill("Ash")
         page.get_by_role("button", name="Describe image with AI").click()
         page.wait_for_function("getStory(DB.sessions[0].storyId).vis.some(x=>x.desc==='Silver hair and round spectacles.')")

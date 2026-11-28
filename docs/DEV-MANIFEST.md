@@ -175,6 +175,10 @@ Fixed and covered by tests (`presend_watchdog_browser.py`, `reliability_102_brow
 - ChatGPT's list: (1) switching universes cancels an in-flight import (`epoch`/abort in the wizard); (2) typewriter + Stop keeps and shows the whole reply; (3) studio panels honour transparency; (4) lighting and fog/vignette stack via `--sf-cv-light`/`--sf-cv-veil`, rain layers over scene artwork via `--sf-cv-rain`; (5) menus no longer replay the scene transition (last scene remembered per playthrough, not on `#log`); (6) draft universe switch resets only universe-specific choices (reviewed); (8) `cvArt` resolves `story:<id>`, and background/portrait references that resolve to nothing are refused with a reason. (7) editing-scope previews are covered by ChatGPT's presentation test.
 Full suite pass; upgrade 101 -> 102 check 26/26.
 
+### Release 119 — sharper character reference images
+
+The upload preview previously enlarged the 240-pixel thumbnail. It now uses the same higher-resolution image as vision analysis, capped at 2048 pixels on the longest side without upscaling. Thumbnails remain in the list, and saved references have a larger view that loads the stored image. Previously saved references remain compatible. The phone-sized browser regression checks the upload preview, saved larger view, and actual image dimensions sent to a mocked vision endpoint. No paid calls were made.
+
 ### Release 118 — Simple screenshot stories and character images
 
 Create offers Simple screenshot import alongside the existing Advanced tools. Simple mode uses a single OpenRouter vision request to create a playable setup and a short original opening from the screenshots. Play opens the saved scene without requiring a model, starting point, or avatar selection. User notes and the reply field let the player define their avatar after opening the story. Advanced setup remains available from the Simple story page.

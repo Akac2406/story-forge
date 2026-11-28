@@ -227,6 +227,7 @@ body.novel .turn.user .body{font-size:calc(var(--fs) - 2px);color:var(--muted)}
 .vgrid{display:flex;flex-direction:column;gap:12px}.vcard{border:1px solid var(--border);border-radius:16px;padding:10px;display:flex;flex-direction:column;gap:8px}
 .vtop{display:flex;gap:12px;align-items:flex-start}.vtop img{width:92px;height:92px;object-fit:cover;border-radius:12px;flex:0 0 auto;background:var(--card)}.vtop>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}.vtop b{display:block}.vtop small{display:block;color:var(--muted)}
 .vkind{display:inline-block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:2px}.vprev{width:100%;max-height:220px;object-fit:contain;border-radius:12px;background:var(--card)}
+.vdetail img{display:block;max-width:100%;height:auto;margin:8px auto;border-radius:12px}
 .cav.img{background-size:cover!important;background-position:center!important}
 .vsw{display:inline-flex;align-items:center;gap:2px;font-size:13px;color:var(--muted)}.vsw button{padding:2px 8px;min-width:0}
 .savept{align-self:flex-start;font-size:12px;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:2px 10px;margin:4px 0}
@@ -326,7 +327,7 @@ const KEY="story-forge-v2",app=document.getElementById("app"),$=s=>document.quer
 function ap(p,...k){for(const c of k.flat(4)){if(c==null||c===false)continue;p.appendChild(c.nodeType?c:document.createTextNode(String(c)))}}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const num=(v,d)=>{const n=parseFloat(v);return isFinite(n)?n:d};
-const VER=118,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
+const VER=119,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
 function fixCh(se){const c=(se.chaps||[]).filter(x=>x&&x.i>=0&&x.i<Math.max(1,se.turns.length)).sort((a,b)=>a.i-b.i),out=[];c.forEach(x=>{if(!out.length||x.i>out[out.length-1].i)out.push(x)});if(!out.length||out[0].i!==0)out.unshift({i:0,t:""});se.chaps=out;return out}
 function autoCh(se){const N=se.chapN==null?1500:se.chapN,out=[{i:0,t:""}];if(N>0){let acc=0;se.turns.forEach((t,i)=>{if(t.role==="user"&&i>0&&(N===1?acc>0:acc>=N)){out.push({i,t:""});acc=0}if(t.role==="ai")acc+=words(t.text)})}return out}
 function chapsOf(se){if(!se.chaps)se.chaps=autoCh(se);return fixCh(se)}
@@ -4182,11 +4183,24 @@ const VISMODEL="google/gemini-2.5-flash";
 async function visDescribe(x,url,st){const what={character:"For a character: face, apparent age, hair, eyes, skin, build and height, clothing and armor, weapons or accessories, expression and the personality it suggests.",creature:"For a creature or magic beast: overall size and scale, body shape, colors and markings, fur, scales, feathers or hide, eyes, horns, wings, tails or other distinctive features, any magical glow, element or aura, and the temperament it suggests.",place:"For a world or place: landscape, architecture, vegetation, scale, lighting, colors, weather and atmosphere.",item:"For an item or weapon: shape, size, materials, colors, markings, and any magical effects.",power:"For magic or a power: colors, shapes, motion, light, sound it might make, and how it looks when used."}[x.kind]||"";
   const r=await ask([{role:"user",content:[{type:"text",text:"Describe this reference image for a novelist who must depict it faithfully in an interactive story"+(st&&(st.canon||st.title)?" ("+(st.canon||st.title)+")":"")+".\nWhat it shows: "+vkName(x.kind)+(x.name?", named "+x.name:"")+(x.note?". Player’s note: "+x.note:"")+".\n"+what+"\nWrite 110 to 170 words of plain prose, with no lists and no headings. Describe the subject itself, not the picture: never say image, picture, drawing, art style or background unless they matter. If it shows a real, identifiable person, describe only general features and do not name them."},{type:"image_url",image_url:{url}}]}],{model:DB.visModel||VISMODEL,or:true,max:500,temp:0.3});
   return r.text.trim().replace(/^["“]|["”]$/g,"")}
+function visFullPreview(ref){
+  const panel=h("details",{class:"vdetail"},h("summary",{text:"View larger image"}));
+  panel.addEventListener("toggle",async()=>{
+    if(!panel.open||panel.childElementCount>1)return;
+    const preview=h("img",{alt:ref.name||vkName(ref.kind)});
+    panel.append(preview);
+    let full;
+    try{full=await idbGet("img:"+ref.id)}catch(e){}
+    if(full||ref.thumb)preview.src=full||ref.thumb;
+    else preview.replaceWith(h("p",{class:"sub",text:"This image is unavailable on this device."}));
+  });
+  return panel;
+}
 function visSheet(owner,st,simple=false){
   owner.vis=owner.vis||[];
   const box=h("div"),d={kind:simple?"character":"creature",name:"",note:"",desc:""};
   let pend=null,saving=false;
-  const file=h("input",{type:"file",accept:"image/*",style:"display:none",onchange:async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;try{pend={full:await imgShrink(f,1024,0.85),thumb:await imgShrink(f,240,0.75)};draw()}catch(x){toast(x.message)}}});
+  const file=h("input",{type:"file",accept:"image/*",style:"display:none",onchange:async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;try{pend={full:await imgShrink(f,2048,0.94),thumb:await imgShrink(f,240,0.75)};draw()}catch(x){toast(x.message)}}});
   const run=async x=>{x.busy=1;x.err="";draw();try{const full=await idbGet("img:"+x.id);if(!full)throw new Error("The original picture is missing. Remove it and add it again.");x.desc=await visDescribe(x,full,st)}catch(e){x.err=e.code==="or_key"||e.code==="no_key"?"Describing pictures needs an OpenRouter key in Settings. It costs a fraction of a cent each. You can also type the description yourself.":errMsg(e)}delete x.busy;save();draw()};
   const addReference=async describe=>{
     if(saving||!pend)return;
@@ -4212,6 +4226,7 @@ function visSheet(owner,st,simple=false){
     if(owner.vis.length)ap(box,h("div",{class:"vgrid"},owner.vis.map((x,i)=>h("div",{class:"vcard"},
       h("div",{class:"vtop"},h("img",{src:x.thumb||"",alt:x.name||vkName(x.kind)}),h("div",null,h("span",{class:"vkind",text:vkName(x.kind)}),inp(x.name,v=>{x.name=v.slice(0,60);save()},"Name"),inp(x.note,v=>{x.note=v.slice(0,200);save()},"How it fits your story"),
         chk("Use in this story",x.on!==false,v=>{x.on=v;save()}))),
+      visFullPreview(x),
       x.busy?h("p",{class:"sub",text:"Looking at the picture and writing a description…"}):fld("Description the narrator sees",area(x.desc,v=>{x.desc=v;save()},"Waiting for a description, or type your own",5)),
       x.err?h("p",{class:"sub",text:x.err}):null,
       h("div",{class:"row tight"},h("button",{text:x.desc?"Describe again":"Describe it",disabled:!!x.busy,onclick:()=>run(x)}),confirmBtn("Remove",async()=>{owner.vis.splice(i,1);save();try{await idbDel("img:"+x.id)}catch(e){}draw()},""))))));
@@ -4219,7 +4234,7 @@ function visSheet(owner,st,simple=false){
     if(owner.vis.length>=12){ap(box,h("p",{class:"sub",text:"That’s the limit of 12 pictures for one story. Remove one to add another."}));return}
     ap(box,h("h3",{text:"Add a picture"}),file);
     if(!pend)ap(box,h("div",{class:"row"},h("button",{class:"primary",text:"Choose a picture",onclick:()=>file.click()})));
-    else{ap(box,h("img",{class:"vprev",src:pend.thumb,alt:"Chosen picture"}),
+    else{ap(box,h("img",{class:"vprev",src:pend.full,alt:"Chosen picture"}),
       fld("What it shows",simple?sel(d.kind,VKINDS.slice(0,2),v=>{d.kind=v}):selC(d.kind,VKINDS,v=>{d.kind=v},"e.g. My character’s sword")),
       fld(simple?"Character name":"Name (optional)",inp(d.name,v=>{d.name=v},simple?"e.g. Ash, or My avatar":"e.g. Frostmane")),
       simple?fld("Appearance (optional)",area(d.desc,v=>{d.desc=v},"e.g. Silver hair, a green cloak and round glasses",3)):
