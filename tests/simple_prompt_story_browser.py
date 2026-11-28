@@ -4,6 +4,7 @@ import socket
 import subprocess
 import sys
 import time
+from urllib.parse import parse_qs, urlparse
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
@@ -15,12 +16,18 @@ with socket.socket() as sock:
 base = f"http://127.0.0.1:{port}"
 idea = "A courier brings a sealed letter to a city that has forgotten its name."
 opening = "The archivist lifts her lantern as fog closes around the city gates."
-calls, errors = [], []
+calls, errors, lookups = [], [], []
+source_title = "Example Film (2010 film)"
+overview = "The story takes place on a fictional island."
 
 
 def mock(route):
     if route.request.url.startswith(base + "/"):
         route.continue_()
+    elif route.request.url.startswith("https://en.wikipedia.org/w/api.php?"):
+        title = parse_qs(urlparse(route.request.url).query).get("titles", [""])[0]
+        lookups.append(title)
+        route.fulfill(json={"query": {"pages": [{"title": title, "extract": overview}]}})
     elif route.request.url.startswith("https://openrouter.ai/"):
         calls.append(json.loads(route.request.post_data))
         payload = '{"title":"Missing opening"}' if len(calls) == 1 else json.dumps(
@@ -60,10 +67,26 @@ try:
         assert prompt.input_value() == idea
         assert page.evaluate("[DB.stories.length, DB.sessions.length]") == [1, 0]
 
+        assert not lookups
+        page.get_by_label("Source title (optional)").fill(source_title)
         page.get_by_role("button", name="Start story", exact=True).click()
         page.get_by_text(opening, exact=True).wait_for()
         assert len(calls) == 2
-        assert calls[-1]["messages"][-1] == {"role": "user", "content": idea}
+        assert json.loads(calls[-1]["messages"][-1]["content"]) == {
+            "premise": idea, "sourceTitle": source_title, "overview": overview}
+        assert lookups == [source_title]
+        assert page.evaluate("simpleSourceTitle('Based on: Example Film (2010 film)\\nOpen at dawn')") == source_title
+        page.get_by_role("button", name="Sources", exact=True).click()
+        page.get_by_role("link", name=source_title + " · Wikipedia").wait_for()
+        page.get_by_label("Source title", exact=True).fill("Example Sequel")
+        page.get_by_role("button", name="Find source", exact=True).click()
+        page.get_by_text("Saved for future replies.").wait_for()
+        page.get_by_role("button", name="Done", exact=True).click()
+        assert lookups == [source_title, "Example Sequel"]
+        assert page.evaluate("getStory(DB.sessions[0].storyId).simpleSource.title") == "Example Sequel"
+        assert page.evaluate("""()=>{const se=DB.sessions[0];
+            return buildMsgs(se,getStory(se.storyId),se.turns,'Look around')[0].content.includes('Source overview for Example Sequel:');
+        }""")
         assert page.evaluate("DB.sessions[0].char.name") == ""
         assert page.evaluate("DB.sessions[0].note") == idea
         page.get_by_role("button", name="Character images", exact=True).wait_for()
@@ -79,6 +102,7 @@ try:
         assert page.evaluate("getStory('existing').title") == "Existing story"
         assert page.evaluate("DB.chars[0].name") == "Existing Avatar"
         assert "green cloak" in page.evaluate("DB.sessions[0].note")
+        assert page.evaluate("getStory(DB.sessions[0].storyId).simpleSource.title") == "Example Sequel"
         page.evaluate("go({n:'story',id:DB.sessions[0].storyId})")
         page.get_by_role("button", name="Continue", exact=True).wait_for()
         page.get_by_role("button", name="Advanced setup", exact=True).click()

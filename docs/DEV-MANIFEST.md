@@ -175,6 +175,12 @@ Fixed and covered by tests (`presend_watchdog_browser.py`, `reliability_102_brow
 - ChatGPT's list: (1) switching universes cancels an in-flight import (`epoch`/abort in the wizard); (2) typewriter + Stop keeps and shows the whole reply; (3) studio panels honour transparency; (4) lighting and fog/vignette stack via `--sf-cv-light`/`--sf-cv-veil`, rain layers over scene artwork via `--sf-cv-rain`; (5) menus no longer replay the scene transition (last scene remembered per playthrough, not on `#log`); (6) draft universe switch resets only universe-specific choices (reviewed); (8) `cvArt` resolves `story:<id>`, and background/portrait references that resolve to nothing are refused with a reason. (7) editing-scope previews are covered by ChatGPT's presentation test.
 Full suite pass; upgrade 101 -> 102 check 26/26.
 
+### Release 121 — Simple story source lookup
+
+The optional Source title field looks up a Wikipedia introduction before generating an opening. A clear Source: or Based on: line in the prompt also triggers lookup. Research sends the work title, with no extra AI request. Source and setting stay attached to the story for future turns. Existing Simple prompt stories can use the Sources button to find or replace a reference without starting over. A missing or unavailable overview falls back to the selected model’s knowledge.
+
+Verified the live Wikipedia lookup for the 2010 animated How to Train Your Dragon film, with mocked story-model requests in browser tests. The Simple screenshot, Quick Create, backup and service-worker regressions passed, and an offline v120-to-v121 upgrade preserved the saved fixture and attached text. No paid API calls were made.
+
 ### Release 120 — prompt-only story creation
 
 Create → Simple mode → Start with a prompt opens a one-field creator. A successful response from the active story model provides the title, setting and opening. The app saves the story and enters its opening immediately using the normal playthrough. The original prompt appears in User notes. Character images, Continue and Advanced setup use the same Simple story flow as screenshot imports.
