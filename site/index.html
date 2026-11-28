@@ -327,7 +327,7 @@ const KEY="story-forge-v2",app=document.getElementById("app"),$=s=>document.quer
 function ap(p,...k){for(const c of k.flat(4)){if(c==null||c===false)continue;p.appendChild(c.nodeType?c:document.createTextNode(String(c)))}}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const num=(v,d)=>{const n=parseFloat(v);return isFinite(n)?n:d};
-const VER=119,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
+const VER=120,words=t=>{const m=String(t||"").trim().match(/\S+/g);return m?m.length:0},chName=(c,k)=>"Chapter "+(k+1)+(c.t?" · "+c.t:"");
 function fixCh(se){const c=(se.chaps||[]).filter(x=>x&&x.i>=0&&x.i<Math.max(1,se.turns.length)).sort((a,b)=>a.i-b.i),out=[];c.forEach(x=>{if(!out.length||x.i>out[out.length-1].i)out.push(x)});if(!out.length||out[0].i!==0)out.unshift({i:0,t:""});se.chaps=out;return out}
 function autoCh(se){const N=se.chapN==null?1500:se.chapN,out=[{i:0,t:""}];if(N>0){let acc=0;se.turns.forEach((t,i)=>{if(t.role==="user"&&i>0&&(N===1?acc>0:acc>=N)){out.push({i,t:""});acc=0}if(t.role==="ai")acc+=words(t.text)})}return out}
 function chapsOf(se){if(!se.chaps)se.chaps=autoCh(se);return fixCh(se)}
@@ -595,7 +595,7 @@ const foundOf=st=>(DB.found&&DB.found[st.id])||[];
 function endChips(st,list){const f=foundOf(st);return h("div",{class:"chips"},(list||st.endings||[]).map(e=>f.includes(e.n)?h("span",{class:"chip r-"+e.r,text:e.r+" · "+e.n}):h("span",{class:"chip lock",text:e.r+" · ???"})))}
 
 function go(v){if(TTS.on)ttsStop(true);if(v&&v.n!=="edit"&&v.n!=="build"&&view&&view.imp)delete view.imp;if(v&&v.n==="chat")v.restore=true;view=v;render()}
-function render(){const b=$("#sheetbg");if(b)b.remove();app.textContent="";app.className=view.n==="chat"?["story-playing",illustratedReader()?"reader-playing":DB.visualNovelMode?"sf-visual-chat":""].join(" "):"";({home:vHome,story:vStory,edit:vEdit,chat:vChat,settings:vSettings,build:vBuild,book:vBook,shot:vShot}[view.n]||vHome)()}
+function render(){const b=$("#sheetbg");if(b)b.remove();app.textContent="";app.className=view.n==="chat"?["story-playing",illustratedReader()?"reader-playing":DB.visualNovelMode?"sf-visual-chat":""].join(" "):"";({home:vHome,story:vStory,edit:vEdit,chat:vChat,settings:vSettings,build:vBuild,book:vBook,shot:vShot,simple:vSimpleCreate}[view.n]||vHome)()}
 function sheet(title,body){closeSheet(true);const bg=h("div",{class:"sheetbg",id:"sheetbg",onclick:e=>{if(e.target===bg)closeSheet()}},h("div",{class:"sheet"},h("div",{class:"sheethead"},h("h2",{text:title}),h("button",{class:"ghost",text:"Done",onclick:()=>closeSheet()})),body));ap(document.body,bg)}
 function closeSheet(quiet){const b=$("#sheetbg");if(!b)return;b.remove();if(!quiet&&view.n==="chat"&&!busy)rerender()}
 function rerender(){const lg=$("#log");view.scroll=lg?lg.scrollTop:null;render()}
@@ -796,8 +796,9 @@ function vHome(){const tab=view.tab||"discover";
       ap(m,h("div",{class:"row tight"},h("button",{class:"sessbtn story-art-session",onclick:()=>go({n:"chat",id:se.id})},st?readerCover(st):null,h("span",{class:"story-art-session-copy"},h("b",{text:(st?(st.sim&&(se.sim&&se.sim.canon||se.world)?String(se.sim&&se.sim.canon||se.world).split(" by ")[0].slice(0,50):(st.title||st.charName)):"Deleted story")+" · "+(se.char.name||"You")+(se.life?" · age "+se.life.age:"")+(se.bname?" · "+se.bname:"")}),h("small",{text:last?(last.show||last.text).slice(0,90):"Not started"}))),confirmBtn("Delete",()=>{bury(se.id);DB.sessions=DB.sessions.filter(x=>x.id!==se.id);save();render()})))});
   }else{
     ap(m,h("section",{class:"simple-create-card"},h("h2",{text:"Simple mode"}),
-      h("p",{class:"sub",text:"Add screenshots, make a story, then tap Play."}),
-      h("button",{class:"primary",text:"Make a story from screenshots",onclick:()=>go({n:"shot",simple:true})})),
+      h("div",{class:"row"},
+        h("button",{class:"primary",text:"Start with a prompt",onclick:()=>go({n:"simple"})}),
+        h("button",{text:"Make a story from screenshots",onclick:()=>go({n:"shot",simple:true})}))),
       h("h2",{text:"Advanced mode"}),h("div",{class:"row"},h("button",{class:"primary",text:"Build any world",onclick:()=>go({n:"build"})}),h("button",{text:"Import from screenshots",onclick:()=>go({n:"shot"})}),h("button",{text:"New story by hand",onclick:()=>go({n:"edit",kind:"story"})}),h("button",{text:"Story templates",onclick:()=>storyTemplatesSheet()}),h("button",{text:"New character",onclick:()=>go({n:"edit",kind:"character"})})));
     if(DB.stories.length)ap(m,h("h2",{text:"My creations"}));
     DB.stories.forEach(st=>ap(m,h("div",{class:"row tight"},h("button",{class:"sessbtn",onclick:()=>go({n:"story",id:st.id})},h("b",{text:st.title||st.charName||"Untitled"}),h("small",{text:st.kind==="character"?"Character":"Story"})),h("button",{text:"Edit",onclick:()=>go({n:"edit",id:st.id})}))));
@@ -921,6 +922,7 @@ function storyDescriptionField(value,onInput){
   return fld("Story description (optional)",area(value,onInput,
     "Premise, backstory, and rules. Copied into User notes for this story.",5));
 }
+const isSimpleStory=st=>st?.simplePrompt===true||st?.simpleImport===true;
 function vSimpleStory(st){
   const sessions=storySessions(st.id),latest=sessions[0]?.session;
   const main=h("main",{class:"page simple-story"},h("section",{class:"simple-create-card"},
@@ -930,7 +932,7 @@ function vSimpleStory(st){
     h("div",{class:"row"},
       h("button",{class:"primary big",text:latest?"Continue":"Play",onclick:()=>{
         if(latest)go({n:"chat",id:latest.id});
-        else play(st,{start:st.starts?.[0],follow:st.follow,play:"story",simple:true});
+        else play(st,{start:st.starts?.[0],follow:st.follow,storyDescription:st.storyDescription,play:"story",simple:true});
       }}),
       h("button",{text:"Character images",onclick:()=>visSheet(st,st,true)}),
       h("button",{text:"Advanced setup",onclick:()=>go({n:"story",id:st.id,advanced:true})})),
@@ -939,7 +941,7 @@ function vSimpleStory(st){
 }
 function vStory(){const st=getStory(view.id);if(!st){view={n:"home",tab:"discover"};return render()}
   if(st.sim)return vSimStory(st);
-  if(st.simpleImport&&!view.advanced)return vSimpleStory(st);
+  if(isSimpleStory(st)&&!view.advanced)return vSimpleStory(st);
   const isC=st.kind==="character",c0=DB.chars[0];
   const d=view.d||(view.d={start:(st.starts&&st.starts[0])||"",follow:st.follow||"strict",...avatarSetup(c0),storyDescription:st.storyDescription||"",len:"300",play:st.life?"life":"story",age:"0",agec:""});
   const life=!isC&&d.play==="life",ends=life?lifeEnds(st):(st.endings||[]),sts=life?lifeStats(st):(st.stats||[]),ne=(st.entries||[]).length,fo=foundOf(st);
@@ -951,7 +953,7 @@ function vStory(){const st=getStory(view.id);if(!st){view={n:"home",tab:"discove
   else ap(m,h("div",{class:"hero",style:grad(stHue(st))},h("em",{text:isC?"Character":life?"Life sim":"Story"}),h("b",{text:isC?(st.charName||st.title):st.title}),h("small",{text:st.tag||st.style||""})));
   if(st.worldEra&&eraProfile(st).era!=="Unspecified")ap(m,h("p",{class:"sub",text:"World era: "+eraProfile(st).era+(eraProfile(st).date?" · "+eraProfile(st).date:"")}));
   if(st.tags&&st.tags.length)ap(m,h("div",{class:"tags"},st.tags.map(t=>h("span",{text:t}))));
-  ap(m,st.simpleImport?h("button",{text:"Simple mode",onclick:()=>go({n:"story",id:st.id})}):null,savedStorySessions(sessions,st));
+  ap(m,isSimpleStory(st)?h("button",{text:"Simple mode",onclick:()=>go({n:"story",id:st.id})}):null,savedStorySessions(sessions,st));
   if(st.desc)ap(m,h("h2",{text:"Description"}),h("div",{class:"body"},String(st.desc).split(/\n+/).map(p=>h("p",{text:p}))));
   if(isC&&st.charDesc)ap(m,h("p",{text:st.charDesc}));
   if(st.setting&&!st.desc)ap(m,h("p",{text:st.setting}));
@@ -2437,10 +2439,10 @@ async function shotBuild(S,modeIdx,say,simple=false){
     starts,entries:(f.notes||[]).filter(e=>e&&e.t).map(e=>({k:String(e.k||"").slice(0,120),t:String(e.t).slice(0,800),a:false})).concat(cast0.map(c=>({k:c.n,t:[c.age&&"Age "+c.age,c.role,c.looks,c.hook&&"With the player: "+c.hook,c.quote&&"Says things like: “"+c.quote.replace(/^["“]|["”]$/g,"")+"”"].filter(Boolean).join(". "),a:true}))),
     stats:[],endings:(f.endings||[]).filter(e=>e&&e.n).map(e=>({n:String(e.n).slice(0,60),r:/^(N|R|SR|SSR)$/.test(e.r)?e.r:"R",c:String(e.c||""),e:""})),updated:Date.now()};
   if(simple)st.simpleImport=true;
-  await saveScreenshotStory(st,images);
+  await saveCreatedStory(st,images);
   return st;
 }
-async function saveScreenshotStory(st,images){
+async function saveCreatedStory(st,images=[]){
   if(sourceStoreReadOnly)throw Error("Story storage is unavailable. Reopen Story Forge and try again.");
   const savedImages=[];
   try{
@@ -4173,7 +4175,7 @@ const VKINDS=[["character","Character"],["creature","Creature or magic beast"],[
 const vkName=k=>(VKINDS.find(x=>x[0]===k)||[0,k||"Other"])[1];
 function visRefs(se){
   const story=getStory(se.storyId);
-  return [...(se.vis||[]),...(story?.simpleImport?story.vis||[]:[])];
+  return [...(se.vis||[]),...(isSimpleStory(story)?story.vis||[]:[])];
 }
 function visText(se){const v=visRefs(se).filter(x=>x.desc&&x.on!==false);if(!v.length)return"";const bud=[6000,3500,2000][DB.saver||0];let used=0;const out=[];
   for(const x of v){const line="- "+vkName(x.kind)+(x.name?": "+x.name:"")+(x.note?" (player’s note: "+x.note+")":"")+". Looks: "+x.desc;if(used+line.length>bud)break;used+=line.length;out.push(line)}return out.join("\n")}
@@ -4745,6 +4747,54 @@ async function buildWorld(b,say,force){const orig=!b.src.trim(),model=(DB.modes[
     arcs=await step("Writing the timeline…",orig?'Invent the history and return a JSON array of 6 objects in chronological order: 3 past events that shaped the world, then 3 events that will happen in the coming years unless someone changes them. Each object has "k" (a short name) and "t" (under 80 words).':'Return a JSON array of up to 10 objects, one for each major story arc in chronological order. Each object has "k" (the arc name) and "t" (under 90 words: when it happens, what happens in order, who is involved and how it ends). Spoilers are required, because this is the narrator’s private reference.',2600,true)}
   const power=String(core.power||"Skill").slice(0,24)||"Skill";
   return{st:{id:uid(),kind:"story",title:String(core.title||b.src||"My world").slice(0,80),canon:orig?"":b.src.trim(),follow:"strict",starts:(Array.isArray(core.starts)?core.starts:[]).map(String).slice(0,8),setting:String(core.setting),style:String(core.style||""),tag:String(core.tag||"").slice(0,40),lore:String(core.rules||""),entries:arcs.concat(chars,places),stats:stdStats(power),endings:stdEnds(power),life:b.play==="life",known:orig?"well":String(core.known||""),wiki:orig?"":(b.wiki||"")}}}
+function vSimpleCreate(){
+  const current=view;
+  const leave=()=>{
+    current.generation?.abort();
+    go({n:"home",tab:"create"});
+  };
+  const status=h("p",{class:"sub",role:"status"});
+  const idea=area(current.prompt||"",value=>{current.prompt=value},
+    "A courier arrives in a city where everyone has forgotten the same night…",6);
+  idea.maxLength=4000;
+  const start=h("button",{class:"primary big",type:"submit",text:"Start story"});
+  const form=h("form",{class:"simple-create-card",onsubmit:async event=>{
+    event.preventDefault();
+    if(current.generation)return;
+    const prompt=idea.value.trim();
+    if(!prompt){status.textContent="Enter a story idea to start.";idea.focus();return}
+    if(!hasKey()){status.textContent="Connect a model provider in Settings to start.";return}
+    if(sourceStoreReadOnly){status.textContent="Story storage is unavailable. Reopen Story Forge and try again.";return}
+    const controller=new AbortController();
+    current.generation=controller;
+    start.disabled=idea.disabled=true;
+    status.textContent="Writing your opening scene…";
+    try{
+      const response=await ask([
+        {role:"system",content:'Prepare an interactive story for the player from their premise. Return only JSON with "title", "setting", and "opening" strings. Give the narrator a concise setting that respects the prompt, then write a short, original, age-appropriate opening scene. Establish the immediate situation and stop at a moment the player can respond to. Respect any details the player gives for their avatar and leave unspecified details open. Never write the player character’s dialogue, actions, choices, or private thoughts. Keep the scene free of sexual content and graphic violence.'},
+        {role:"user",content:prompt}
+      ],{max:1600,temp:0.5,signal:controller.signal});
+      if(controller.signal.aborted||view!==current)return;
+      const result=pj(response.text,false);
+      const field=(key,max)=>typeof result?.[key]==="string"?result[key].trim().slice(0,max):"";
+      const title=field("title",90),setting=field("setting",3000),prologue=field("opening",6500);
+      if(!title||!setting||!prologue)throw Error("The model didn’t return a usable opening. Try again.");
+      const st={id:uid(),kind:"story",simplePrompt:true,title,setting,prologue,storyDescription:prompt,
+        follow:"strict",starts:[],entries:[],stats:[],endings:[],updated:Date.now()};
+      await saveCreatedStory(st);
+      if(view===current)play(st,{storyDescription:prompt,play:"story",simple:true});
+    }catch(error){
+      if(!controller.signal.aborted&&view===current)status.textContent=error.code?errMsg(error):error.message;
+    }finally{
+      current.generation=null;
+      start.disabled=idea.disabled=false;
+    }
+  }},
+  fld("Story prompt",idea),
+  h("p",{class:"sub",text:"Describe the world, the opening situation, or who you want to play. You can add details once the story starts."}),
+  h("div",{class:"row"},start,!hasKey()?h("button",{type:"button",text:"Open Settings",onclick:()=>go({n:"settings"})}):null),status);
+  ap(app,h("header",null,back(leave),h("h1",{text:"Start with a prompt"})),h("main",{class:"page simple-story"},form));
+}
 function vBuild(){const b=view.b||(view.b={src:"",idea:"",ref:"",play:"story",depth:"deep",web:false,mode:DB.modes.length-1,refs:[],imp:{}});b.refs=b.refs||[];b.imp=b.imp||{};
   ap(app,h("header",null,back(()=>{if(b.run){toast("Still building. Give it a moment.");return}go({n:"home",tab:"discover"})}),h("h1",{text:"Build any world"})));
   const m=h("main",{class:"page"});ap(app,m);
