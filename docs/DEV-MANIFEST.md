@@ -175,6 +175,14 @@ Fixed and covered by tests (`presend_watchdog_browser.py`, `reliability_102_brow
 - ChatGPT's list: (1) switching universes cancels an in-flight import (`epoch`/abort in the wizard); (2) typewriter + Stop keeps and shows the whole reply; (3) studio panels honour transparency; (4) lighting and fog/vignette stack via `--sf-cv-light`/`--sf-cv-veil`, rain layers over scene artwork via `--sf-cv-rain`; (5) menus no longer replay the scene transition (last scene remembered per playthrough, not on `#log`); (6) draft universe switch resets only universe-specific choices (reviewed); (8) `cvArt` resolves `story:<id>`, and background/portrait references that resolve to nothing are refused with a reason. (7) editing-scope previews are covered by ChatGPT's presentation test.
 Full suite pass; upgrade 101 -> 102 check 26/26.
 
+### Release 118 — Simple screenshot stories and character images
+
+Create offers Simple screenshot import alongside the existing Advanced tools. Simple mode uses a single OpenRouter vision request to create a playable setup and a short original opening from the screenshots. Play opens the saved scene without requiring a model, starting point, or avatar selection. User notes and the reply field let the player define their avatar after opening the story. Advanced setup remains available from the Simple story page.
+
+Optional character images are available before Play and in the reader. A reference can be described by the player or sent to the configured OpenRouter vision model. Its saved description is provided to the narrator through the existing visual-reference prompt section. No image generation is needed.
+
+Verified on a phone-sized Chromium viewport using mocked requests, including retry after an unusable import, artwork retention, Advanced switching, direct Play, manual and vision descriptions in the narrator prompt, notes and persistence. The original Advanced screenshot import, mobile Quick Create, creation wizard, offline shell and backup regressions passed. Offline v117-to-v118 upgrade preserved saved data and the attached source. No paid calls were made.
+
 ### Release 117 — Life timeline follows Rewind and can be edited (Claude, 2026-11-26)
 Anna's screenshot: the Life timeline still listed her old run (all "Age 5"). `branchAt`'s life trimming relied on turn fields `pl`/`ln` that nothing writes, so `se.life`/`se.log` were never trimmed. Fix: `life` and `log` join `SV_KEYS` (exact restore from v116 snapshots); new milestones carry `ch`, and removing chapters drops their milestones when there is no snapshot; deleting every message clears the log and restores the starting age (`se.life0`, new playthroughs). Life timeline sheet: ✕ per milestone, "Remove all milestones", editable "Current age". Tests: rewind_clears_state_browser.py (14). Full suite 110/110 (smoke5 caught a TDZ slip in the milestone tag; fixed); upgrade 116 -> 117 31/31.
 

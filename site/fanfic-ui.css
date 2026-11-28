@@ -271,3 +271,16 @@ html[data-sf-cv-layout] #log{box-shadow:var(--sf-cv-light,0 0 0 transparent),var
 }
 #sf-deep-task[hidden], #sf-deep-task:has(~ #sheetbg) {display:none}
 #sf-deep-task button {min-height:44px; padding:6px 10px; border-radius:12px}
+
+.simple-create-card {
+  margin:0 0 22px;
+  padding:18px;
+  border:1px solid var(--border);
+  border-radius:16px;
+  background:var(--card);
+}
+.simple-create-card h2 {margin-top:0}
+.simple-story-description {white-space:pre-line;overflow-wrap:anywhere}
+.simple-story .simple-create-card .reader-cover {max-width:220px;margin:0 0 16px}
+.simple-play-tools {margin:0}
+.simple-play-tools button {min-height:44px}
